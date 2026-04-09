@@ -1,0 +1,57 @@
+<!-- 群体降压 - 图标插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#E8EAF6"/>
+
+  <!-- 温泉水面 -->
+  <ellipse cx="200" cy="230" rx="110" ry="32" fill="#81D4FA"/>
+  <ellipse cx="200" cy="223" rx="102" ry="29" fill="#4FC3F7"/>
+
+  <!-- 温泉池 -->
+  <path d="M 100 230 Q 100 260 115 275 L 285 275 Q 300 260 300 230" fill="#A1887F"/>
+
+  <!-- 气泡 -->
+  <circle cx="140" cy="218" r="8" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="165" cy="225" r="6" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="200" cy="215" r="10" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="235" cy="223" r="6" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="260" cy="218" r="8" fill="#FFFFFF" opacity="0.6"/>
+
+  <!-- 蒸汽 -->
+  <ellipse cx="120" cy="185" rx="19" ry="29" fill="#E0E0E0" opacity="0.5"/>
+  <ellipse cx="145" cy="170" rx="24" ry="35" fill="#E0E0E0" opacity="0.4"/>
+  <ellipse cx="175" cy="155" rx="29" ry="40" fill="#E0E0E0" opacity="0.3"/>
+
+  <ellipse cx="225" cy="155" rx="29" ry="40" fill="#E0E0E0" opacity="0.3"/>
+  <ellipse cx="255" cy="170" rx="24" ry="35" fill="#E0E0E0" opacity="0.4"/>
+  <ellipse cx="280" cy="185" rx="19" ry="29" fill="#E0E0E0" opacity="0.5"/>
+
+  <!-- 小动物们（简化版） -->
+  <!-- 左边小猫 -->
+  <circle cx="120" cy="225" r="19" fill="#FF8C42"/>
+  <circle cx="116" cy="222" r="5" fill="#2C1810"/>
+  <circle cx="124" cy="222" r="5" fill="#2C1810"/>
+  <path d="M 115 230 Q 120 234 125 230" stroke="#2C1810" stroke-width="2" fill="none"/>
+
+  <!-- 中间小狗 -->
+  <circle cx="200" cy="225" r="21" fill="#708090"/>
+  <circle cx="195" cy="222" r="5" fill="#4A90E2"/>
+  <circle cx="205" cy="222" r="5" fill="#4A90E2"/>
+  <path d="M 194 231 Q 200 236 206 231" stroke="#2C1810" stroke-width="2" fill="none"/>
+
+  <!-- 右边小仓鼠 -->
+  <circle cx="280" cy="225" r="18" fill="#F4A460"/>
+  <circle cx="276" cy="222" r="4" fill="#2C1810"/>
+  <circle cx="284" cy="222" r="4" fill="#2C1810"/>
+  <path d="M 275 230 Q 280 234 285 230" stroke="#2C1810" stroke-width="2" fill="none"/>
+
+  <!-- 爱心装饰 -->
+  <path d="M 100 110 C 100 102 108 95 117 95 C 126 95 134 102 134 110 C 134 125 100 145 100 145 C 100 145 66 125 66 110 C 66 102 74 95 83 95 C 92 95 100 102 100 110"
+        fill="#FF6B9D" opacity="0.6" transform="scale(0.8) translate(50, 60)"/>
+  <path d="M 100 110 C 100 102 108 95 117 95 C 126 95 134 102 134 110 C 134 125 100 145 100 145 C 100 145 66 125 66 110 C 66 102 74 95 83 95 C 92 95 100 102 100 110"
+        fill="#FF6B9D" opacity="0.6" transform="scale(0.8) translate(250, 70)"/>
+
+  <!-- 音符装饰 -->
+  <text x="80" y="140" font-family="Arial" font-size="36" fill="#7E57C2" opacity="0.7">♪</text>
+  <text x="320" y="150" font-family="Arial" font-size="30" fill="#7E57C2" opacity="0.7">♫</text>
+</svg>

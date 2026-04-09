@@ -1,0 +1,63 @@
+<!-- 卷王 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFF8DC"/>
+
+  <!-- 火焰装饰（内卷之火） -->
+  <path d="M 60 70 Q 70 50 80 70 Q 75 60 80 50" fill="#FF6347" opacity="0.6"/>
+  <path d="M 320 75 Q 330 55 340 75 Q 335 65 340 55" fill="#FF6347" opacity="0.6"/>
+
+  <!-- 马身体 -->
+  <ellipse cx="200" cy="220" rx="85" ry="78" fill="#8B4513"/>
+
+  <!-- 马头部 -->
+  <ellipse cx="200" cy="140" rx="68" ry="62" fill="#8B4513"/>
+
+  <!-- 白色胸毛 -->
+  <ellipse cx="200" cy="200" rx="48" ry="40" fill="#F5DEB3"/>
+
+  <!-- 左耳 -->
+  <ellipse cx="160" cy="105" rx="18" ry="32" fill="#A0522D" transform="rotate(-15 160 105)"/>
+
+  <!-- 右耳 -->
+  <ellipse cx="240" cy="105" rx="18" ry="32" fill="#A0522D" transform="rotate(15 240 105)"/>
+
+  <!-- 眼睛（锐利的眼神） -->
+  <ellipse cx="175" cy="135" rx="16" ry="19" fill="#2C1810"/>
+  <ellipse cx="175" cy="135" rx="10" ry="13" fill="#FF4500"/>
+  <circle cx="178" cy="132" r="3" fill="#FFFFFF"/>
+
+  <ellipse cx="225" cy="135" rx="16" ry="19" fill="#2C1810"/>
+  <ellipse cx="225" cy="135" rx="10" ry="13" fill="#FF4500"/>
+  <circle cx="228" cy="132" r="3" fill="#FFFFFF"/>
+
+  <!-- 眉毛（严肃） -->
+  <path d="M 158 120 L 185 118" stroke="#2C1810" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 215" y1="118" x2="242" y2="120" stroke="#2C1810" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="200" cy="160" rx="10" ry="8" fill="#A0522D"/>
+
+  <!-- 嘴巴（紧绷的表情） -->
+  <path d="M 183 172 L 217 172" stroke="#2C1810" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- 笔记本电脑装饰 -->
+  <rect x="155" y="180" width="90" height="60" rx="3" fill="#2C3E50"/>
+  <rect x="160" y="185" width="80" height="45" rx="2" fill="#34495E"/>
+  <line x1="165" y1="207" x2="235" y2="207" stroke="#00FF00" stroke-width="2"/>
+  <line x1="165" y1="215" x2="225" y2="215" stroke="#00FF00" stroke-width="2"/>
+
+  <!-- 咖啡杯装饰 -->
+  <g transform="translate(270, 170) scale(1.2)">
+    <rect x="8" y="15" width="32" height="40" rx="3" fill="#8B4513"/>
+    <ellipse cx="24" cy="15" rx="16" ry="5" fill="#6F4E37"/>
+    <path d="M 40 25 Q 50 25 50 35 Q 50 45 40 45" stroke="#8B4513" stroke-width="3" fill="none"/>
+  </g>
+
+  <!-- 汗滴（压力大） -->
+  <ellipse cx="145" cy="125" rx="6" ry="11" fill="#87CEEB" opacity="0.7"/>
+  <ellipse cx="255" cy="125" rx="6" ry="11" fill="#87CEEB" opacity="0.7"/>
+
+  <!-- 闪电符号（高强度） -->
+  <path d="M 330 130 L 320 155 L 333 155 L 323 180 L 345 150 L 332 150 Z" fill="#FFD700" opacity="0.8"/>
+</svg>

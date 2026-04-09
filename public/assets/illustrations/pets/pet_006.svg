@@ -1,0 +1,62 @@
+<!-- 永动机猫 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFF9E6"/>
+
+  <!-- 能量波纹装饰 -->
+  <circle cx="200" cy="150" r="130" stroke="#FFD700" stroke-width="3" fill="none" opacity="0.3"/>
+  <circle cx="200" cy="150" r="105" stroke="#FFD700" stroke-width="3" fill="none" opacity="0.4"/>
+  <circle cx="200" cy="150" r="80" stroke="#FFD700" stroke-width="3" fill="none" opacity="0.5"/>
+
+  <!-- 猫身体 -->
+  <ellipse cx="200" cy="220" rx="82" ry="73" fill="#FFB347"/>
+
+  <!-- 猫头部 -->
+  <ellipse cx="200" cy="135" rx="72" ry="65" fill="#FFB347"/>
+
+  <!-- 白色胸毛 -->
+  <ellipse cx="200" cy="185" rx="45" ry="35" fill="#FFF8DC"/>
+
+  <!-- 左耳 -->
+  <path d="M 135 80 L 105 45 L 155 75 Z" fill="#FFB347"/>
+  <path d="M 135 80 L 115 57 L 150 77 Z" fill="#FFA07A"/>
+
+  <!-- 右耳 -->
+  <path d="M 265 80 L 295 45 L 245 75 Z" fill="#FFB347"/>
+  <path d="M 265 80 L 285 57 L 250 77 Z" fill="#FFA07A"/>
+
+  <!-- 眼睛（炯炯有神） -->
+  <ellipse cx="170" cy="130" rx="16" ry="19" fill="#2C1810"/>
+  <ellipse cx="170" cy="130" rx="11" ry="14" fill="#FFD700"/>
+  <circle cx="174" cy="127" r="5" fill="#FFFFFF"/>
+
+  <ellipse cx="230" cy="130" rx="16" ry="19" fill="#2C1810"/>
+  <ellipse cx="230" cy="130" rx="11" ry="14" fill="#FFD700"/>
+  <circle cx="234" cy="127" r="5" fill="#FFFFFF"/>
+
+  <!-- 鼻子 -->
+  <path d="M 190 152 L 200 159 L 210 152 Z" fill="#FF6B9D"/>
+
+  <!-- 嘴巴（自信的微笑） -->
+  <path d="M 180 165 Q 190 172 200 165 Q 210 172 220 165" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 胡须 -->
+  <line x1="95" y1="138" x2="140" y2="135" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="95" y1="150" x2="140" y2="150" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="260" y1="135" x2="305" y2="138" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="260" y1="150" x2="305" y2="150" stroke="#2C1810" stroke-width="2.5"/>
+
+  <!-- 齿轮装饰（永动机） -->
+  <g transform="translate(280, 120) scale(1)">
+    <circle cx="30" cy="30" r="25" fill="none" stroke="#8B7355" stroke-width="3"/>
+    <circle cx="30" cy="30" r="8" fill="#8B7355"/>
+    <rect x="27" y="5" width="6" height="16" fill="#8B7355"/>
+    <rect x="27" y="39" width="6" height="16" fill="#8B7355"/>
+    <rect x="5" y="27" width="16" height="6" fill="#8B7355"/>
+    <rect x="39" y="27" width="16" height="6" fill="#8B7355"/>
+  </g>
+
+  <!-- 能量符号 -->
+  <path d="M 70 80 L 60 105 L 73 105 L 63 130 L 85 100 L 72 100 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M 330 90 L 320 115 L 333 115 L 323 140 L 345 110 L 332 110 Z" fill="#FFD700" opacity="0.8"/>
+</svg>

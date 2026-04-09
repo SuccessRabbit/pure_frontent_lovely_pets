@@ -1,0 +1,60 @@
+<!-- 群体降压 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#E8EAF6" rx="12"/>
+
+  <!-- 温泉水面 -->
+  <ellipse cx="100" cy="200" rx="70" ry="20" fill="#81D4FA"/>
+  <ellipse cx="100" cy="195" rx="65" ry="18" fill="#4FC3F7"/>
+
+  <!-- 温泉池 -->
+  <path d="M 40 200 Q 40 220 50 230 L 150 230 Q 160 220 160 200" fill="#A1887F"/>
+
+  <!-- 气泡 -->
+  <circle cx="70" cy="190" r="5" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="85" cy="195" r="4" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="100" cy="188" r="6" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="115" cy="193" r="4" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="130" cy="190" r="5" fill="#FFFFFF" opacity="0.6"/>
+
+  <!-- 蒸汽 -->
+  <ellipse cx="60" cy="170" rx="12" ry="18" fill="#E0E0E0" opacity="0.5"/>
+  <ellipse cx="75" cy="160" rx="15" ry="22" fill="#E0E0E0" opacity="0.4"/>
+  <ellipse cx="90" cy="150" rx="18" ry="25" fill="#E0E0E0" opacity="0.3"/>
+
+  <ellipse cx="110" cy="150" rx="18" ry="25" fill="#E0E0E0" opacity="0.3"/>
+  <ellipse cx="125" cy="160" rx="15" ry="22" fill="#E0E0E0" opacity="0.4"/>
+  <ellipse cx="140" cy="170" rx="12" ry="18" fill="#E0E0E0" opacity="0.5"/>
+
+  <!-- 小动物们（简化版） -->
+  <!-- 左边小猫 -->
+  <circle cx="60" cy="195" r="12" fill="#FF8C42"/>
+  <circle cx="58" cy="193" r="3" fill="#2C1810"/>
+  <circle cx="62" cy="193" r="3" fill="#2C1810"/>
+  <path d="M 58 198 Q 60 200 62 198" stroke="#2C1810" stroke-width="1" fill="none"/>
+
+  <!-- 中间小狗 -->
+  <circle cx="100" cy="195" r="13" fill="#708090"/>
+  <circle cx="97" cy="193" r="3" fill="#4A90E2"/>
+  <circle cx="103" cy="193" r="3" fill="#4A90E2"/>
+  <path d="M 97 199 Q 100 202 103 199" stroke="#2C1810" stroke-width="1" fill="none"/>
+
+  <!-- 右边小仓鼠 -->
+  <circle cx="140" cy="195" r="11" fill="#F4A460"/>
+  <circle cx="138" cy="193" r="2" fill="#2C1810"/>
+  <circle cx="142" cy="193" r="2" fill="#2C1810"/>
+  <path d="M 138 198 Q 140 200 142 198" stroke="#2C1810" stroke-width="1" fill="none"/>
+
+  <!-- 爱心装饰 -->
+  <path d="M 50 100 C 50 95 55 90 60 90 C 65 90 70 95 70 100 C 70 110 50 125 50 125 C 50 125 30 110 30 100 C 30 95 35 90 40 90 C 45 90 50 95 50 100"
+        fill="#FF6B9D" opacity="0.6" transform="scale(0.6) translate(80, 50)"/>
+  <path d="M 50 100 C 50 95 55 90 60 90 C 65 90 70 95 70 100 C 70 110 50 125 50 125 C 50 125 30 110 30 100 C 30 95 35 90 40 90 C 45 90 50 95 50 100"
+        fill="#FF6B9D" opacity="0.6" transform="scale(0.6) translate(180, 60)"/>
+
+  <!-- 音符装饰 -->
+  <text x="40" y="130" font-family="Arial" font-size="24" fill="#7E57C2" opacity="0.7">♪</text>
+  <text x="160" y="140" font-family="Arial" font-size="20" fill="#7E57C2" opacity="0.7">♫</text>
+
+  <!-- 标题 -->
+  <text x="100" y="260" font-family="Arial" font-size="16" fill="#5E35B1" text-anchor="middle" font-weight="bold">团建温泉</text>
+</svg>

@@ -1,0 +1,69 @@
+<!-- 投资老狐狸 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFF5EE"/>
+
+  <!-- 股票曲线装饰 -->
+  <path d="M 40 80 L 80 65 L 120 75 L 160 60 L 200 55 L 240 70 L 280 65 L 320 80 L 360 70"
+        stroke="#FF6347" stroke-width="3" fill="none" opacity="0.5"/>
+  <path d="M 40 100 L 80 95 L 120 85 L 160 100 L 200 95 L 240 110 L 280 105 L 320 120 L 360 115"
+        stroke="#32CD32" stroke-width="3" fill="none" opacity="0.5"/>
+
+  <!-- 狐狸身体 -->
+  <ellipse cx="200" cy="220" rx="82" ry="73" fill="#FF8C00"/>
+
+  <!-- 狐狸头部 -->
+  <ellipse cx="200" cy="140" rx="68" ry="62" fill="#FF8C00"/>
+
+  <!-- 白色胸毛 -->
+  <path d="M 155 175 Q 200 205 245 175 Q 200 190 155 175" fill="#FFFFFF"/>
+
+  <!-- 左耳（尖耳朵） -->
+  <path d="M 150 90 L 120 50 L 165 85 Z" fill="#FF8C00"/>
+  <path d="M 150 90 L 135 65 L 160 87 Z" fill="#FFFFFF"/>
+
+  <!-- 右耳（尖耳朵） -->
+  <path d="M 250 90 L 280 50 L 235 85 Z" fill="#FF8C00"/>
+  <path d="M 250 90 L 265 65 L 240 87 Z" fill="#FFFFFF"/>
+
+  <!-- 眼睛（狡黠的眼神） -->
+  <ellipse cx="175" cy="135" rx="15" ry="18" fill="#2C1810"/>
+  <circle cx="178" cy="132" r="5" fill="#FFFFFF"/>
+
+  <ellipse cx="225" cy="135" rx="15" ry="18" fill="#2C1810"/>
+  <circle cx="228" cy="132" r="5" fill="#FFFFFF"/>
+
+  <!-- 眉毛（老谋深算） -->
+  <path d="M 158 120 Q 175 118 185 120" stroke="#8B4513" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 215" y1="120" Q 225 118 242 120" stroke="#8B4513" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="200" cy="155" rx="8" ry="6" fill="#2C1810"/>
+
+  <!-- 嘴巴（狡猾的微笑） -->
+  <path d="M 183 168 Q 200 178 217 168" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 胡须 -->
+  <line x1="115" y1="145" x2="155" y2="142" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="115" y1="157" x2="155" y2="157" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="245" y1="142" x2="285" y2="145" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="245" y1="157" x2="285" y2="157" stroke="#2C1810" stroke-width="2.5"/>
+
+  <!-- 尾巴（蓬松） -->
+  <ellipse cx="280" cy="230" rx="32" ry="65" fill="#FF8C00" transform="rotate(25 280 230)"/>
+  <ellipse cx="290" cy="235" rx="24" ry="48" fill="#FFFFFF" transform="rotate(25 290 235)"/>
+
+  <!-- 西装领带装饰 -->
+  <path d="M 180 180 L 200 200 L 220 180" fill="#2C3E50"/>
+  <rect x="196" y="200" width="8" height="25" fill="#2C3E50"/>
+
+  <!-- 公文包 -->
+  <rect x="250" y="185" width="60" height="42" rx="3" fill="#8B4513"/>
+  <rect x="253" y="188" width="54" height="36" rx="2" fill="#A0522D"/>
+  <rect x="275" y="185" width="10" height="13" rx="2" fill="#D2691E"/>
+  <line x1="258" y1="206" x2="302" y2="206" stroke="#8B4513" stroke-width="2"/>
+
+  <!-- 金币符号 -->
+  <circle cx="80" cy="240" r="16" fill="#FFD700" opacity="0.8"/>
+  <text x="80" y="248" font-family="Arial" font-size="19" fill="#8B7355" text-anchor="middle" font-weight="bold">$</text>
+</svg>

@@ -1,0 +1,45 @@
+<!-- 全屏打赏 - 图标插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFF9C4"/>
+
+  <!-- 火箭主体 -->
+  <ellipse cx="200" cy="170" rx="40" ry="80" fill="#FF6B9D"/>
+  <ellipse cx="200" cy="145" rx="32" ry="48" fill="#FF1744"/>
+
+  <!-- 火箭头部 -->
+  <path d="M 200 85 L 168 130 L 232 130 Z" fill="#FF6B9D"/>
+
+  <!-- 火箭窗口 -->
+  <circle cx="200" cy="145" r="19" fill="#64B5F6"/>
+  <circle cx="200" cy="145" r="13" fill="#2196F3"/>
+
+  <!-- 火箭尾翼 -->
+  <path d="M 160 210 L 150 240 L 175 220 Z" fill="#E91E63"/>
+  <path d="M 240 210 L 250 240 L 225 220 Z" fill="#E91E63"/>
+
+  <!-- 火焰 -->
+  <ellipse cx="200" cy="250" rx="24" ry="32" fill="#FF9800"/>
+  <ellipse cx="200" cy="258" rx="19" ry="24" fill="#FFC107"/>
+  <ellipse cx="200" cy="265" rx="13" ry="16" fill="#FFEB3B"/>
+
+  <!-- 金币雨 -->
+  <circle cx="100" cy="90" r="13" fill="#FFD700"/>
+  <text x="100" y="96" font-family="Arial" font-size="16" fill="#FF6B00" text-anchor="middle" font-weight="bold">¥</text>
+
+  <circle cx="300" cy="100" r="11" fill="#FFD700"/>
+  <text x="300" y="106" font-family="Arial" font-size="14" fill="#FF6B00" text-anchor="middle" font-weight="bold">$</text>
+
+  <circle cx="140" cy="60" r="10" fill="#FFD700"/>
+  <text x="140" y="66" font-family="Arial" font-size="13" fill="#FF6B00" text-anchor="middle" font-weight="bold">¥</text>
+
+  <circle cx="260" cy="70" r="11" fill="#FFD700"/>
+  <text x="260" y="76" font-family="Arial" font-size="14" fill="#FF6B00" text-anchor="middle" font-weight="bold">$</text>
+
+  <circle cx="180" cy="45" r="8" fill="#FFD700"/>
+  <circle cx="220" cy="50" r="10" fill="#FFD700"/>
+
+  <!-- 星星装饰 -->
+  <path d="M 80 140 L 85 153 L 98 153 L 88 161 L 93 174 L 80 166 L 67 174 L 72 161 L 62 153 L 75 153 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M 320 150 L 325 163 L 338 163 L 328 171 L 333 184 L 320 176 L 307 184 L 312 171 L 302 163 L 315 163 Z" fill="#FFD700" opacity="0.8"/>
+</svg>

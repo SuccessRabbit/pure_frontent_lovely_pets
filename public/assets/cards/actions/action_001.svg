@@ -1,0 +1,43 @@
+<!-- 高级猫薄荷 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#E8F5E9" rx="12"/>
+
+  <!-- 装饰叶子 -->
+  <ellipse cx="40" cy="50" rx="8" ry="15" fill="#81C784" opacity="0.5" transform="rotate(-30 40 50)"/>
+  <ellipse cx="160" cy="60" rx="7" ry="13" fill="#81C784" opacity="0.5" transform="rotate(30 160 60)"/>
+
+  <!-- 猫薄荷植物主体 -->
+  <ellipse cx="100" cy="180" rx="35" ry="45" fill="#66BB6A"/>
+
+  <!-- 花盆 -->
+  <path d="M 70 210 L 75 240 L 125 240 L 130 210 Z" fill="#8D6E63"/>
+  <ellipse cx="100" cy="210" rx="30" ry="8" fill="#A1887F"/>
+
+  <!-- 叶子（多层） -->
+  <ellipse cx="80" cy="160" rx="15" ry="25" fill="#4CAF50" transform="rotate(-20 80 160)"/>
+  <ellipse cx="120" cy="160" rx="15" ry="25" fill="#4CAF50" transform="rotate(20 120 160)"/>
+  <ellipse cx="90" cy="140" rx="12" ry="22" fill="#66BB6A" transform="rotate(-10 90 140)"/>
+  <ellipse cx="110" cy="140" rx="12" ry="22" fill="#66BB6A" transform="rotate(10 110 140)"/>
+  <ellipse cx="100" cy="120" rx="14" ry="24" fill="#81C784"/>
+
+  <!-- 花朵 -->
+  <circle cx="95" cy="100" r="8" fill="#E1BEE7"/>
+  <circle cx="105" cy="100" r="8" fill="#E1BEE7"/>
+  <circle cx="100" cy="92" r="8" fill="#E1BEE7"/>
+  <circle cx="100" cy="108" r="8" fill="#E1BEE7"/>
+  <circle cx="100" cy="100" r="6" fill="#CE93D8"/>
+
+  <!-- 闪光效果 -->
+  <path d="M 140 80 L 145 95 L 150 80 L 155 95 L 160 80" stroke="#FFD700" stroke-width="2" fill="none" opacity="0.8"/>
+  <circle cx="145" cy="85" r="3" fill="#FFD700" opacity="0.8"/>
+  <circle cx="155" cy="90" r="2" fill="#FFD700" opacity="0.8"/>
+
+  <!-- 爱心装饰 -->
+  <path d="M 50 120 C 50 115 55 110 60 110 C 65 110 70 115 70 120 C 70 130 50 145 50 145 C 50 145 30 130 30 120 C 30 115 35 110 40 110 C 45 110 50 115 50 120"
+        fill="#FF6B9D" opacity="0.6" transform="scale(0.5) translate(60, 180)"/>
+
+  <!-- 标签 -->
+  <rect x="70" y="220" width="60" height="15" rx="2" fill="#FFFFFF" opacity="0.9"/>
+  <text x="100" y="231" font-family="Arial" font-size="10" fill="#4CAF50" text-anchor="middle" font-weight="bold">猫薄荷</text>
+</svg>

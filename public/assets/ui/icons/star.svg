@@ -1,0 +1,13 @@
+<!-- 星星图标 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <!-- 星星主体 -->
+  <path d="M 32 8 L 38 26 L 56 26 L 42 38 L 48 56 L 32 44 L 16 56 L 22 38 L 8 26 L 26 26 Z"
+        fill="#FFD700"/>
+
+  <!-- 高光 -->
+  <path d="M 32 8 L 35 20 L 32 26 L 29 20 Z" fill="#FFFFFF" opacity="0.5"/>
+
+  <!-- 阴影 -->
+  <path d="M 32 8 L 38 26 L 56 26 L 42 38 L 48 56 L 32 44 L 16 56 L 22 38 L 8 26 L 26 26 Z"
+        fill="#000000" opacity="0.1" transform="translate(2, 2)"/>
+</svg>

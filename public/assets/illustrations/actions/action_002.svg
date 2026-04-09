@@ -1,0 +1,41 @@
+<!-- 画大饼 - 图标插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFF3E0"/>
+
+  <!-- 大饼主体 -->
+  <circle cx="200" cy="150" r="105" fill="#FFD54F"/>
+  <circle cx="200" cy="150" r="98" fill="#FFEB3B"/>
+
+  <!-- 饼的纹理 -->
+  <circle cx="200" cy="150" r="83" fill="none" stroke="#FFA726" stroke-width="3" stroke-dasharray="8,8" opacity="0.5"/>
+  <circle cx="200" cy="150" r="68" fill="none" stroke="#FFA726" stroke-width="3" stroke-dasharray="8,8" opacity="0.5"/>
+
+  <!-- 芝麻装饰 -->
+  <ellipse cx="170" cy="125" rx="5" ry="6" fill="#8D6E63"/>
+  <ellipse cx="230" cy="132" rx="5" ry="6" fill="#8D6E63"/>
+  <ellipse cx="185" cy="160" rx="5" ry="6" fill="#8D6E63"/>
+  <ellipse cx="220" cy="172" rx="5" ry="6" fill="#8D6E63"/>
+  <ellipse cx="200" cy="145" rx="5" ry="6" fill="#8D6E63"/>
+
+  <!-- 光芒效果 -->
+  <path d="M 200 30 L 208 85 L 200 93 L 192 85 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 305 150 L 255 158 L 247 150 L 255 142 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 200 270 L 208 215 L 200 207 L 192 215 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 95 150 L 145 158 L 153 150 L 145 142 Z" fill="#FFD700" opacity="0.7"/>
+
+  <!-- 对角光芒 -->
+  <path d="M 280 70 L 238 112 L 246 120 L 288 78 Z" fill="#FFD700" opacity="0.6"/>
+  <path d="M 120 70 L 162 112 L 154 120 L 112 78 Z" fill="#FFD700" opacity="0.6"/>
+  <path d="M 280 230 L 238 188 L 246 180 L 288 222 Z" fill="#FFD700" opacity="0.6"/>
+  <path d="M 120 230 L 162 188 L 154 180 L 112 222 Z" fill="#FFD700" opacity="0.6"/>
+
+  <!-- 文字装饰 -->
+  <text x="200" y="158" font-family="Arial" font-size="36" fill="#FF6B00" text-anchor="middle" font-weight="bold">梦想</text>
+
+  <!-- 警告符号 -->
+  <g transform="translate(290, 50) scale(1.2)">
+    <path d="M 30 8 L 48 42 L 12 42 Z" fill="#FF6347" stroke="#8B0000" stroke-width="3"/>
+    <text x="30" y="36" font-family="Arial" font-size="24" fill="#FFFFFF" text-anchor="middle" font-weight="bold">!</text>
+  </g>
+</svg>

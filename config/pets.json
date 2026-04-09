@@ -1,0 +1,116 @@
+[
+  {
+    "id": "pet_001",
+    "name": "新晋柯基",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "common",
+    "description": "可爱但容易焦虑的新人主播",
+    "image": "/assets/cards/pets/pet_001.png",
+    "tags": ["dog", "cute"],
+    "income": 2,
+    "stress": 1,
+    "stressLimit": 3,
+    "effects": [
+      {
+        "type": "raw",
+        "description": "相邻牛马效率+10%"
+      }
+    ]
+  },
+  {
+    "id": "pet_002",
+    "name": "暴躁二哈",
+    "type": "entity_pet",
+    "cost": 3,
+    "rarity": "rare",
+    "description": "高收益高风险的流量担当",
+    "image": "/assets/cards/pets/pet_002.png",
+    "tags": ["dog", "chaos"],
+    "income": 5,
+    "stress": 2,
+    "stressLimit": 3,
+    "effects": [
+      {
+        "type": "raw",
+        "description": "拆家范围扩大到3x3"
+      }
+    ]
+  },
+  {
+    "id": "pet_003",
+    "name": "摸鱼水豚",
+    "type": "entity_pet",
+    "cost": 1,
+    "rarity": "common",
+    "description": "佛系主播，岁月静好",
+    "image": "/assets/cards/pets/pet_003.png",
+    "tags": ["chill", "cute"],
+    "income": 1,
+    "stress": 0,
+    "stressLimit": 5,
+    "effects": [
+      {
+        "type": "raw",
+        "description": "永远不会拆家"
+      }
+    ]
+  },
+  {
+    "id": "pet_004",
+    "name": "橘猫胖丁",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "common",
+    "description": "吃播专家，但会传染焦虑",
+    "image": "/assets/cards/pets/pet_004.png",
+    "tags": ["cat", "cute"],
+    "income": 3,
+    "stress": 1,
+    "stressLimit": 3,
+    "effects": [
+      {
+        "type": "raw",
+        "description": "相邻萌宠每回合压力+1"
+      }
+    ]
+  },
+  {
+    "id": "pet_005",
+    "name": "高冷布偶",
+    "type": "entity_pet",
+    "cost": 3,
+    "rarity": "rare",
+    "description": "优雅的贵族主播",
+    "image": "/assets/cards/pets/pet_005.png",
+    "tags": ["cat", "elegant"],
+    "income": 4,
+    "stress": 1,
+    "stressLimit": 3,
+    "effects": [
+      {
+        "type": "raw",
+        "description": "不受相邻单位压力传染影响"
+      }
+    ]
+  },
+  {
+    "id": "pet_006",
+    "name": "永动机猫",
+    "type": "entity_pet",
+    "cost": 4,
+    "rarity": "epic",
+    "description": "传说中的自律主播",
+    "image": "/assets/cards/pets/pet_006.png",
+    "tags": ["cat", "legendary"],
+    "income": 3,
+    "stress": 0,
+    "stressLimit": 4,
+    "effects": [
+      {
+        "type": "raw",
+        "description": "每回合自动抽1张牌"
+      }
+    ]
+  }
+]

@@ -1,0 +1,48 @@
+<!-- 全屏打赏 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#FFF9C4" rx="12"/>
+
+  <!-- 火箭主体 -->
+  <ellipse cx="100" cy="160" rx="25" ry="50" fill="#FF6B9D"/>
+  <ellipse cx="100" cy="140" rx="20" ry="30" fill="#FF1744"/>
+
+  <!-- 火箭头部 -->
+  <path d="M 100 90 L 80 120 L 120 120 Z" fill="#FF6B9D"/>
+
+  <!-- 火箭窗口 -->
+  <circle cx="100" cy="140" r="12" fill="#64B5F6"/>
+  <circle cx="100" cy="140" r="8" fill="#2196F3"/>
+
+  <!-- 火箭尾翼 -->
+  <path d="M 75 180 L 70 200 L 85 190 Z" fill="#E91E63"/>
+  <path d="M 125 180 L 130 200 L 115 190 Z" fill="#E91E63"/>
+
+  <!-- 火焰 -->
+  <ellipse cx="100" cy="210" rx="15" ry="20" fill="#FF9800"/>
+  <ellipse cx="100" cy="215" rx="12" ry="15" fill="#FFC107"/>
+  <ellipse cx="100" cy="220" rx="8" ry="10" fill="#FFEB3B"/>
+
+  <!-- 金币雨 -->
+  <circle cx="50" cy="80" r="8" fill="#FFD700"/>
+  <text x="50" y="84" font-family="Arial" font-size="10" fill="#FF6B00" text-anchor="middle" font-weight="bold">¥</text>
+
+  <circle cx="150" cy="90" r="7" fill="#FFD700"/>
+  <text x="150" y="94" font-family="Arial" font-size="9" fill="#FF6B00" text-anchor="middle" font-weight="bold">$</text>
+
+  <circle cx="70" cy="60" r="6" fill="#FFD700"/>
+  <text x="70" y="64" font-family="Arial" font-size="8" fill="#FF6B00" text-anchor="middle" font-weight="bold">¥</text>
+
+  <circle cx="130" cy="70" r="7" fill="#FFD700"/>
+  <text x="130" y="74" font-family="Arial" font-size="9" fill="#FF6B00" text-anchor="middle" font-weight="bold">$</text>
+
+  <circle cx="90" cy="50" r="5" fill="#FFD700"/>
+  <circle cx="110" cy="55" r="6" fill="#FFD700"/>
+
+  <!-- 星星装饰 -->
+  <path d="M 40 120 L 43 128 L 51 128 L 45 133 L 48 141 L 40 136 L 32 141 L 35 133 L 29 128 L 37 128 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M 160 130 L 163 138 L 171 138 L 165 143 L 168 151 L 160 146 L 152 151 L 155 143 L 149 138 L 157 138 Z" fill="#FFD700" opacity="0.8"/>
+
+  <!-- 文字 -->
+  <text x="100" y="250" font-family="Arial" font-size="18" fill="#FF6B00" text-anchor="middle" font-weight="bold">超级火箭</text>
+</svg>

@@ -1,0 +1,130 @@
+[
+  {
+    "id": "action_001",
+    "name": "高级猫薄荷",
+    "type": "action_debuff",
+    "cost": 1,
+    "rarity": "rare",
+    "description": "瞬间安抚萌宠的神器",
+    "image": "/assets/cards/actions/action_001.png",
+    "tags": ["consumable"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "目标萌宠压力归零"
+      }
+    ]
+  },
+  {
+    "id": "action_002",
+    "name": "画大饼",
+    "type": "action_buff",
+    "cost": 2,
+    "rarity": "epic",
+    "description": "短期激励，长期隐患",
+    "image": "/assets/cards/actions/action_002.png",
+    "tags": ["risky"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "全场牛马本回合效率+100%，下回合加入1张怨气卡到弃牌堆"
+      }
+    ]
+  },
+  {
+    "id": "action_003",
+    "name": "物理位移",
+    "type": "action_utility",
+    "cost": 1,
+    "rarity": "common",
+    "description": "调整阵型的基础操作",
+    "image": "/assets/cards/actions/action_003.png",
+    "tags": ["utility"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "交换场上两个单位的位置"
+      }
+    ]
+  },
+  {
+    "id": "action_004",
+    "name": "全屏打赏",
+    "type": "action_buff",
+    "cost": 3,
+    "rarity": "legendary",
+    "description": "土豪刷火箭",
+    "image": "/assets/cards/actions/action_004.png",
+    "tags": ["powerful"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "本回合所有萌宠收益翻倍"
+      }
+    ]
+  },
+  {
+    "id": "action_005",
+    "name": "群体降压",
+    "type": "action_debuff",
+    "cost": 2,
+    "rarity": "rare",
+    "description": "团建活动",
+    "image": "/assets/cards/actions/action_005.png",
+    "tags": ["aoe"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "全场萌宠压力-2"
+      }
+    ]
+  },
+  {
+    "id": "action_006",
+    "name": "强制辞退",
+    "type": "action_utility",
+    "cost": 0,
+    "rarity": "common",
+    "description": "资本家的冷酷决策",
+    "image": "/assets/cards/actions/action_006.png",
+    "tags": ["sacrifice"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "献祭一个牛马，降低相邻萌宠压力2点"
+      }
+    ]
+  },
+  {
+    "id": "action_007",
+    "name": "盲盒零食",
+    "type": "action_utility",
+    "cost": 1,
+    "rarity": "common",
+    "description": "赌一把",
+    "image": "/assets/cards/actions/action_007.png",
+    "tags": ["draw"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "抽2张牌"
+      }
+    ]
+  },
+  {
+    "id": "action_008",
+    "name": "紧急避险",
+    "type": "action_utility",
+    "cost": 1,
+    "rarity": "rare",
+    "description": "临时撤退",
+    "image": "/assets/cards/actions/action_008.png",
+    "tags": ["utility"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "将一个萌宠收回手牌"
+      }
+    ]
+  }
+]

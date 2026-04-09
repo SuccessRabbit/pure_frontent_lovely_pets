@@ -1,0 +1,71 @@
+<!-- 资深社畜 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#F0F0F0" rx="12"/>
+
+  <!-- 装饰元素 -->
+  <circle cx="35" cy="35" r="4" fill="#C0C0C0" opacity="0.5"/>
+  <circle cx="165" cy="40" r="3" fill="#C0C0C0" opacity="0.5"/>
+
+  <!-- 老马身体 -->
+  <ellipse cx="100" cy="180" rx="50" ry="45" fill="#696969"/>
+
+  <!-- 老马头部 -->
+  <ellipse cx="100" cy="120" rx="40" ry="37" fill="#696969"/>
+
+  <!-- 白色胸毛 -->
+  <ellipse cx="100" cy="160" rx="32" ry="28" fill="#D3D3D3"/>
+
+  <!-- 左耳 -->
+  <ellipse cx="75" cy="95" rx="11" ry="20" fill="#505050" transform="rotate(-15 75 95)"/>
+
+  <!-- 右耳 -->
+  <ellipse cx="125" cy="95" rx="11" ry="20" fill="#505050" transform="rotate(15 125 95)"/>
+
+  <!-- 眼睛（坚毅的眼神） -->
+  <ellipse cx="85" cy="115" rx="9" ry="11" fill="#2C1810"/>
+  <circle cx="87" cy="113" r="3" fill="#FFFFFF"/>
+
+  <ellipse cx="115" cy="115" rx="9" ry="11" fill="#2C1810"/>
+  <circle cx="117" cy="113" r="3" fill="#FFFFFF"/>
+
+  <!-- 眼袋 -->
+  <path d="M 78 123 Q 85 126 92 123" stroke="#505050" stroke-width="1.5" fill="none"/>
+  <path d="M 108 123 Q 115 126 122 123" stroke="#505050" stroke-width="1.5" fill="none"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="100" cy="132" rx="6" ry="5" fill="#505050"/>
+
+  <!-- 嘴巴（沉稳的表情） -->
+  <path d="M 88 140 Q 100 142 112 140" stroke="#2C1810" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- 胡须（老成） -->
+  <line x1="50" y1="125" x2="72" y2="123" stroke="#505050" stroke-width="2"/>
+  <line x1="50" y1="132" x2="72" y2="132" stroke="#505050" stroke-width="2"/>
+  <line x1="128" y1="123" x2="150" y2="125" stroke="#505050" stroke-width="2"/>
+  <line x1="128" y1="132" x2="150" y2="132" stroke="#505050" stroke-width="2"/>
+
+  <!-- 小短腿 -->
+  <rect x="70" y="215" width="14" height="32" rx="7" fill="#696969"/>
+  <rect x="116" y="215" width="14" height="32" rx="7" fill="#696969"/>
+
+  <!-- 蹄子 -->
+  <rect x="68" y="242" width="18" height="8" rx="2" fill="#505050"/>
+  <rect x="114" y="242" width="18" height="8" rx="2" fill="#505050"/>
+
+  <!-- 尾巴 -->
+  <path d="M 142 175 Q 160 180 165 195" stroke="#505050" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- 眼镜装饰 -->
+  <circle cx="85" cy="115" r="14" fill="none" stroke="#2C1810" stroke-width="2"/>
+  <circle cx="115" cy="115" r="14" fill="none" stroke="#2C1810" stroke-width="2"/>
+  <line x1="99" y1="115" x2="101" y2="115" stroke="#2C1810" stroke-width="2"/>
+
+  <!-- 工牌 -->
+  <rect x="82" y="155" width="36" height="22" rx="2" fill="#FFD700" stroke="#8B7355" stroke-width="1"/>
+  <text x="100" y="169" font-family="Arial" font-size="9" fill="#8B7355" text-anchor="middle">10年</text>
+
+  <!-- 勋章装饰 -->
+  <circle cx="160" cy="70" r="12" fill="#FFD700" opacity="0.8"/>
+  <text x="160" y="74" font-family="Arial" font-size="14" fill="#8B7355" text-anchor="middle">★</text>
+</svg>

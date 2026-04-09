@@ -1,0 +1,57 @@
+<!-- 摸鱼水豚 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#F0F8E8" rx="12"/>
+
+  <!-- 水波纹装饰 -->
+  <path d="M 20 240 Q 40 235 60 240 Q 80 245 100 240 Q 120 235 140 240 Q 160 245 180 240"
+        stroke="#A8D5BA" stroke-width="2" fill="none" opacity="0.5"/>
+  <path d="M 20 250 Q 40 245 60 250 Q 80 255 100 250 Q 120 245 140 250 Q 160 255 180 250"
+        stroke="#A8D5BA" stroke-width="2" fill="none" opacity="0.5"/>
+
+  <!-- 水豚身体 -->
+  <ellipse cx="100" cy="170" rx="60" ry="55" fill="#C19A6B"/>
+
+  <!-- 水豚头部 -->
+  <ellipse cx="100" cy="110" rx="50" ry="45" fill="#C19A6B"/>
+
+  <!-- 浅色肚子 -->
+  <ellipse cx="100" cy="180" rx="40" ry="45" fill="#D4B896"/>
+
+  <!-- 小耳朵 -->
+  <ellipse cx="75" cy="85" rx="8" ry="12" fill="#A0826D"/>
+  <ellipse cx="125" cy="85" rx="8" ry="12" fill="#A0826D"/>
+
+  <!-- 眼睛（眯眯眼，很佛系） -->
+  <path d="M 80 105 Q 85 108 90 105" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 110 105 Q 115 108 120 105" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="100" cy="120" rx="5" ry="4" fill="#8B6F47"/>
+
+  <!-- 嘴巴（满足的微笑） -->
+  <path d="M 88 128 Q 100 135 112 128" stroke="#2C1810" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- 腮红 -->
+  <ellipse cx="70" cy="115" rx="12" ry="8" fill="#FFB6C1" opacity="0.5"/>
+  <ellipse cx="130" cy="115" rx="12" ry="8" fill="#FFB6C1" opacity="0.5"/>
+
+  <!-- 小短腿 -->
+  <rect x="60" y="210" width="16" height="25" rx="8" fill="#C19A6B"/>
+  <rect x="124" y="210" width="16" height="25" rx="8" fill="#C19A6B"/>
+
+  <!-- 小爪子 -->
+  <ellipse cx="68" cy="233" rx="10" ry="6" fill="#A0826D"/>
+  <ellipse cx="132" cy="233" rx="10" ry="6" fill="#A0826D"/>
+
+  <!-- 温泉气泡装饰 -->
+  <circle cx="40" cy="50" r="6" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="50" cy="45" r="4" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="160" cy="55" r="5" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="170" cy="50" r="7" fill="#FFFFFF" opacity="0.6"/>
+
+  <!-- Zzz 睡眠符号 -->
+  <text x="145" y="75" font-family="Arial" font-size="20" fill="#8B6F47" opacity="0.7">Z</text>
+  <text x="155" y="65" font-family="Arial" font-size="16" fill="#8B6F47" opacity="0.5">z</text>
+  <text x="163" y="58" font-family="Arial" font-size="12" fill="#8B6F47" opacity="0.3">z</text>
+</svg>

@@ -1,0 +1,53 @@
+<!-- 强制辞退 - 图标插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFEBEE"/>
+
+  <!-- 纸箱 -->
+  <rect x="120" y="150" width="160" height="110" rx="6" fill="#D7CCC8"/>
+  <rect x="120" y="150" width="160" height="16" fill="#A1887F"/>
+
+  <!-- 纸箱胶带 -->
+  <rect x="190" y="150" width="20" height="110" fill="#8D6E63"/>
+  <line x1="120" y1="205" x2="280" y2="205" stroke="#8D6E63" stroke-width="13"/>
+
+  <!-- 物品（从纸箱露出） -->
+  <!-- 相框 -->
+  <rect x="140" y="135" width="32" height="40" rx="3" fill="#FFD700" stroke="#8B7355" stroke-width="3"/>
+  <rect x="145" y="140" width="22" height="30" fill="#87CEEB"/>
+
+  <!-- 植物 -->
+  <ellipse cx="240" cy="140" rx="13" ry="19" fill="#66BB6A"/>
+  <ellipse cx="230" cy="133" rx="10" ry="16" fill="#81C784"/>
+  <ellipse cx="250" cy="133" rx="10" ry="16" fill="#81C784"/>
+  <rect x="234" y="140" width="12" height="24" fill="#8D6E63"/>
+
+  <!-- 马克杯 -->
+  <rect x="190" y="128" width="24" height="29" rx="3" fill="#FF6B9D"/>
+  <ellipse cx="202" cy="128" rx="12" ry="5" fill="#FF1744"/>
+  <path d="M 214 138 Q 224 138 224 150 Q 224 162 214 162" stroke="#FF6B9D" stroke-width="3" fill="none"/>
+
+  <!-- 小马（悲伤） -->
+  <ellipse cx="200" cy="100" rx="40" ry="37" fill="#A9A9A9"/>
+  <ellipse cx="188" cy="96" rx="8" ry="10" fill="#2C1810"/>
+  <ellipse cx="212" cy="96" rx="8" ry="10" fill="#2C1810"/>
+
+  <!-- 眼泪 -->
+  <ellipse cx="184" cy="108" rx="5" ry="10" fill="#87CEEB"/>
+  <ellipse cx="216" cy="108" rx="5" ry="10" fill="#87CEEB"/>
+
+  <!-- 嘴巴（难过） -->
+  <path d="M 188 112 Q 200 106 212 112" stroke="#2C1810" stroke-width="3" fill="none"/>
+
+  <!-- 耳朵 -->
+  <ellipse cx="172" cy="80" rx="11" ry="24" fill="#808080" transform="rotate(-20 172 80)"/>
+  <ellipse cx="228" cy="80" rx="11" ry="24" fill="#808080" transform="rotate(20 228 80)"/>
+
+  <!-- 红色X标记 -->
+  <line x1="280" y1="60" x2="320" y2="100" stroke="#F44336" stroke-width="10" stroke-linecap="round"/>
+  <line x1="320" y1="60" x2="280" y2="100" stroke="#F44336" stroke-width="10" stroke-linecap="round"/>
+
+  <!-- 警告标志 -->
+  <path d="M 80 60 L 100 100 L 60 100 Z" fill="#FF9800" stroke="#E65100" stroke-width="3"/>
+  <text x="80" y="92" font-family="Arial" font-size="28" fill="#FFFFFF" text-anchor="middle" font-weight="bold">!</text>
+</svg>

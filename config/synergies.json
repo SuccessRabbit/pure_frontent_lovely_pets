@@ -1,0 +1,141 @@
+[
+  {
+    "id": "cat_cafe",
+    "name": "猫咖氛围",
+    "description": "场上有3只猫科动物时，它们互相治愈",
+    "tags": ["cat"],
+    "minCount": 3,
+    "effect": {
+      "type": "stress_reduction",
+      "target": "tagged",
+      "value": -1,
+      "description": "所有猫科动物每回合压力-1"
+    },
+    "visual": {
+      "color": "#FFB6C1",
+      "lineStyle": "dashed"
+    }
+  },
+  {
+    "id": "dog_pack",
+    "name": "狗狗军团",
+    "description": "场上有2只狗科动物时，它们更卖力表演",
+    "tags": ["dog"],
+    "minCount": 2,
+    "effect": {
+      "type": "income_boost",
+      "target": "tagged",
+      "value": 1.5,
+      "description": "所有狗科动物收益+50%"
+    },
+    "visual": {
+      "color": "#FFA500",
+      "lineStyle": "solid"
+    }
+  },
+  {
+    "id": "office_hell",
+    "name": "996福报",
+    "description": "场上有4个牛马时，可以用他们的加班换取萌宠的快乐",
+    "tags": ["worker"],
+    "minCount": 4,
+    "effect": {
+      "type": "unlock_ability",
+      "target": "workers",
+      "value": "sacrifice",
+      "description": "解锁献祭能力：消耗牛马降低萌宠压力"
+    },
+    "visual": {
+      "color": "#808080",
+      "lineStyle": "chain"
+    }
+  },
+  {
+    "id": "cute_overload",
+    "name": "可爱暴击",
+    "description": "场上有3个带cute标签的单位时，全场收益提升",
+    "tags": ["cute"],
+    "minCount": 3,
+    "effect": {
+      "type": "global_income_boost",
+      "target": "all",
+      "value": 1.2,
+      "description": "全场收益+20%"
+    },
+    "visual": {
+      "color": "#FF69B4",
+      "lineStyle": "sparkle"
+    }
+  },
+  {
+    "id": "chaos_theory",
+    "name": "混乱理论",
+    "description": "场上有2个带chaos标签的单位时，拆家轮盘赌黑红暴走概率提升",
+    "tags": ["chaos"],
+    "minCount": 2,
+    "effect": {
+      "type": "modify_probability",
+      "target": "meltdown_roulette",
+      "value": {
+        "blackRed": 0.7,
+        "meltdown": 0.3
+      },
+      "description": "黑红暴走概率从50%提升到70%"
+    },
+    "visual": {
+      "color": "#8B0000",
+      "lineStyle": "lightning"
+    }
+  },
+  {
+    "id": "zen_mode",
+    "name": "佛系经营",
+    "description": "场上有3个带chill标签的单位时，全场压力累积减半",
+    "tags": ["chill"],
+    "minCount": 3,
+    "effect": {
+      "type": "stress_reduction",
+      "target": "all",
+      "value": 0.5,
+      "description": "全场压力累积速度减半"
+    },
+    "visual": {
+      "color": "#87CEEB",
+      "lineStyle": "wave"
+    }
+  },
+  {
+    "id": "veteran_squad",
+    "name": "老兵不死",
+    "description": "场上有3个资深单位时，它们不会被拆家波及",
+    "tags": ["veteran"],
+    "minCount": 3,
+    "effect": {
+      "type": "immunity",
+      "target": "tagged",
+      "value": "meltdown_damage",
+      "description": "资深单位免疫拆家波及伤害"
+    },
+    "visual": {
+      "color": "#DAA520",
+      "lineStyle": "shield"
+    }
+  },
+  {
+    "id": "intern_army",
+    "name": "实习生大军",
+    "description": "场上有5个实习生时，献祭效果翻倍",
+    "tags": ["intern"],
+    "minCount": 5,
+    "effect": {
+      "type": "enhance_ability",
+      "target": "sacrifice",
+      "value": 2,
+      "description": "献祭时降低的压力值翻倍"
+    },
+    "visual": {
+      "color": "#A9A9A9",
+      "lineStyle": "dotted"
+    }
+  }
+]

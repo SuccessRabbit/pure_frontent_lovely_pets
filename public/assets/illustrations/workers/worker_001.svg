@@ -1,0 +1,49 @@
+<!-- 实习牛马 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#F5F5F5"/>
+
+  <!-- 装饰元素 -->
+  <circle cx="80" cy="50" r="5" fill="#D3D3D3" opacity="0.5"/>
+  <circle cx="320" cy="45" r="6" fill="#D3D3D3" opacity="0.5"/>
+
+  <!-- 小马身体 -->
+  <ellipse cx="200" cy="215" rx="78" ry="68" fill="#A9A9A9"/>
+
+  <!-- 小马头部 -->
+  <ellipse cx="200" cy="140" rx="62" ry="57" fill="#A9A9A9"/>
+
+  <!-- 白色肚子 -->
+  <ellipse cx="200" cy="220" rx="48" ry="57" fill="#E8E8E8"/>
+
+  <!-- 左耳 -->
+  <ellipse cx="160" cy="105" rx="16" ry="29" fill="#808080" transform="rotate(-15 160 105)"/>
+
+  <!-- 右耳 -->
+  <ellipse cx="240" cy="105" rx="16" ry="29" fill="#808080" transform="rotate(15 240 105)"/>
+
+  <!-- 眼睛（疲惫的眼神） -->
+  <ellipse cx="175" cy="135" rx="13" ry="16" fill="#2C1810"/>
+  <circle cx="177" cy="133" r="4" fill="#FFFFFF"/>
+
+  <ellipse cx="225" cy="135" rx="13" ry="16" fill="#2C1810"/>
+  <circle cx="227" cy="133" r="4" fill="#FFFFFF"/>
+
+  <!-- 黑眼圈 -->
+  <ellipse cx="175" cy="147" rx="16" ry="6" fill="#696969" opacity="0.4"/>
+  <ellipse cx="225" cy="147" rx="16" ry="6" fill="#696969" opacity="0.4"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="200" cy="158" rx="8" ry="6" fill="#696969"/>
+
+  <!-- 嘴巴（无奈的表情） -->
+  <path d="M 185 168 Q 200 165 215 168" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 工牌装饰 -->
+  <rect x="175" y="185" width="50" height="32" rx="3" fill="#FFFFFF" stroke="#696969" stroke-width="2"/>
+  <text x="200" y="205" font-family="Arial" font-size="16" fill="#696969" text-anchor="middle" font-weight="bold">实习</text>
+
+  <!-- 汗滴 -->
+  <ellipse cx="150" cy="128" rx="6" ry="10" fill="#87CEEB" opacity="0.6"/>
+  <ellipse cx="250" cy="126" rx="5" ry="8" fill="#87CEEB" opacity="0.6"/>
+</svg>

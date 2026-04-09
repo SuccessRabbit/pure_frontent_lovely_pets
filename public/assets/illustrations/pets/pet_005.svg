@@ -1,0 +1,58 @@
+<!-- 高冷布偶 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#F5F0FF"/>
+
+  <!-- 装饰元素 -->
+  <circle cx="70" cy="50" r="6" fill="#E6D5FF" opacity="0.5"/>
+  <circle cx="330" cy="45" r="8" fill="#E6D5FF" opacity="0.5"/>
+
+  <!-- 布偶猫身体 -->
+  <ellipse cx="200" cy="220" rx="85" ry="78" fill="#F5F5DC"/>
+
+  <!-- 布偶猫头部 -->
+  <ellipse cx="200" cy="135" rx="75" ry="68" fill="#F5F5DC"/>
+
+  <!-- 深色面具（布偶特征） -->
+  <path d="M 145 105 Q 200 130 255 105 Q 200 125 145 105" fill="#8B7355"/>
+
+  <!-- 左耳 -->
+  <path d="M 135 80 L 105 40 L 155 75 Z" fill="#F5F5DC"/>
+  <path d="M 135 80 L 115 52 L 150 77 Z" fill="#8B7355"/>
+
+  <!-- 右耳 -->
+  <path d="M 265 80 L 295 40 L 245 75 Z" fill="#F5F5DC"/>
+  <path d="M 265 80 L 285 52 L 250 77 Z" fill="#8B7355"/>
+
+  <!-- 眼睛（蓝色，高冷） -->
+  <ellipse cx="170" cy="127" rx="18" ry="21" fill="#4169E1"/>
+  <ellipse cx="170" cy="127" rx="13" ry="16" fill="#6495ED"/>
+  <circle cx="174" cy="123" r="5" fill="#FFFFFF"/>
+
+  <ellipse cx="230" cy="127" rx="18" ry="21" fill="#4169E1"/>
+  <ellipse cx="230" cy="127" rx="13" ry="16" fill="#6495ED"/>
+  <circle cx="234" cy="123" r="5" fill="#FFFFFF"/>
+
+  <!-- 鼻子 -->
+  <path d="M 190 155 L 200 162 L 210 155 Z" fill="#D2B48C"/>
+
+  <!-- 嘴巴（优雅的W形） -->
+  <path d="M 180 168 Q 190 173 200 168 Q 210 173 220 168" stroke="#8B7355" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 胡须 -->
+  <line x1="100" y1="135" x2="140" y2="132" stroke="#8B7355" stroke-width="2.5"/>
+  <line x1="100" y1="147" x2="140" y2="147" stroke="#8B7355" stroke-width="2.5"/>
+  <line x1="260" y1="132" x2="300" y2="135" stroke="#8B7355" stroke-width="2.5"/>
+  <line x1="260" y1="147" x2="300" y2="147" stroke="#8B7355" stroke-width="2.5"/>
+
+  <!-- 白色胸毛 -->
+  <ellipse cx="200" cy="185" rx="48" ry="40" fill="#FFFFFF"/>
+
+  <!-- 皇冠装饰（贵族） -->
+  <g transform="translate(130, 30) scale(1.1)">
+    <path d="M 15 25 L 22 8 L 30 25 L 37 8 L 45 25 L 52 8 L 60 25 L 60 32 L 15 32 Z" fill="#FFD700"/>
+    <circle cx="22" cy="8" r="3" fill="#FF6B9D"/>
+    <circle cx="37" cy="8" r="3" fill="#FF6B9D"/>
+    <circle cx="52" cy="8" r="3" fill="#FF6B9D"/>
+  </g>
+</svg>

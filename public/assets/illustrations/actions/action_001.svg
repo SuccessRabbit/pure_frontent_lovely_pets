@@ -1,0 +1,39 @@
+<!-- 高级猫薄荷 - 图标插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#E8F5E9"/>
+
+  <!-- 装饰叶子 -->
+  <ellipse cx="80" cy="70" rx="13" ry="24" fill="#81C784" opacity="0.5" transform="rotate(-30 80 70)"/>
+  <ellipse cx="320" cy="80" rx="11" ry="21" fill="#81C784" opacity="0.5" transform="rotate(30 320 80)"/>
+
+  <!-- 猫薄荷植物主体 -->
+  <ellipse cx="200" cy="210" rx="58" ry="73" fill="#66BB6A"/>
+
+  <!-- 花盆 -->
+  <path d="M 145 240 L 152 275 L 248 275 L 255 240 Z" fill="#8D6E63"/>
+  <ellipse cx="200" cy="240" rx="55" ry="13" fill="#A1887F"/>
+
+  <!-- 叶子（多层） -->
+  <ellipse cx="165" cy="190" rx="24" ry="40" fill="#4CAF50" transform="rotate(-20 165 190)"/>
+  <ellipse cx="235" cy="190" rx="24" ry="40" fill="#4CAF50" transform="rotate(20 235 190)"/>
+  <ellipse cx="180" cy="160" rx="19" ry="35" fill="#66BB6A" transform="rotate(-10 180 160)"/>
+  <ellipse cx="220" cy="160" rx="19" ry="35" fill="#66BB6A" transform="rotate(10 220 160)"/>
+  <ellipse cx="200" cy="135" rx="22" ry="38" fill="#81C784"/>
+
+  <!-- 花朵 -->
+  <circle cx="190" cy="110" r="13" fill="#E1BEE7"/>
+  <circle cx="210" cy="110" r="13" fill="#E1BEE7"/>
+  <circle cx="200" cy="97" r="13" fill="#E1BEE7"/>
+  <circle cx="200" cy="123" r="13" fill="#E1BEE7"/>
+  <circle cx="200" cy="110" r="10" fill="#CE93D8"/>
+
+  <!-- 闪光效果 -->
+  <path d="M 280 100 L 288 120 L 296 100 L 304 120 L 312 100" stroke="#FFD700" stroke-width="3" fill="none" opacity="0.8"/>
+  <circle cx="288" cy="108" r="5" fill="#FFD700" opacity="0.8"/>
+  <circle cx="304" cy="113" r="3" fill="#FFD700" opacity="0.8"/>
+
+  <!-- 爱心装饰 -->
+  <path d="M 100 150 C 100 142 108 135 117 135 C 126 135 134 142 134 150 C 134 165 100 185 100 185 C 100 185 66 165 66 150 C 66 142 74 135 83 135 C 92 135 100 142 100 150"
+        fill="#FF6B9D" opacity="0.6" transform="scale(0.7) translate(50, 220)"/>
+</svg>

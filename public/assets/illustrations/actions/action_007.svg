@@ -1,0 +1,41 @@
+<!-- 盲盒零食 - 图标插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFF3E0"/>
+
+  <!-- 盲盒主体 -->
+  <rect x="120" y="130" width="160" height="140" rx="13" fill="#FF6B9D"/>
+
+  <!-- 盒子顶部 -->
+  <rect x="120" y="130" width="160" height="32" rx="13" fill="#E91E63"/>
+
+  <!-- 问号装饰 -->
+  <text x="200" y="215" font-family="Arial" font-size="95" fill="#FFFFFF" text-anchor="middle" font-weight="bold">?</text>
+
+  <!-- 蝴蝶结 -->
+  <path d="M 200 120 L 165 100 L 173 120 L 165 140 Z" fill="#FFD700"/>
+  <path d="M 200 120 L 235 100 L 227 120 L 235 140 Z" fill="#FFD700"/>
+  <circle cx="200" cy="120" r="13" fill="#FFA726"/>
+
+  <!-- 星星装饰 -->
+  <path d="M 80 90 L 85 103 L 98 103 L 88 111 L 93 124 L 80 116 L 67 124 L 72 111 L 62 103 L 75 103 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M 320 100 L 325 113 L 338 113 L 328 121 L 333 134 L 320 126 L 307 134 L 312 121 L 302 113 L 315 113 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M 100 210 L 105 223 L 118 223 L 108 231 L 113 244 L 100 236 L 87 244 L 92 231 L 82 223 L 95 223 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 300 200 L 305 213 L 318 213 L 308 221 L 313 234 L 300 226 L 287 234 L 292 221 L 282 213 L 295 213 Z" fill="#FFD700" opacity="0.7"/>
+
+  <!-- 闪光效果 -->
+  <circle cx="140" cy="145" r="6" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="260" cy="150" r="5" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="150" cy="250" r="5" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="250" cy="245" r="6" fill="#FFFFFF" opacity="0.7"/>
+
+  <!-- 小零食图标（从盒子里飘出） -->
+  <!-- 饼干 -->
+  <circle cx="90" cy="160" r="13" fill="#D2691E" opacity="0.6"/>
+  <circle cx="87" cy="157" r="3" fill="#8B4513" opacity="0.6"/>
+  <circle cx="93" cy="163" r="3" fill="#8B4513" opacity="0.6"/>
+
+  <!-- 糖果 -->
+  <ellipse cx="310" cy="170" rx="16" ry="10" fill="#FF6B9D" opacity="0.6"/>
+  <rect x="302" y="165" width="16" height="10" fill="#FF1744" opacity="0.6"/>
+</svg>

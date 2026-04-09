@@ -1,0 +1,59 @@
+<!-- 新晋柯基 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#FFF4E6" rx="12"/>
+
+  <!-- 装饰圆点 -->
+  <circle cx="30" cy="30" r="4" fill="#FFD4A3" opacity="0.5"/>
+  <circle cx="170" cy="40" r="3" fill="#FFD4A3" opacity="0.5"/>
+  <circle cx="50" cy="250" r="5" fill="#FFD4A3" opacity="0.5"/>
+
+  <!-- 柯基身体 -->
+  <ellipse cx="100" cy="180" rx="50" ry="45" fill="#F4A460"/>
+
+  <!-- 柯基头部 -->
+  <ellipse cx="100" cy="120" rx="45" ry="40" fill="#F4A460"/>
+
+  <!-- 白色胸毛 -->
+  <path d="M 75 150 Q 100 170 125 150 Q 100 160 75 150" fill="#FFFFFF"/>
+
+  <!-- 左耳 -->
+  <ellipse cx="70" cy="95" rx="18" ry="25" fill="#D2691E" transform="rotate(-20 70 95)"/>
+  <ellipse cx="70" cy="95" rx="12" ry="18" fill="#F4A460" transform="rotate(-20 70 95)"/>
+
+  <!-- 右耳 -->
+  <ellipse cx="130" cy="95" rx="18" ry="25" fill="#D2691E" transform="rotate(20 130 95)"/>
+  <ellipse cx="130" cy="95" rx="12" ry="18" fill="#F4A460" transform="rotate(20 130 95)"/>
+
+  <!-- 左眼 -->
+  <circle cx="85" cy="115" r="8" fill="#2C1810"/>
+  <circle cx="87" cy="113" r="3" fill="#FFFFFF"/>
+
+  <!-- 右眼 -->
+  <circle cx="115" cy="115" r="8" fill="#2C1810"/>
+  <circle cx="117" cy="113" r="3" fill="#FFFFFF"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="100" cy="130" rx="6" ry="5" fill="#2C1810"/>
+
+  <!-- 嘴巴（微笑） -->
+  <path d="M 90 135 Q 100 142 110 135" stroke="#2C1810" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- 腮红 -->
+  <ellipse cx="70" cy="125" rx="10" ry="6" fill="#FFB6C1" opacity="0.6"/>
+  <ellipse cx="130" cy="125" rx="10" ry="6" fill="#FFB6C1" opacity="0.6"/>
+
+  <!-- 小短腿 -->
+  <rect x="70" y="210" width="12" height="30" rx="6" fill="#F4A460"/>
+  <rect x="118" y="210" width="12" height="30" rx="6" fill="#F4A460"/>
+
+  <!-- 小爪子 -->
+  <ellipse cx="76" cy="240" rx="8" ry="5" fill="#2C1810"/>
+  <ellipse cx="124" cy="240" rx="8" ry="5" fill="#2C1810"/>
+
+  <!-- 尾巴 -->
+  <ellipse cx="140" cy="190" rx="15" ry="20" fill="#FFFFFF" transform="rotate(30 140 190)"/>
+
+  <!-- 爱心装饰 -->
+  <path d="M 160 60 C 160 55 165 50 170 50 C 175 50 180 55 180 60 C 180 55 185 50 190 50 C 195 50 200 55 200 60 C 200 70 180 85 180 85 C 180 85 160 70 160 60" fill="#FF6B9D" opacity="0.7" transform="scale(0.4) translate(280, 80)"/>
+</svg>

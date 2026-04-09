@@ -1,0 +1,78 @@
+<!-- 橘猫胖丁 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#FFF5E1" rx="12"/>
+
+  <!-- 装饰元素 -->
+  <circle cx="35" cy="40" r="5" fill="#FFD4A3" opacity="0.5"/>
+  <circle cx="165" cy="35" r="4" fill="#FFD4A3" opacity="0.5"/>
+
+  <!-- 橘猫身体（圆滚滚） -->
+  <ellipse cx="100" cy="180" rx="58" ry="52" fill="#FF8C42"/>
+
+  <!-- 白色肚子 -->
+  <ellipse cx="100" cy="185" rx="38" ry="42" fill="#FFF8DC"/>
+
+  <!-- 橘猫头部（大圆脸） -->
+  <circle cx="100" cy="115" r="48" fill="#FF8C42"/>
+
+  <!-- 白色脸颊 -->
+  <ellipse cx="70" cy="120" rx="18" ry="22" fill="#FFF8DC"/>
+  <ellipse cx="130" cy="120" rx="18" ry="22" fill="#FFF8DC"/>
+
+  <!-- 橘色条纹 -->
+  <path d="M 75 95 Q 80 90 85 95" stroke="#D2691E" stroke-width="2.5" fill="none"/>
+  <path d="M 115 95 Q 120 90 125 95" stroke="#D2691E" stroke-width="2.5" fill="none"/>
+  <path d="M 60 110 Q 65 105 70 110" stroke="#D2691E" stroke-width="2" fill="none"/>
+  <path d="M 130 110 Q 135 105 140 110" stroke="#D2691E" stroke-width="2" fill="none"/>
+
+  <!-- 左耳 -->
+  <path d="M 65 75 L 55 55 L 75 70 Z" fill="#FF8C42"/>
+  <path d="M 65 75 L 60 62 L 72 72 Z" fill="#FFB6C1"/>
+
+  <!-- 右耳 -->
+  <path d="M 135 75 L 145 55 L 125 70 Z" fill="#FF8C42"/>
+  <path d="M 135 75 L 140 62 L 128 72 Z" fill="#FFB6C1"/>
+
+  <!-- 眼睛（圆溜溜） -->
+  <circle cx="85" cy="110" r="10" fill="#2C1810"/>
+  <circle cx="87" cy="108" r="4" fill="#FFFFFF"/>
+  <circle cx="115" cy="110" r="10" fill="#2C1810"/>
+  <circle cx="117" cy="108" r="4" fill="#FFFFFF"/>
+
+  <!-- 鼻子 -->
+  <path d="M 95 125 L 100 130 L 105 125 Z" fill="#FF6B9D"/>
+
+  <!-- 嘴巴（W形猫嘴） -->
+  <path d="M 88 133 Q 95 138 100 133 Q 105 138 112 133" stroke="#2C1810" stroke-width="2" fill="none" stroke-linecap="round"/>
+
+  <!-- 胡须 -->
+  <line x1="50" y1="118" x2="70" y2="115" stroke="#2C1810" stroke-width="1.5"/>
+  <line x1="50" y1="125" x2="70" y2="125" stroke="#2C1810" stroke-width="1.5"/>
+  <line x1="130" y1="115" x2="150" y2="118" stroke="#2C1810" stroke-width="1.5"/>
+  <line x1="130" y1="125" x2="150" y2="125" stroke="#2C1810" stroke-width="1.5"/>
+
+  <!-- 腮红 -->
+  <ellipse cx="68" cy="125" rx="12" ry="8" fill="#FFB6C1" opacity="0.6"/>
+  <ellipse cx="132" cy="125" rx="12" ry="8" fill="#FFB6C1" opacity="0.6"/>
+
+  <!-- 小短腿 -->
+  <rect x="68" y="215" width="14" height="28" rx="7" fill="#FF8C42"/>
+  <rect x="118" y="215" width="14" height="28" rx="7" fill="#FF8C42"/>
+
+  <!-- 白色爪子 -->
+  <ellipse cx="75" cy="241" rx="9" ry="5" fill="#FFF8DC"/>
+  <ellipse cx="125" cy="241" rx="9" ry="5" fill="#FFF8DC"/>
+
+  <!-- 尾巴（卷曲） -->
+  <path d="M 145 175 Q 165 165 170 185 Q 168 195 160 190" fill="#FF8C42" stroke="#D2691E" stroke-width="2"/>
+
+  <!-- 鱼骨头装饰（吃播专家） -->
+  <g transform="translate(150, 60) scale(0.8)">
+    <line x1="10" y1="15" x2="30" y2="15" stroke="#D2691E" stroke-width="2"/>
+    <line x1="15" y1="10" x2="20" y2="15" stroke="#D2691E" stroke-width="1.5"/>
+    <line x1="15" y1="20" x2="20" y2="15" stroke="#D2691E" stroke-width="1.5"/>
+    <line x1="25" y1="10" x2="20" y2="15" stroke="#D2691E" stroke-width="1.5"/>
+    <line x1="25" y1="20" x2="20" y2="15" stroke="#D2691E" stroke-width="1.5"/>
+  </g>
+</svg>

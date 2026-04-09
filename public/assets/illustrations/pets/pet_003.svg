@@ -1,0 +1,49 @@
+<!-- 摸鱼水豚 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#F0F8E8"/>
+
+  <!-- 水波纹装饰 -->
+  <path d="M 40 260 Q 80 250 120 260 Q 160 270 200 260 Q 240 250 280 260 Q 320 270 360 260"
+        stroke="#A8D5BA" stroke-width="3" fill="none" opacity="0.5"/>
+  <path d="M 40 275 Q 80 265 120 275 Q 160 285 200 275 Q 240 265 280 275 Q 320 285 360 275"
+        stroke="#A8D5BA" stroke-width="3" fill="none" opacity="0.5"/>
+
+  <!-- 水豚身体 -->
+  <ellipse cx="200" cy="210" rx="98" ry="90" fill="#C19A6B"/>
+
+  <!-- 水豚头部 -->
+  <ellipse cx="200" cy="130" rx="82" ry="73" fill="#C19A6B"/>
+
+  <!-- 浅色肚子 -->
+  <ellipse cx="200" cy="220" rx="65" ry="73" fill="#D4B896"/>
+
+  <!-- 小耳朵 -->
+  <ellipse cx="155" cy="95" rx="13" ry="20" fill="#A0826D"/>
+  <ellipse cx="245" cy="95" rx="13" ry="20" fill="#A0826D"/>
+
+  <!-- 眼睛（眯眯眼，很佛系） -->
+  <path d="M 165 125 Q 175 130 185 125" stroke="#2C1810" stroke-width="5" fill="none" stroke-linecap="round"/>
+  <path d="M 215 125 Q 225 130 235 125" stroke="#2C1810" stroke-width="5" fill="none" stroke-linecap="round"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="200" cy="145" rx="8" ry="6" fill="#8B6F47"/>
+
+  <!-- 嘴巴（满足的微笑） -->
+  <path d="M 180 158 Q 200 168 220 158" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 腮红 -->
+  <ellipse cx="145" cy="135" rx="18" ry="12" fill="#FFB6C1" opacity="0.5"/>
+  <ellipse cx="255" cy="135" rx="18" ry="12" fill="#FFB6C1" opacity="0.5"/>
+
+  <!-- 温泉气泡装饰 -->
+  <circle cx="80" cy="70" r="10" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="95" cy="60" r="7" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="320" cy="75" r="8" fill="#FFFFFF" opacity="0.6"/>
+  <circle cx="335" cy="65" r="11" fill="#FFFFFF" opacity="0.6"/>
+
+  <!-- Zzz 睡眠符号 -->
+  <text x="290" y="100" font-family="Arial" font-size="32" fill="#8B6F47" opacity="0.7">Z</text>
+  <text x="310" y="85" font-family="Arial" font-size="26" fill="#8B6F47" opacity="0.5">z</text>
+  <text x="325" y="73" font-family="Arial" font-size="20" fill="#8B6F47" opacity="0.3">z</text>
+</svg>

@@ -1,0 +1,56 @@
+<!-- 强制辞退 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#FFEBEE" rx="12"/>
+
+  <!-- 纸箱 -->
+  <rect x="60" y="140" width="80" height="70" rx="4" fill="#D7CCC8"/>
+  <rect x="60" y="140" width="80" height="10" fill="#A1887F"/>
+
+  <!-- 纸箱胶带 -->
+  <rect x="95" y="140" width="10" height="70" fill="#8D6E63"/>
+  <line x1="60" y1="175" x2="140" y2="175" stroke="#8D6E63" stroke-width="8"/>
+
+  <!-- 物品（从纸箱露出） -->
+  <!-- 相框 -->
+  <rect x="70" y="130" width="20" height="25" rx="2" fill="#FFD700" stroke="#8B7355" stroke-width="2"/>
+  <rect x="73" y="133" width="14" height="19" fill="#87CEEB"/>
+
+  <!-- 植物 -->
+  <ellipse cx="120" cy="135" rx="8" ry="12" fill="#66BB6A"/>
+  <ellipse cx="115" cy="130" rx="6" ry="10" fill="#81C784"/>
+  <ellipse cx="125" cy="130" rx="6" ry="10" fill="#81C784"/>
+  <rect x="117" y="135" width="6" height="15" fill="#8D6E63"/>
+
+  <!-- 马克杯 -->
+  <rect x="95" y="125" width="15" height="18" rx="2" fill="#FF6B9D"/>
+  <ellipse cx="102.5" cy="125" rx="7.5" ry="3" fill="#FF1744"/>
+  <path d="M 110 130 Q 117 130 117 137 Q 117 144 110 144" stroke="#FF6B9D" stroke-width="2" fill="none"/>
+
+  <!-- 小马（悲伤） -->
+  <ellipse cx="100" cy="95" rx="25" ry="23" fill="#A9A9A9"/>
+  <ellipse cx="92" cy="92" rx="5" ry="6" fill="#2C1810"/>
+  <ellipse cx="108" cy="92" rx="5" ry="6" fill="#2C1810"/>
+
+  <!-- 眼泪 -->
+  <ellipse cx="90" cy="100" rx="3" ry="6" fill="#87CEEB"/>
+  <ellipse cx="110" cy="100" rx="3" ry="6" fill="#87CEEB"/>
+
+  <!-- 嘴巴（难过） -->
+  <path d="M 92 102 Q 100 98 108 102" stroke="#2C1810" stroke-width="2" fill="none"/>
+
+  <!-- 耳朵 -->
+  <ellipse cx="82" cy="80" rx="7" ry="15" fill="#808080" transform="rotate(-20 82 80)"/>
+  <ellipse cx="118" cy="80" rx="7" ry="15" fill="#808080" transform="rotate(20 118 80)"/>
+
+  <!-- 红色X标记 -->
+  <line x1="140" y1="50" x2="170" y2="80" stroke="#F44336" stroke-width="6" stroke-linecap="round"/>
+  <line x1="170" y1="50" x2="140" y2="80" stroke="#F44336" stroke-width="6" stroke-linecap="round"/>
+
+  <!-- 警告标志 -->
+  <path d="M 40 50 L 55 80 L 25 80 Z" fill="#FF9800" stroke="#E65100" stroke-width="2"/>
+  <text x="40" y="75" font-family="Arial" font-size="18" fill="#FFFFFF" text-anchor="middle" font-weight="bold">!</text>
+
+  <!-- 标题 -->
+  <text x="100" y="250" font-family="Arial" font-size="16" fill="#D32F2F" text-anchor="middle" font-weight="bold">辞退通知</text>
+</svg>

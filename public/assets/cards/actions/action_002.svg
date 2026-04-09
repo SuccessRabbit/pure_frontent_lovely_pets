@@ -1,0 +1,41 @@
+<!-- 画大饼 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#FFF3E0" rx="12"/>
+
+  <!-- 大饼主体 -->
+  <circle cx="100" cy="140" r="70" fill="#FFD54F"/>
+  <circle cx="100" cy="140" r="65" fill="#FFEB3B"/>
+
+  <!-- 饼的纹理 -->
+  <circle cx="100" cy="140" r="55" fill="none" stroke="#FFA726" stroke-width="2" stroke-dasharray="5,5" opacity="0.5"/>
+  <circle cx="100" cy="140" r="45" fill="none" stroke="#FFA726" stroke-width="2" stroke-dasharray="5,5" opacity="0.5"/>
+
+  <!-- 芝麻装饰 -->
+  <ellipse cx="85" cy="120" rx="3" ry="4" fill="#8D6E63"/>
+  <ellipse cx="115" cy="125" rx="3" ry="4" fill="#8D6E63"/>
+  <ellipse cx="95" cy="145" rx="3" ry="4" fill="#8D6E63"/>
+  <ellipse cx="110" cy="155" rx="3" ry="4" fill="#8D6E63"/>
+  <ellipse cx="100" cy="135" rx="3" ry="4" fill="#8D6E63"/>
+
+  <!-- 光芒效果 -->
+  <path d="M 100 60 L 105 90 L 100 95 L 95 90 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 170 140 L 140 145 L 135 140 L 140 135 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 100 220 L 105 190 L 100 185 L 95 190 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 30 140 L 60 145 L 65 140 L 60 135 Z" fill="#FFD700" opacity="0.7"/>
+
+  <!-- 对角光芒 -->
+  <path d="M 150 90 L 125 115 L 130 120 L 155 95 Z" fill="#FFD700" opacity="0.6"/>
+  <path d="M 50 90 L 75 115 L 70 120 L 45 95 Z" fill="#FFD700" opacity="0.6"/>
+  <path d="M 150 190 L 125 165 L 130 160 L 155 185 Z" fill="#FFD700" opacity="0.6"/>
+  <path d="M 50 190 L 75 165 L 70 160 L 45 185 Z" fill="#FFD700" opacity="0.6"/>
+
+  <!-- 文字装饰 -->
+  <text x="100" y="145" font-family="Arial" font-size="24" fill="#FF6B00" text-anchor="middle" font-weight="bold">梦想</text>
+
+  <!-- 警告符号 -->
+  <g transform="translate(150, 40) scale(0.8)">
+    <path d="M 20 5 L 35 30 L 5 30 Z" fill="#FF6347" stroke="#8B0000" stroke-width="2"/>
+    <text x="20" y="26" font-family="Arial" font-size="16" fill="#FFFFFF" text-anchor="middle" font-weight="bold">!</text>
+  </g>
+</svg>

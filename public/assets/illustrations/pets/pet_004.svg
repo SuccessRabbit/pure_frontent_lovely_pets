@@ -1,0 +1,67 @@
+<!-- 橘猫胖丁 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#FFF5E1"/>
+
+  <!-- 装饰元素 -->
+  <circle cx="70" cy="50" r="8" fill="#FFD4A3" opacity="0.5"/>
+  <circle cx="330" cy="45" r="6" fill="#FFD4A3" opacity="0.5"/>
+
+  <!-- 橘猫身体（圆滚滚） -->
+  <ellipse cx="200" cy="220" rx="95" ry="85" fill="#FF8C42"/>
+
+  <!-- 白色肚子 -->
+  <ellipse cx="200" cy="225" rx="62" ry="68" fill="#FFF8DC"/>
+
+  <!-- 橘猫头部（大圆脸） -->
+  <circle cx="200" cy="135" r="78" fill="#FF8C42"/>
+
+  <!-- 白色脸颊 -->
+  <ellipse cx="150" cy="145" rx="28" ry="35" fill="#FFF8DC"/>
+  <ellipse cx="250" cy="145" rx="28" ry="35" fill="#FFF8DC"/>
+
+  <!-- 橘色条纹 -->
+  <path d="M 155 105 Q 165 95 175 105" stroke="#D2691E" stroke-width="4" fill="none"/>
+  <path d="M 225 105 Q 235 95 245 105" stroke="#D2691E" stroke-width="4" fill="none"/>
+  <path d="M 125 130 Q 135 120 145 130" stroke="#D2691E" stroke-width="3" fill="none"/>
+  <path d="M 255 130 Q 265 120 275 130" stroke="#D2691E" stroke-width="3" fill="none"/>
+
+  <!-- 左耳 -->
+  <path d="M 135 75 L 110 45 L 155 70 Z" fill="#FF8C42"/>
+  <path d="M 135 75 L 120 55 L 150 72 Z" fill="#FFB6C1"/>
+
+  <!-- 右耳 -->
+  <path d="M 265 75 L 290 45 L 245 70 Z" fill="#FF8C42"/>
+  <path d="M 265 75 L 280 55 L 250 72 Z" fill="#FFB6C1"/>
+
+  <!-- 眼睛（圆溜溜） -->
+  <circle cx="170" cy="130" r="16" fill="#2C1810"/>
+  <circle cx="174" cy="126" r="6" fill="#FFFFFF"/>
+  <circle cx="230" cy="130" r="16" fill="#2C1810"/>
+  <circle cx="234" cy="126" r="6" fill="#FFFFFF"/>
+
+  <!-- 鼻子 -->
+  <path d="M 190 155 L 200 162 L 210 155 Z" fill="#FF6B9D"/>
+
+  <!-- 嘴巴（W形猫嘴） -->
+  <path d="M 175 168 Q 190 175 200 168 Q 210 175 225 168" stroke="#2C1810" stroke-width="3" fill="none" stroke-linecap="round"/>
+
+  <!-- 胡须 -->
+  <line x1="95" y1="140" x2="135" y2="135" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="95" y1="152" x2="135" y2="152" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="265" y1="135" x2="305" y2="140" stroke="#2C1810" stroke-width="2.5"/>
+  <line x1="265" y1="152" x2="305" y2="152" stroke="#2C1810" stroke-width="2.5"/>
+
+  <!-- 腮红 -->
+  <ellipse cx="140" cy="152" rx="18" ry="12" fill="#FFB6C1" opacity="0.6"/>
+  <ellipse cx="260" cy="152" rx="18" ry="12" fill="#FFB6C1" opacity="0.6"/>
+
+  <!-- 鱼骨头装饰（吃播专家） -->
+  <g transform="translate(300, 90) scale(1.2)">
+    <line x1="10" y1="15" x2="35" y2="15" stroke="#D2691E" stroke-width="3"/>
+    <line x1="16" y1="9" x2="22.5" y2="15" stroke="#D2691E" stroke-width="2.5"/>
+    <line x1="16" y1="21" x2="22.5" y2="15" stroke="#D2691E" stroke-width="2.5"/>
+    <line x1="29" y1="9" x2="22.5" y2="15" stroke="#D2691E" stroke-width="2.5"/>
+    <line x1="29" y1="21" x2="22.5" y2="15" stroke="#D2691E" stroke-width="2.5"/>
+  </g>
+</svg>

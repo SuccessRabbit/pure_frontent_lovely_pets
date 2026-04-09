@@ -1,0 +1,50 @@
+<!-- 物理位移 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#E3F2FD" rx="12"/>
+
+  <!-- 网格背景 -->
+  <line x1="50" y1="100" x2="150" y2="100" stroke="#90CAF9" stroke-width="1" opacity="0.3"/>
+  <line x1="50" y1="140" x2="150" y2="140" stroke="#90CAF9" stroke-width="1" opacity="0.3"/>
+  <line x1="50" y1="180" x2="150" y2="180" stroke="#90CAF9" stroke-width="1" opacity="0.3"/>
+  <line x1="70" y1="80" x2="70" y2="200" stroke="#90CAF9" stroke-width="1" opacity="0.3"/>
+  <line x1="100" y1="80" x2="100" y2="200" stroke="#90CAF9" stroke-width="1" opacity="0.3"/>
+  <line x1="130" y1="80" x2="130" y2="200" stroke="#90CAF9" stroke-width="1" opacity="0.3"/>
+
+  <!-- 位置A（起点） -->
+  <rect x="55" y="125" width="30" height="30" rx="4" fill="#64B5F6" opacity="0.5"/>
+  <circle cx="70" cy="140" r="10" fill="#2196F3"/>
+
+  <!-- 位置B（终点） -->
+  <rect x="115" y="165" width="30" height="30" rx="4" fill="#64B5F6" opacity="0.5"/>
+  <circle cx="130" cy="180" r="10" fill="#2196F3"/>
+
+  <!-- 交换箭头 -->
+  <path d="M 80 145 Q 105 155 125 170" stroke="#FF6B9D" stroke-width="4" fill="none" marker-end="url(#arrowhead)"/>
+  <path d="M 120 175 Q 95 165 75 150" stroke="#FF6B9D" stroke-width="4" fill="none" marker-end="url(#arrowhead)"/>
+
+  <!-- 箭头定义 -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+      <polygon points="0 0, 10 3, 0 6" fill="#FF6B9D"/>
+    </marker>
+  </defs>
+
+  <!-- 运动轨迹 -->
+  <circle cx="90" cy="150" r="3" fill="#FF6B9D" opacity="0.6"/>
+  <circle cx="95" cy="153" r="2" fill="#FF6B9D" opacity="0.5"/>
+  <circle cx="100" cy="156" r="2" fill="#FF6B9D" opacity="0.4"/>
+  <circle cx="105" cy="159" r="2" fill="#FF6B9D" opacity="0.3"/>
+
+  <circle cx="110" cy="170" r="3" fill="#FF6B9D" opacity="0.6"/>
+  <circle cx="105" cy="167" r="2" fill="#FF6B9D" opacity="0.5"/>
+  <circle cx="100" cy="164" r="2" fill="#FF6B9D" opacity="0.4"/>
+  <circle cx="95" cy="161" r="2" fill="#FF6B9D" opacity="0.3"/>
+
+  <!-- 标签 -->
+  <text x="70" y="115" font-family="Arial" font-size="14" fill="#2196F3" text-anchor="middle" font-weight="bold">A</text>
+  <text x="130" y="155" font-family="Arial" font-size="14" fill="#2196F3" text-anchor="middle" font-weight="bold">B</text>
+
+  <!-- 标题 -->
+  <text x="100" y="240" font-family="Arial" font-size="16" fill="#1976D2" text-anchor="middle" font-weight="bold">位置交换</text>
+</svg>

@@ -1,0 +1,44 @@
+<!-- 盲盒零食 - 温暖萌宠风格 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <!-- 背景 -->
+  <rect width="200" height="280" fill="#FFF3E0" rx="12"/>
+
+  <!-- 盲盒主体 -->
+  <rect x="60" y="120" width="80" height="90" rx="8" fill="#FF6B9D"/>
+
+  <!-- 盒子顶部 -->
+  <rect x="60" y="120" width="80" height="20" rx="8" fill="#E91E63"/>
+
+  <!-- 问号装饰 -->
+  <text x="100" y="175" font-family="Arial" font-size="60" fill="#FFFFFF" text-anchor="middle" font-weight="bold">?</text>
+
+  <!-- 蝴蝶结 -->
+  <path d="M 100 110 L 80 100 L 85 110 L 80 120 Z" fill="#FFD700"/>
+  <path d="M 100 110 L 120 100 L 115 110 L 120 120 Z" fill="#FFD700"/>
+  <circle cx="100" cy="110" r="8" fill="#FFA726"/>
+
+  <!-- 星星装饰 -->
+  <path d="M 40 80 L 43 88 L 51 88 L 45 93 L 48 101 L 40 96 L 32 101 L 35 93 L 29 88 L 37 88 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M 160 90 L 163 98 L 171 98 L 165 103 L 168 111 L 160 106 L 152 111 L 155 103 L 149 98 L 157 98 Z" fill="#FFD700" opacity="0.8"/>
+  <path d="M 50 180 L 53 188 L 61 188 L 55 193 L 58 201 L 50 196 L 42 201 L 45 193 L 39 188 L 47 188 Z" fill="#FFD700" opacity="0.7"/>
+  <path d="M 150 170 L 153 178 L 161 178 L 155 183 L 158 191 L 150 186 L 142 191 L 145 183 L 139 178 L 147 178 Z" fill="#FFD700" opacity="0.7"/>
+
+  <!-- 闪光效果 -->
+  <circle cx="70" cy="130" r="4" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="130" cy="135" r="3" fill="#FFFFFF" opacity="0.8"/>
+  <circle cx="75" cy="200" r="3" fill="#FFFFFF" opacity="0.7"/>
+  <circle cx="125" cy="195" r="4" fill="#FFFFFF" opacity="0.7"/>
+
+  <!-- 小零食图标（从盒子里飘出） -->
+  <!-- 饼干 -->
+  <circle cx="45" cy="140" r="8" fill="#D2691E" opacity="0.6"/>
+  <circle cx="43" cy="138" r="2" fill="#8B4513" opacity="0.6"/>
+  <circle cx="47" cy="142" r="2" fill="#8B4513" opacity="0.6"/>
+
+  <!-- 糖果 -->
+  <ellipse cx="155" cy="150" rx="10" ry="6" fill="#FF6B9D" opacity="0.6"/>
+  <rect x="150" y="147" width="10" height="6" fill="#FF1744" opacity="0.6"/>
+
+  <!-- 标题 -->
+  <text x="100" y="250" font-family="Arial" font-size="16" fill="#E91E63" text-anchor="middle" font-weight="bold">神秘盲盒</text>
+</svg>

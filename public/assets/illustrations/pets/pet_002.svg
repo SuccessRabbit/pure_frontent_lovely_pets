@@ -1,0 +1,54 @@
+<!-- 暴躁二哈 - 角色插画（4:3比例） -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <!-- 背景 -->
+  <rect width="400" height="300" fill="#E8F4F8"/>
+
+  <!-- 装饰元素 -->
+  <circle cx="80" cy="45" r="6" fill="#B8D8E8" opacity="0.5"/>
+  <circle cx="320" cy="55" r="8" fill="#B8D8E8" opacity="0.5"/>
+
+  <!-- 二哈身体 -->
+  <ellipse cx="200" cy="230" rx="90" ry="80" fill="#708090"/>
+
+  <!-- 白色肚子 -->
+  <ellipse cx="200" cy="235" rx="58" ry="65" fill="#FFFFFF"/>
+
+  <!-- 二哈头部 -->
+  <ellipse cx="200" cy="140" rx="78" ry="73" fill="#708090"/>
+
+  <!-- 白色面部 -->
+  <path d="M 150 130 Q 200 170 250 130 Q 200 160 150 130" fill="#FFFFFF"/>
+
+  <!-- 左耳（尖耳朵） -->
+  <path d="M 135 90 L 110 40 L 155 85 Z" fill="#708090"/>
+  <path d="M 135 90 L 120 55 L 150 87 Z" fill="#505050"/>
+
+  <!-- 右耳（尖耳朵） -->
+  <path d="M 265 90 L 290 40 L 245 85 Z" fill="#708090"/>
+  <path d="M 265 90 L 280 55 L 250 87 Z" fill="#505050"/>
+
+  <!-- 面具标记（二哈特征） -->
+  <ellipse cx="155" cy="125" rx="32" ry="40" fill="#505050" opacity="0.7"/>
+  <ellipse cx="245" cy="125" rx="32" ry="40" fill="#505050" opacity="0.7"/>
+
+  <!-- 左眼（蓝色异瞳） -->
+  <circle cx="165" cy="130" r="15" fill="#4A90E2"/>
+  <circle cx="168" cy="127" r="5" fill="#FFFFFF"/>
+
+  <!-- 右眼（蓝色异瞳） -->
+  <circle cx="235" cy="130" r="15" fill="#4A90E2"/>
+  <circle cx="238" cy="127" r="5" fill="#FFFFFF"/>
+
+  <!-- 鼻子 -->
+  <ellipse cx="200" cy="155" rx="11" ry="9" fill="#2C1810"/>
+
+  <!-- 嘴巴（调皮表情） -->
+  <path d="M 175 168 Q 190 178 205 168" stroke="#2C1810" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 205 168 Q 215 175 225 168" stroke="#2C1810" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  <!-- 舌头 -->
+  <ellipse cx="215" cy="183" rx="12" ry="18" fill="#FF6B9D"/>
+
+  <!-- 闪电装饰（表示暴躁） -->
+  <path d="M 330 90 L 320 115 L 335 115 L 325 140 L 350 110 L 335 110 Z" fill="#FFD700" opacity="0.9"/>
+</svg>
