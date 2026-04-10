@@ -6,7 +6,7 @@
     "cost": 1,
     "rarity": "rare",
     "description": "瞬间安抚萌宠的神器",
-    "image": "/assets/cards/actions/action_001.png",
+    "image": "/assets/cards/actions/action_001.svg",
     "tags": ["consumable"],
     "effects": [
       {
@@ -22,7 +22,7 @@
     "cost": 2,
     "rarity": "epic",
     "description": "短期激励，长期隐患",
-    "image": "/assets/cards/actions/action_002.png",
+    "image": "/assets/cards/actions/action_002.svg",
     "tags": ["risky"],
     "effects": [
       {
@@ -38,7 +38,7 @@
     "cost": 1,
     "rarity": "common",
     "description": "调整阵型的基础操作",
-    "image": "/assets/cards/actions/action_003.png",
+    "image": "/assets/cards/actions/action_003.svg",
     "tags": ["utility"],
     "effects": [
       {
@@ -54,7 +54,7 @@
     "cost": 3,
     "rarity": "legendary",
     "description": "土豪刷火箭",
-    "image": "/assets/cards/actions/action_004.png",
+    "image": "/assets/cards/actions/action_004.svg",
     "tags": ["powerful"],
     "effects": [
       {
@@ -70,7 +70,7 @@
     "cost": 2,
     "rarity": "rare",
     "description": "团建活动",
-    "image": "/assets/cards/actions/action_005.png",
+    "image": "/assets/cards/actions/action_005.svg",
     "tags": ["aoe"],
     "effects": [
       {
@@ -86,7 +86,7 @@
     "cost": 0,
     "rarity": "common",
     "description": "资本家的冷酷决策",
-    "image": "/assets/cards/actions/action_006.png",
+    "image": "/assets/cards/actions/action_006.svg",
     "tags": ["sacrifice"],
     "effects": [
       {
@@ -102,7 +102,7 @@
     "cost": 1,
     "rarity": "common",
     "description": "赌一把",
-    "image": "/assets/cards/actions/action_007.png",
+    "image": "/assets/cards/actions/action_007.svg",
     "tags": ["draw"],
     "effects": [
       {
@@ -118,12 +118,28 @@
     "cost": 1,
     "rarity": "rare",
     "description": "临时撤退",
-    "image": "/assets/cards/actions/action_008.png",
+    "image": "/assets/cards/actions/action_008.svg",
     "tags": ["utility"],
     "effects": [
       {
         "type": "raw",
         "description": "将一个萌宠收回手牌"
+      }
+    ]
+  },
+  {
+    "id": "action_resentment",
+    "name": "怨气卡",
+    "type": "action_debuff",
+    "cost": 0,
+    "rarity": "common",
+    "description": "画大饼的代价：负面情绪反噬",
+    "image": "/assets/cards/actions/action_resentment.svg",
+    "tags": ["curse"],
+    "effects": [
+      {
+        "type": "raw",
+        "description": "打出时：全场萌宠压力+2"
       }
     ]
   }

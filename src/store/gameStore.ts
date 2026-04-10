@@ -1,6 +1,46 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Card } from '../types/card';
+import { getEntityCardTemplate } from '../utils/cardCatalog';
+import { buildShuffledStartingDeck } from '../utils/deckFactory';
+import {
+  CELL_DURABILITY_MAX,
+  HEARTS_ENTITY_INCOME_MULTIPLIER,
+  MELTDOWN_HP_LOSS,
+  PLAYER_HP_START,
+  RUINS_REBUILD_COST,
+  VICTORY_DAYS,
+  VICTORY_HEARTS,
+} from '@config/gameRules';
+import { getActionTargetMode, runActionCardEffect } from './actionEffects';
+
+const DEBUG_STORE_FLOW = true;
+
+const MELTDOWN_ADJ4: readonly [number, number][] = [
+  [-1, 0],
+  [1, 0],
+  [0, -1],
+  [0, 1],
+];
+
+function allCellsRuins(cellDurability: number[][]): boolean {
+  return cellDurability.every(row => row.every(d => d <= 0));
+}
+
+function createFullDurability(): number[][] {
+  return Array(3)
+    .fill(null)
+    .map(() => Array(6).fill(CELL_DURABILITY_MAX));
+}
+
+function logStoreFlow(message: string, payload?: unknown) {
+  if (!DEBUG_STORE_FLOW) return;
+  if (payload === undefined) {
+    console.log(`[StoreFlow] ${message}`);
+  } else {
+    console.log(`[StoreFlow] ${message}`, payload);
+  }
+}
 
 // 网格实体类型
 export interface GridEntity {
@@ -22,6 +62,9 @@ export interface GridEntity {
 // 游戏阶段
 export type GamePhase = 'preparation' | 'action' | 'income' | 'end';
 
+export type GameStatus = 'playing' | 'won' | 'lost';
+export type GameEndReason = 'hp' | 'grid' | 'hearts';
+
 /** 收入结算明细（用于 UI 逐格飘字） */
 export interface IncomeBreakdown {
   entities: { row: number; col: number; income: number; name: string }[];
@@ -42,6 +85,17 @@ export interface GameState {
   winStreak: number; // 连胜次数
   loseStreak: number; // 连败次数
 
+  /** 小红心（通关分数） */
+  hearts: number;
+  playerHp: number;
+  maxPlayerHp: number;
+
+  /** 工位耐久，<=0 为废墟 */
+  cellDurability: number[][];
+
+  gameStatus: GameStatus;
+  endReason: GameEndReason | null;
+
   // 网格系统 (3行6列)
   grid: (GridEntity | null)[][];
 
@@ -57,6 +111,12 @@ export interface GameState {
     entityId: string;
     success: boolean; // true=爆发成功5倍收益, false=完全崩溃
   }>;
+
+  /** 本回合收入结算：萌宠、牛马倍率（行动牌「全屏打赏」「画大饼」等） */
+  petIncomeMultiplierThisTurn: number;
+  workerIncomeMultiplierThisTurn: number;
+  /** 下回合开始时置入弃牌堆（如画大饼生成的怨气卡） */
+  pendingCardsNextTurnDiscard: Card[];
 }
 
 // 游戏操作
@@ -70,6 +130,8 @@ export interface GameActions {
   getIncomeBreakdown: () => IncomeBreakdown;
   /** 将结算总额加入罐头（收入阶段动画结束后调用） */
   applyIncomeTotal: (total: number) => void;
+  /** 收入阶段：罐头 + 小红心（仅 playing） */
+  applyIncomePhaseFromBreakdown: (breakdown: IncomeBreakdown) => void;
   /** 回合末：场上每个单位 +1 暴躁度（可触发拆家逻辑） */
   applyTurnEndStress: () => void;
 
@@ -83,10 +145,18 @@ export interface GameActions {
   removeEntity: (row: number, col: number) => void;
   moveEntity: (fromRow: number, fromCol: number, toRow: number, toCol: number) => boolean;
   getEntity: (row: number, col: number) => GridEntity | null;
+  /** 花罐头修复废墟工位 */
+  rebuildCell: (row: number, col: number) => boolean;
 
   // 手牌操作
   drawCards: (count: number) => void;
-  playCard: (cardIndex: number, targetRow?: number, targetCol?: number) => boolean;
+  playCard: (
+    cardIndex: number,
+    targetRow?: number,
+    targetCol?: number,
+    targetRow2?: number,
+    targetCol2?: number
+  ) => boolean;
   discardCard: (cardIndex: number) => void;
 
   // 压力系统
@@ -96,6 +166,8 @@ export interface GameActions {
   // 游戏初始化
   initGame: (initialDeck?: Card[]) => void;
   resetGame: () => void;
+  /** 胜负界面：新开一局（重洗牌库） */
+  restartRun: () => void;
 }
 
 // 初始化空网格
@@ -111,12 +183,21 @@ const initialState: GameState = {
   interest: 0,
   winStreak: 0,
   loseStreak: 0,
+  hearts: 0,
+  playerHp: PLAYER_HP_START,
+  maxPlayerHp: PLAYER_HP_START,
+  cellDurability: createFullDurability(),
+  gameStatus: 'playing',
+  endReason: null,
   grid: createEmptyGrid(),
   hand: [],
   deck: [],
   discardPile: [],
   globalStress: 0,
   meltdownHistory: [],
+  petIncomeMultiplierThisTurn: 1,
+  workerIncomeMultiplierThisTurn: 1,
+  pendingCardsNextTurnDiscard: [],
 };
 
 export const useGameStore = create<GameState & GameActions>()(
@@ -126,6 +207,7 @@ export const useGameStore = create<GameState & GameActions>()(
 
       // 进入下一阶段
       nextPhase: () => {
+        if (get().gameStatus !== 'playing') return;
         const { phase } = get();
         const phaseOrder: GamePhase[] = ['preparation', 'action', 'income', 'end'];
         const currentIndex = phaseOrder.indexOf(phase);
@@ -142,7 +224,7 @@ export const useGameStore = create<GameState & GameActions>()(
             get().calculateInterest();
             const breakdown = get().getIncomeBreakdown();
             console.log('Income phase: adding', breakdown.total, 'cans');
-            get().applyIncomeTotal(breakdown.total);
+            get().applyIncomePhaseFromBreakdown(breakdown);
           }
         }
       },
@@ -152,19 +234,25 @@ export const useGameStore = create<GameState & GameActions>()(
       },
 
       getIncomeBreakdown: () => {
-        const { grid, interest, winStreak } = get();
+        const { grid, interest, winStreak, petIncomeMultiplierThisTurn, workerIncomeMultiplierThisTurn } =
+          get();
+        const petM = Math.max(1, petIncomeMultiplierThisTurn);
+        const workerM = Math.max(1, workerIncomeMultiplierThisTurn);
         const entities: IncomeBreakdown['entities'] = [];
         let sum = 0;
         grid.forEach((row, i) => {
           row.forEach((entity, j) => {
             if (entity && entity.income > 0) {
+              let inc = entity.income;
+              if (entity.type === 'pet') inc = Math.floor(inc * petM);
+              else if (entity.type === 'worker') inc = Math.floor(inc * workerM);
               entities.push({
                 row: i,
                 col: j,
-                income: entity.income,
+                income: inc,
                 name: entity.name,
               });
-              sum += entity.income;
+              sum += inc;
             }
           });
         });
@@ -180,12 +268,26 @@ export const useGameStore = create<GameState & GameActions>()(
       },
 
       applyIncomeTotal: (total: number) => {
+        if (get().gameStatus !== 'playing') return;
         if (total > 0) {
           get().addCans(total);
         }
       },
 
+      applyIncomePhaseFromBreakdown: (breakdown: IncomeBreakdown) => {
+        if (get().gameStatus !== 'playing') return;
+        const entitySum = breakdown.entities.reduce((s, e) => s + e.income, 0);
+        const heartsGain = Math.floor(entitySum * HEARTS_ENTITY_INCOME_MULTIPLIER);
+        if (breakdown.total > 0) {
+          get().addCans(breakdown.total);
+        }
+        if (heartsGain > 0) {
+          set(s => ({ hearts: s.hearts + heartsGain }));
+        }
+      },
+
       applyTurnEndStress: () => {
+        if (get().gameStatus !== 'playing') return;
         const { grid } = get();
         const cells: { row: number; col: number }[] = [];
         grid.forEach((row, i) => {
@@ -200,7 +302,9 @@ export const useGameStore = create<GameState & GameActions>()(
 
       // 结束回合
       endTurn: () => {
-        const { turn, grid } = get();
+        if (get().gameStatus !== 'playing') return;
+
+        const { turn, grid, discardPile, pendingCardsNextTurnDiscard } = get();
 
         console.log('Ending turn', turn);
 
@@ -209,15 +313,33 @@ export const useGameStore = create<GameState & GameActions>()(
           row.map(entity => entity ? { ...entity, isExhausted: false } : null)
         );
 
+        const inject = [...pendingCardsNextTurnDiscard];
+
+        const nextTurn = turn + 1;
+
         set({
-          turn: turn + 1,
+          turn: nextTurn,
           phase: 'preparation',
           grid: newGrid,
+          petIncomeMultiplierThisTurn: 1,
+          workerIncomeMultiplierThisTurn: 1,
+          pendingCardsNextTurnDiscard: [],
+          discardPile: [...discardPile, ...inject],
         });
 
-        // 抽新手牌
-        console.log('Drawing 3 cards for new turn');
-        get().drawCards(3);
+        const s1 = get();
+        if (s1.gameStatus === 'playing' && s1.turn > VICTORY_DAYS) {
+          if (s1.hearts >= VICTORY_HEARTS) {
+            set({ gameStatus: 'won', endReason: null });
+          } else {
+            set({ gameStatus: 'lost', endReason: 'hearts' });
+          }
+        }
+
+        if (get().gameStatus === 'playing') {
+          console.log('Drawing 3 cards for new turn');
+          get().drawCards(3);
+        }
       },
 
       // 添加罐头
@@ -246,10 +368,15 @@ export const useGameStore = create<GameState & GameActions>()(
 
       // 放置实体到网格
       placeEntity: (card: Card, row: number, col: number) => {
-        const { grid, spendCans } = get();
+        if (get().gameStatus !== 'playing') return false;
+        const { grid, spendCans, cellDurability } = get();
 
         // 检查位置是否有效
         if (row < 0 || row >= 3 || col < 0 || col >= 6) {
+          return false;
+        }
+
+        if ((cellDurability[row][col] ?? 0) <= 0) {
           return false;
         }
 
@@ -305,11 +432,16 @@ export const useGameStore = create<GameState & GameActions>()(
 
       // 移动实体
       moveEntity: (fromRow: number, fromCol: number, toRow: number, toCol: number) => {
-        const { grid } = get();
+        if (get().gameStatus !== 'playing') return false;
+        const { grid, cellDurability } = get();
 
         // 检查位置有效性
         if (fromRow < 0 || fromRow >= 3 || fromCol < 0 || fromCol >= 6 ||
             toRow < 0 || toRow >= 3 || toCol < 0 || toCol >= 6) {
+          return false;
+        }
+
+        if ((cellDurability[fromRow][fromCol] ?? 0) <= 0 || (cellDurability[toRow][toCol] ?? 0) <= 0) {
           return false;
         }
 
@@ -382,39 +514,113 @@ export const useGameStore = create<GameState & GameActions>()(
       },
 
       // 打出手牌
-      playCard: (cardIndex: number, targetRow?: number, targetCol?: number) => {
+      playCard: (
+        cardIndex: number,
+        targetRow?: number,
+        targetCol?: number,
+        targetRow2?: number,
+        targetCol2?: number
+      ) => {
+        if (get().gameStatus !== 'playing') return false;
+
         const { hand, placeEntity, discardCard } = get();
+        logStoreFlow('playCard:start', {
+          cardIndex,
+          targetRow,
+          targetCol,
+          targetRow2,
+          targetCol2,
+          hand: hand.map(c => `${c.id}:${c.type}`),
+        });
 
         if (cardIndex < 0 || cardIndex >= hand.length) {
+          console.warn('[StoreFlow] playCard:invalidIndex', { cardIndex, handSize: hand.length });
           return false;
         }
 
         const card = hand[cardIndex];
+        logStoreFlow('playCard:selectedCard', {
+          card: `${card.id}:${card.type}`,
+          cost: card.cost,
+        });
 
         // 宠物/员工卡需要目标位置
         if (card.type.includes('pet') || card.type.includes('worker')) {
           if (targetRow === undefined || targetCol === undefined) {
+            console.warn('[StoreFlow] playCard:missingTarget', {
+              card: `${card.id}:${card.type}`,
+            });
             return false;
           }
 
           const success = placeEntity(card, targetRow, targetCol);
+          logStoreFlow('playCard:placeEntityResult', {
+            card: `${card.id}:${card.type}`,
+            success,
+            target: [targetRow, targetCol],
+          });
           if (success) {
             discardCard(cardIndex);
           }
           return success;
         }
 
-        // 行动卡直接执行效果（暂时简化处理）
+        // 行动卡：校验目标格 → 扣费 → 执行效果（失败则退费）
         if (card.type.includes('action')) {
-          const { spendCans } = get();
-          if (spendCans(card.cost)) {
-            // TODO: 执行行动卡效果
-            discardCard(cardIndex);
-            return true;
+          const mode = getActionTargetMode(card.id);
+          if (mode === 'pet' || mode === 'worker') {
+            if (targetRow === undefined || targetCol === undefined) {
+              logStoreFlow('playCard:actionMissingTarget', { card: card.id, mode });
+              return false;
+            }
           }
-          return false;
+          if (mode === 'swap') {
+            if (
+              targetRow === undefined ||
+              targetCol === undefined ||
+              targetRow2 === undefined ||
+              targetCol2 === undefined
+            ) {
+              logStoreFlow('playCard:actionMissingSwapTargets', { card: card.id });
+              return false;
+            }
+          }
+
+          const { spendCans, addCans } = get();
+          if (!spendCans(card.cost)) {
+            console.warn('[StoreFlow] playCard:actionSpendFailed', {
+              card: `${card.id}:${card.type}`,
+              cans: get().cans,
+              cost: card.cost,
+            });
+            return false;
+          }
+
+          const ok = runActionCardEffect(
+            get,
+            set,
+            card,
+            targetRow,
+            targetCol,
+            targetRow2,
+            targetCol2
+          );
+          if (!ok) {
+            addCans(card.cost);
+            logStoreFlow('playCard:actionEffectFailed', { card: card.id });
+            return false;
+          }
+
+          discardCard(cardIndex);
+          logStoreFlow('playCard:actionSuccess', {
+            card: `${card.id}:${card.type}`,
+          });
+          return true;
         }
 
+        console.warn('[StoreFlow] playCard:unsupportedType', {
+          card: `${card.id}:${card.type}`,
+        });
         return false;
       },
 
@@ -426,12 +632,19 @@ export const useGameStore = create<GameState & GameActions>()(
         const card = hand[cardIndex];
         const newHand = hand.filter((_, i) => i !== cardIndex);
         const newDiscard = [...discardPile, card];
+        logStoreFlow('discardCard', {
+          cardIndex,
+          card: `${card.id}:${card.type}`,
+          beforeHand: hand.map(c => `${c.id}:${c.type}`),
+          afterHand: newHand.map(c => `${c.id}:${c.type}`),
+        });
 
         set({ hand: newHand, discardPile: newDiscard });
       },
 
       // 增加压力
       addStress: (row: number, col: number, amount: number) => {
+        if (get().gameStatus !== 'playing') return;
         const { grid } = get();
         const entity = grid[row][col];
 
@@ -456,51 +669,100 @@ export const useGameStore = create<GameState & GameActions>()(
 
       // 触发拆家
       triggerMeltdown: (row: number, col: number) => {
-        const { grid, turn, meltdownHistory } = get();
+        if (get().gameStatus !== 'playing') return;
+
+        const { grid, turn, meltdownHistory, cellDurability, discardPile, playerHp } = get();
         const entity = grid[row][col];
 
         if (!entity) return;
 
         // 50%概率成功（5倍收益），50%完全崩溃
         const success = Math.random() < 0.5;
+        const histEntry = { turn, entityId: entity.id, success };
 
         if (success) {
-          // 爆发成功：5倍收益
           const bonusIncome = entity.income * 5;
           get().addCans(bonusIncome);
 
-          // 重置压力
           const newGrid = grid.map((r, i) =>
             r.map((c, j) =>
               (i === row && j === col && c) ? { ...c, stress: 0 } : c
             )
           );
-          set({ grid: newGrid });
-        } else {
-          // 完全崩溃：移除实体
-          get().removeEntity(row, col);
+          set({
+            grid: newGrid,
+            meltdownHistory: [...meltdownHistory, histEntry],
+          });
+          return;
         }
 
-        // 记录拆家历史
+        const cardTpl = getEntityCardTemplate(entity.cardId);
+        const newGrid = grid.map(r => [...r]);
+        const newDur = cellDurability.map(r => [...r]);
+        const newDiscard = [...discardPile];
+        if (cardTpl) {
+          newDiscard.push(cardTpl);
+        }
+
+        newGrid[row][col] = null;
+        newDur[row][col] = 0;
+
+        for (const [dr, dc] of MELTDOWN_ADJ4) {
+          const nr = row + dr;
+          const nc = col + dc;
+          if (nr < 0 || nr >= 3 || nc < 0 || nc >= 6) continue;
+          newDur[nr][nc] -= 1;
+          if (newDur[nr][nc] <= 0) {
+            newDur[nr][nc] = 0;
+            newGrid[nr][nc] = null;
+          }
+        }
+
+        const nextHp = playerHp - MELTDOWN_HP_LOSS;
+
         set({
-          meltdownHistory: [
-            ...meltdownHistory,
-            { turn, entityId: entity.id, success }
-          ]
+          grid: newGrid,
+          cellDurability: newDur,
+          discardPile: newDiscard,
+          playerHp: nextHp,
+          meltdownHistory: [...meltdownHistory, histEntry],
         });
+
+        const after = get();
+        if (after.gameStatus !== 'playing') return;
+        if (after.playerHp <= 0) {
+          set({ gameStatus: 'lost', endReason: 'hp' });
+          return;
+        }
+        if (allCellsRuins(after.cellDurability)) {
+          set({ gameStatus: 'lost', endReason: 'grid' });
+        }
+      },
+
+      rebuildCell: (row: number, col: number) => {
+        if (get().gameStatus !== 'playing') return false;
+        const { grid, cellDurability, spendCans } = get();
+        if (row < 0 || row >= 3 || col < 0 || col >= 6) return false;
+        if (grid[row][col] !== null) return false;
+        if ((cellDurability[row][col] ?? 0) > 0) return false;
+        if (!spendCans(RUINS_REBUILD_COST)) return false;
+        const nd = cellDurability.map(r => [...r]);
+        nd[row][col] = CELL_DURABILITY_MAX;
+        set({ cellDurability: nd });
+        return true;
       },
 
       // 初始化游戏（接受可选的初始牌库）
       initGame: (initialDeck?: Card[]) => {
         const currentDeck = initialDeck || get().deck;
 
-        // 重置游戏状态，但保留牌库
         set({
           ...initialState,
+          grid: createEmptyGrid(),
+          cellDurability: createFullDurability(),
           deck: currentDeck,
         });
 
-        // 抽初始手牌
         if (currentDeck.length > 0) {
           get().drawCards(5);
         }
@@ -515,7 +777,21 @@ export const useGameStore = create<GameState & GameActions>()(
 
       // 重置游戏
       resetGame: () => {
-        set({ ...initialState });
+        set({
+          ...initialState,
+          grid: createEmptyGrid(),
+          cellDurability: createFullDurability(),
+        });
+      },
+
+      restartRun: () => {
+        set({
+          ...initialState,
+          grid: createEmptyGrid(),
+          cellDurability: createFullDurability(),
+          deck: buildShuffledStartingDeck(),
+        });
+        get().drawCards(5);
       },
     }),
     { name: 'GameStore' }

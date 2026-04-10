@@ -3,16 +3,36 @@ import { Scene } from '../core/Scene';
 import { GridCell } from '../entities/GridCell';
 import { CardSprite } from '../entities/CardSprite';
 import { DragSystem, type ActionZoneHit } from '../systems/DragSystem';
+import { VfxQueue } from '../systems/VfxQueue';
+import { runActionTriggerVfx, runEntityPlaceVfx } from '../utils/placeVfx';
 import { InputManager } from '../core/InputManager';
 import { useGameStore } from '../../store/gameStore';
+import { getActionTargetMode } from '../../store/actionEffects';
 import type { Card } from '../../types/card';
+import { RUINS_REBUILD_COST, VICTORY_DAYS, VICTORY_HEARTS } from '@config/gameRules';
 import { Tween, Easing } from '../utils/Tween';
-import { strokeDark, strokeDarkBold, strokeOnCool, strokeOnWarm } from '../utils/fxTextStyles';
+import {
+  strokeDark,
+  strokeDarkBold,
+  strokeOnCool,
+  strokeOnWarm,
+  strokePetBrown,
+} from '../utils/fxTextStyles';
 
 const PHASE_GAP_MS = 380;
 const INCOME_STAGGER_MS = 175;
 const POST_INCOME_MS = 520;
 const POST_STRESS_MS = 820;
+const DEBUG_SCENE_FLOW = true;
+
+function logSceneFlow(message: string, payload?: unknown) {
+  if (!DEBUG_SCENE_FLOW) return;
+  if (payload === undefined) {
+    console.log(`[SceneFlow] ${message}`);
+  } else {
+    console.log(`[SceneFlow] ${message}`, payload);
+  }
+}
 
 function waitMs(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -23,16 +43,35 @@ function waitMs(ms: number): Promise<void> {
 const HAND_CARD_W = 200;
 const HAND_CARD_H = 280;
 
+/** 萌宠 HUD 色板 */
+const PET_UI = {
+  cream: 0xfff8f0,
+  mint: 0xd4f4e8,
+  mintLine: 0x7eb8a8,
+  honeyLine: 0xf9a825,
+  pink: 0xffd6e8,
+  pinkLine: 0xe91e8c,
+  coral: 0xff8fab,
+  coralHi: 0xff6b9b,
+  coralLine: 0xc2185b,
+  text: 0x5d4037,
+  textMuted: 0x8d6e63,
+  barTrack: 0xe8dcc8,
+  barHp: 0xff8a80,
+  barHeart: 0xf48fb1,
+};
+
 export class GameScene extends Scene {
   private gridCells: GridCell[] = [];
   private handCards: CardSprite[] = [];
-  private lastHandSignature = '';
+  private lastHandRef: Card[] | null = null;
   /** 当前悬停的手牌（用于邻居推开与统一复位） */
   private hoveredHandCard: CardSprite | null = null;
   private dragSystem: DragSystem;
   private inputManager: InputManager;
   private storeUnsub: (() => void) | null = null;
   private roundResolving = false;
+  private vfxQueue = new VfxQueue();
 
   // UI 容器
   private gridContainer: PIXI.Container;
@@ -41,14 +80,52 @@ export class GameScene extends Scene {
   /** 飘字、阶段条（最顶层） */
   private fxLayer: PIXI.Container;
 
-  /** 左上角 HUD（罐头、利息、回合、阶段、连胜/败） */
-  private hudText: PIXI.Text;
+  /** 飘字锚点（屏幕中上，避免挤在角落） */
+  private hudToastAnchor!: PIXI.Container;
+
   private endTurnButton!: PIXI.Graphics;
   private endTurnLabel!: PIXI.Text;
+
+  private hudResourceBg!: PIXI.Graphics;
+  private hudCansValue!: PIXI.Text;
+  private hudInterestLine!: PIXI.Text;
+
+  private hudHeartsBg!: PIXI.Graphics;
+  private hudHeartsValue!: PIXI.Text;
+  private hudHeartsGoal!: PIXI.Text;
+  private hudHeartsBarTrack!: PIXI.Graphics;
+  private hudHeartsBarFill!: PIXI.Graphics;
+
+  private hudDayBg!: PIXI.Graphics;
+  private hudDayLine!: PIXI.Text;
+  private hudPhaseLine!: PIXI.Text;
+
+  private hudHpBg!: PIXI.Graphics;
+  private hudHpLine!: PIXI.Text;
+  private hudHpBarTrack!: PIXI.Graphics;
+  private hudHpBarFill!: PIXI.Graphics;
+
+  private hudStreakWrap!: PIXI.Container;
+  private hudWinPill!: PIXI.Container;
+  private hudWinText!: PIXI.Text;
+  private hudLosePill!: PIXI.Container;
+  private hudLoseText!: PIXI.Text;
 
   private actionZoneWrap!: PIXI.Container;
   private actionZoneBg!: PIXI.Graphics;
   private actionZoneHit: ActionZoneHit | null = null;
+
+  /** 需点格子的行动牌：手牌索引 + 交换第一格 */
+  private pendingActionPick: null | {
+    handIndex: number;
+    actionId: string;
+    firstCell: { row: number; col: number } | null;
+  } = null;
+
+  private gameOverLayer: PIXI.Container | null = null;
+
+  /** 点格子外区域时取消选格（与 container 的 pointerdown 绑定） */
+  private boundPointerDownWhilePending?: (e: PIXI.FederatedPointerEvent) => void;
 
   constructor(inputManager: InputManager) {
     super();
@@ -68,16 +145,9 @@ export class GameScene extends Scene {
     this.container.addChild(this.uiContainer);
     this.container.addChild(this.fxLayer);
 
-    this.hudText = new PIXI.Text('', {
-      fontSize: 26,
-      fill: 0xffffff,
-      lineHeight: 34,
-      fontWeight: 'bold',
-      stroke: strokeDark,
-    });
-    this.hudText.x = 48;
-    this.hudText.y = 28;
-    this.uiContainer.addChild(this.hudText);
+    this.hudToastAnchor = new PIXI.Container();
+    this.hudToastAnchor.position.set(960, 118);
+    this.uiContainer.addChild(this.hudToastAnchor);
   }
 
   public onEnter(): void {
@@ -88,9 +158,11 @@ export class GameScene extends Scene {
     this.createUI();
     this.createActionDropZone();
     this.wireDragVfxHooks();
+    this.wirePendingActionOutsideCancel();
 
     this.storeUnsub = useGameStore.subscribe(() => this.onStoreUpdate());
     this.syncGridFromStore();
+    this.syncGameOverOverlay();
   }
 
   public onExit(): void {
@@ -100,8 +172,11 @@ export class GameScene extends Scene {
 
   /** React 卸载或销毁引擎前调用，避免订阅回调访问已销毁的显示对象 */
   public detachFromStore(): void {
+    this.unwirePendingActionOutsideCancel();
     this.storeUnsub?.();
     this.storeUnsub = null;
+    this.clearPendingActionPick();
+    this.removeGameOverOverlay();
   }
 
   public update(deltaTime: number): void {
@@ -112,8 +187,65 @@ export class GameScene extends Scene {
     this.dragSystem.update();
     this.updateActionZoneVisual();
 
+    for (const cell of this.gridCells) {
+      cell.updatePetStressShake(deltaTime);
+    }
+
     // 更新 UI 显示
     this.updateUI();
+  }
+
+  /** 设计分辨率全屏命中，便于点在「空白处」也能收到 pointerdown */
+  private wirePendingActionOutsideCancel() {
+    this.unwirePendingActionOutsideCancel();
+    this.container.eventMode = 'static';
+    this.container.hitArea = new PIXI.Rectangle(0, 0, 1920, 1080);
+    this.boundPointerDownWhilePending = (e: PIXI.FederatedPointerEvent) => {
+      this.onContainerPointerDownWhilePending(e);
+    };
+    this.container.on('pointerdown', this.boundPointerDownWhilePending);
+  }
+
+  private unwirePendingActionOutsideCancel() {
+    if (this.boundPointerDownWhilePending) {
+      this.container.off('pointerdown', this.boundPointerDownWhilePending);
+      this.boundPointerDownWhilePending = undefined;
+    }
+    this.container.hitArea = null;
+    this.container.eventMode = 'auto';
+  }
+
+  /** 事件目标是否在某一 GridCell 子树内（点在格子上不算「格子外」） */
+  private isTargetUnderGridCell(target: PIXI.Container | null | undefined): boolean {
+    let t: PIXI.Container | null | undefined = target ?? undefined;
+    while (t) {
+      if (t instanceof GridCell) return true;
+      t = t.parent;
+    }
+    return false;
+  }
+
+  private isTargetUnderEndTurnButton(target: PIXI.Container | null | undefined): boolean {
+    const btn = this.endTurnButton;
+    if (!btn) return false;
+    let t: PIXI.Container | null | undefined = target ?? undefined;
+    while (t) {
+      if (t === btn) return true;
+      t = t.parent;
+    }
+    return false;
+  }
+
+  private onContainerPointerDownWhilePending(e: PIXI.FederatedPointerEvent) {
+    if (!this.pendingActionPick) return;
+    if (this.isTargetUnderGridCell(e.target as PIXI.Container)) return;
+    if (this.isTargetUnderEndTurnButton(e.target as PIXI.Container)) return;
+
+    logSceneFlow('pendingActionPick:cancelOutsideGrid', {
+      actionId: this.pendingActionPick.actionId,
+    });
+    this.clearPendingActionPick();
+    this.spawnHudFloat('已取消出牌', 0xbdc3c7);
   }
 
   private createGrid() {
@@ -129,6 +261,11 @@ export class GameScene extends Scene {
         const cell = new GridCell(row, col, cellWidth, cellHeight);
         cell.x = startX + col * (cellWidth + padding);
         cell.y = startY + row * (cellHeight + padding);
+
+        cell.on('pointertap', (e: PIXI.FederatedPointerEvent) => {
+          e.stopPropagation();
+          this.onGridCellPointer(cell);
+        });
 
         this.gridCells.push(cell);
         this.gridContainer.addChild(cell);
@@ -151,6 +288,12 @@ export class GameScene extends Scene {
   }
 
   private updateHandCards(hand: Card[]) {
+    logSceneFlow('updateHandCards:start', {
+      incoming: hand.map(c => `${c.id}:${c.type}`),
+      existingSprites: this.handCards.map(c => `${c.cardData.id}:${c.cardData.type}`),
+    });
+    this.hoveredHandCard = null;
+    this.dragSystem.prepareForHandRebuild();
     this.handCards.forEach(card => {
       Tween.killTarget(card);
       Tween.killTarget(card.scale);
@@ -177,21 +320,40 @@ export class GameScene extends Scene {
       card.on('pointerenter', () => this.onHandCardPointerEnter(card));
       card.on('pointerleave', () => this.onHandCardPointerLeave(card));
 
-      // 监听卡牌放置事件
-      card.on('cardPlaced', (data: { card: CardSprite; cell: GridCell }) =>
-        this.onCardPlaced(data.card, data.cell)
-      );
-
       this.handCards.push(card);
       this.handContainer.addChild(card);
     });
-    this.lastHandSignature = this.getHandSignature(hand);
+    this.lastHandRef = hand;
 
-    console.log(`Hand updated: ${hand.length} cards`);
+    logSceneFlow('updateHandCards:done', {
+      count: hand.length,
+      cards: hand.map(c => `${c.id}:${c.type}`),
+    });
   }
 
-  private getHandSignature(hand: Card[]): string {
-    return hand.map(c => `${c.id}:${c.type}:${c.cost}`).join('|');
+  /** 动效回调时索引可能已变化，按引用回查当前手牌索引更稳 */
+  private resolveCardIndexInStore(card: CardSprite): number {
+    const hand = useGameStore.getState().hand;
+    const byRef = hand.findIndex(c => c === card.cardData);
+    if (byRef >= 0) {
+      logSceneFlow('resolveCardIndexInStore:byRef', {
+        card: `${card.cardData.id}:${card.cardData.type}`,
+        index: byRef,
+      });
+      return byRef;
+    }
+    const byShape = hand.findIndex(
+      c =>
+        c.id === card.cardData.id &&
+        c.type === card.cardData.type &&
+        c.cost === card.cardData.cost
+    );
+    logSceneFlow('resolveCardIndexInStore:byShape', {
+      card: `${card.cardData.id}:${card.cardData.type}`,
+      index: byShape,
+      hand: hand.map(c => `${c.id}:${c.type}`),
+    });
+    return byShape;
   }
 
   private onHandCardPointerEnter(card: CardSprite) {
@@ -268,7 +430,8 @@ export class GameScene extends Scene {
   }
 
   private onCardPointerDown(card: CardSprite) {
-    if (card.isResolving) return;
+    if (useGameStore.getState().gameStatus !== 'playing') return;
+    if (card.isResolving || card.destroyed || !card.parent) return;
     this.hoveredHandCard = null;
     this.resetHandLayoutImmediate();
 
@@ -276,6 +439,11 @@ export class GameScene extends Scene {
     if (idx < 0) return;
 
     const type = card.cardData.type.toLowerCase();
+    logSceneFlow('onCardPointerDown', {
+      card: `${card.cardData.id}:${card.cardData.type}`,
+      idx,
+      type,
+    });
     if (type.includes('action')) {
       const { x, y } = this.inputManager.getMouse();
       this.dragSystem.startDrag(card, x, y, 'action', idx);
@@ -286,52 +454,216 @@ export class GameScene extends Scene {
     this.dragSystem.startDrag(card, x, y, 'entity', idx);
   }
 
-  private onCardPlaced(card: CardSprite, cell: GridCell) {
-    // 调用 Zustand store 的 playCard 方法
-    const cardIndex = this.handCards.indexOf(card);
-    if (cardIndex !== -1) {
-      const success = useGameStore.getState().playCard(cardIndex, cell.row, cell.col);
-
-      if (success) {
-        console.log(`Card played successfully: ${card.cardData.name}`);
-      } else {
-        console.warn('Failed to play card');
-        card.isResolving = false;
-        card.alpha = 1;
-        card.scale.set(1);
-        card.playReturnAnimation();
-      }
-    }
+  private revealPlacedEntity(row: number, col: number) {
+    const gc = this.gridCells.find(c => c.row === row && c.col === col);
+    if (!gc) return;
+    gc.setEntityPortraitSuppressed(false);
+    const entity = useGameStore.getState().grid[row][col];
+    gc.syncStress(entity);
   }
 
   private createUI() {
+    this.createPetHud();
+    this.createCuteEndTurnButton();
+  }
+
+  /** 萌宠风：资源、人气、日程、体力、连胜分区布局 */
+  private createPetHud() {
+    const titleStyle = (size: number, fill: number = PET_UI.text): Partial<PIXI.TextStyle> => ({
+      fontSize: size,
+      fill,
+      fontWeight: 'bold',
+      stroke: strokePetBrown,
+    });
+
+    // —— 左上：口粮罐头 ——
+    const resWrap = new PIXI.Container();
+    resWrap.position.set(36, 32);
+    this.hudResourceBg = new PIXI.Graphics();
+    this.hudResourceBg.beginFill(PET_UI.cream, 0.96);
+    this.hudResourceBg.lineStyle(3, PET_UI.honeyLine, 0.85);
+    this.hudResourceBg.drawRoundedRect(0, 0, 268, 112, 22);
+    this.hudResourceBg.endFill();
+    resWrap.addChild(this.hudResourceBg);
+
+    const resTitle = new PIXI.Text({ text: '🥫 口粮罐头', style: titleStyle(17, PET_UI.textMuted) });
+    resTitle.position.set(18, 12);
+    resWrap.addChild(resTitle);
+
+    this.hudCansValue = new PIXI.Text({ text: '0', style: titleStyle(36, 0xe65100) });
+    this.hudCansValue.position.set(18, 38);
+    resWrap.addChild(this.hudCansValue);
+
+    this.hudInterestLine = new PIXI.Text({ text: '银行利息 +0', style: titleStyle(15, PET_UI.textMuted) });
+    this.hudInterestLine.position.set(18, 84);
+    resWrap.addChild(this.hudInterestLine);
+
+    this.uiContainer.addChild(resWrap);
+
+    // —— 右上：直播间人气（小红心） ——
+    const heartWrap = new PIXI.Container();
+    heartWrap.position.set(1616, 32);
+    this.hudHeartsBg = new PIXI.Graphics();
+    this.hudHeartsBg.beginFill(PET_UI.pink, 0.96);
+    this.hudHeartsBg.lineStyle(3, PET_UI.pinkLine, 0.75);
+    this.hudHeartsBg.drawRoundedRect(0, 0, 288, 124, 22);
+    this.hudHeartsBg.endFill();
+    heartWrap.addChild(this.hudHeartsBg);
+
+    const heartTitle = new PIXI.Text({ text: '💕 直播间人气', style: titleStyle(17, PET_UI.textMuted) });
+    heartTitle.position.set(18, 10);
+    heartWrap.addChild(heartTitle);
+
+    this.hudHeartsValue = new PIXI.Text({ text: '0', style: titleStyle(32, PET_UI.pinkLine) });
+    this.hudHeartsValue.position.set(18, 36);
+    heartWrap.addChild(this.hudHeartsValue);
+
+    this.hudHeartsGoal = new PIXI.Text({
+      text: `目标 ${VICTORY_HEARTS} 心`,
+      style: titleStyle(14, PET_UI.textMuted),
+    });
+    this.hudHeartsGoal.position.set(140, 44);
+    heartWrap.addChild(this.hudHeartsGoal);
+
+    this.hudHeartsBarTrack = new PIXI.Graphics();
+    this.hudHeartsBarTrack.beginFill(PET_UI.barTrack, 1);
+    this.hudHeartsBarTrack.drawRoundedRect(18, 82, 252, 14, 7);
+    this.hudHeartsBarTrack.endFill();
+    heartWrap.addChild(this.hudHeartsBarTrack);
+
+    this.hudHeartsBarFill = new PIXI.Graphics();
+    heartWrap.addChild(this.hudHeartsBarFill);
+
+    this.uiContainer.addChild(heartWrap);
+
+    // —— 中上：今日营业（天数 + 阶段） ——
+    const dayWrap = new PIXI.Container();
+    dayWrap.position.set(960, 40);
+    this.hudDayBg = new PIXI.Graphics();
+    this.hudDayBg.beginFill(PET_UI.mint, 0.96);
+    this.hudDayBg.lineStyle(3, PET_UI.mintLine, 0.9);
+    this.hudDayBg.drawRoundedRect(-200, 0, 400, 96, 24);
+    this.hudDayBg.endFill();
+    dayWrap.addChild(this.hudDayBg);
+
+    this.hudDayLine = new PIXI.Text({
+      text: '📅 今日营业 · 第 1 天',
+      style: { ...titleStyle(22), align: 'center' },
+    });
+    this.hudDayLine.anchor.set(0.5, 0);
+    this.hudDayLine.position.set(0, 14);
+    dayWrap.addChild(this.hudDayLine);
+
+    this.hudPhaseLine = new PIXI.Text({
+      text: '✨ 准备阶段',
+      style: { ...titleStyle(18, PET_UI.textMuted), align: 'center' },
+    });
+    this.hudPhaseLine.anchor.set(0.5, 0);
+    this.hudPhaseLine.position.set(0, 52);
+    dayWrap.addChild(this.hudPhaseLine);
+
+    this.uiContainer.addChild(dayWrap);
+
+    // —— 左侧中部：店长元气（HP） ——
+    const hpWrap = new PIXI.Container();
+    hpWrap.position.set(36, 168);
+    this.hudHpBg = new PIXI.Graphics();
+    this.hudHpBg.beginFill(PET_UI.cream, 0.94);
+    this.hudHpBg.lineStyle(3, PET_UI.coralLine, 0.55);
+    this.hudHpBg.drawRoundedRect(0, 0, 268, 102, 22);
+    this.hudHpBg.endFill();
+    hpWrap.addChild(this.hudHpBg);
+
+    const hpTitle = new PIXI.Text({ text: '🐾 店长元气', style: titleStyle(17, PET_UI.textMuted) });
+    hpTitle.position.set(18, 10);
+    hpWrap.addChild(hpTitle);
+
+    this.hudHpLine = new PIXI.Text({ text: '100 / 100', style: titleStyle(16, PET_UI.text) });
+    this.hudHpLine.position.set(18, 36);
+    hpWrap.addChild(this.hudHpLine);
+
+    this.hudHpBarTrack = new PIXI.Graphics();
+    this.hudHpBarTrack.beginFill(PET_UI.barTrack, 1);
+    this.hudHpBarTrack.drawRoundedRect(18, 64, 232, 16, 8);
+    this.hudHpBarTrack.endFill();
+    hpWrap.addChild(this.hudHpBarTrack);
+
+    this.hudHpBarFill = new PIXI.Graphics();
+    hpWrap.addChild(this.hudHpBarFill);
+
+    this.uiContainer.addChild(hpWrap);
+
+    // —— 中上偏下：连胜 / 连败小标签 ——
+    this.hudStreakWrap = new PIXI.Container();
+    this.hudStreakWrap.position.set(960, 148);
+
+    this.hudWinPill = new PIXI.Container();
+    this.hudWinPill.position.set(-200, 0);
+    const winBg = new PIXI.Graphics();
+    winBg.beginFill(0xc8e6c9, 0.95);
+    winBg.lineStyle(2, 0x43a047, 0.8);
+    winBg.drawRoundedRect(0, 0, 168, 36, 18);
+    winBg.endFill();
+    this.hudWinPill.addChild(winBg);
+    this.hudWinText = new PIXI.Text({
+      text: '连胜 0',
+      style: titleStyle(15, 0x2e7d32),
+    });
+    this.hudWinText.anchor.set(0.5);
+    this.hudWinText.position.set(84, 18);
+    this.hudWinPill.addChild(this.hudWinText);
+    this.hudWinPill.visible = false;
+
+    this.hudLosePill = new PIXI.Container();
+    this.hudLosePill.position.set(32, 0);
+    const loseBg = new PIXI.Graphics();
+    loseBg.beginFill(0xffecb3, 0.95);
+    loseBg.lineStyle(2, 0xff8f00, 0.75);
+    loseBg.drawRoundedRect(0, 0, 168, 36, 18);
+    loseBg.endFill();
+    this.hudLosePill.addChild(loseBg);
+    this.hudLoseText = new PIXI.Text({
+      text: '连败 0',
+      style: titleStyle(15, 0xef6c00),
+    });
+    this.hudLoseText.anchor.set(0.5);
+    this.hudLoseText.position.set(84, 18);
+    this.hudLosePill.addChild(this.hudLoseText);
+    this.hudLosePill.visible = false;
+
+    this.hudStreakWrap.addChild(this.hudWinPill);
+    this.hudStreakWrap.addChild(this.hudLosePill);
+    this.uiContainer.addChild(this.hudStreakWrap);
+  }
+
+  private createCuteEndTurnButton() {
     const button = new PIXI.Graphics();
     this.endTurnButton = button;
-    button.beginFill(0x9b59b6);
-    button.drawRoundedRect(0, 0, 220, 60, 10);
-    button.endFill();
-    button.x = 1620;
-    button.y = 950;
+    const w = 236;
+    const h = 64;
+    const paintBtn = (hover: boolean) => {
+      button.clear();
+      button.beginFill(hover ? PET_UI.coralHi : PET_UI.coral, 1);
+      button.lineStyle(3, PET_UI.coralLine, 0.9);
+      button.drawRoundedRect(0, 0, w, h, 22);
+      button.endFill();
+    };
+    paintBtn(false);
+    button.x = 1588;
+    button.y = 936;
     button.eventMode = 'static';
     button.cursor = 'pointer';
 
-    this.endTurnLabel = new PIXI.Text('结束回合', {
-      fontSize: 24,
+    this.endTurnLabel = new PIXI.Text('结束本日 🌙', {
+      fontSize: 22,
       fill: 0xffffff,
       fontWeight: 'bold',
       stroke: strokeDarkBold,
     });
     this.endTurnLabel.anchor.set(0.5);
-    this.endTurnLabel.x = 110;
-    this.endTurnLabel.y = 30;
+    this.endTurnLabel.x = w / 2;
+    this.endTurnLabel.y = h / 2;
     button.addChild(this.endTurnLabel);
-
-    const paintBtn = (hover: boolean) => {
-      button.clear();
-      button.beginFill(hover ? 0x8e44ad : 0x9b59b6);
-      button.drawRoundedRect(0, 0, 220, 60, 10);
-      button.endFill();
-    };
 
     button.on('pointerdown', () => {
       void this.runEndTurnSequence();
@@ -347,25 +679,25 @@ export class GameScene extends Scene {
   private createActionDropZone() {
     const wrap = new PIXI.Container();
     this.actionZoneWrap = wrap;
-    wrap.position.set(710, 96);
+    wrap.position.set(720, 188);
     wrap.eventMode = 'none';
     wrap.alpha = 0;
 
     const bg = new PIXI.Graphics();
     this.actionZoneBg = bg;
-    bg.beginFill(0xb794f6, 1);
-    bg.lineStyle(3, 0xffffff, 0.55);
-    bg.drawRoundedRect(0, 0, 500, 120, 22);
+    bg.beginFill(0xe1bee7, 1);
+    bg.lineStyle(3, 0xce93d8, 0.65);
+    bg.drawRoundedRect(0, 0, 500, 108, 24);
     bg.endFill();
-    bg.alpha = 0.14;
+    bg.alpha = 0.22;
 
     const hint = new PIXI.Text({
-      text: '将「行动牌」拖至此处释放以触发效果',
+      text: '🎀 行动牌拖到这里 · 触发萌宠特技',
       style: {
-        fontSize: 21,
-        fill: 0xffffff,
+        fontSize: 20,
+        fill: 0x4a148c,
         fontWeight: 'bold',
-        stroke: strokeDarkBold,
+        stroke: strokePetBrown,
         align: 'center',
         dropShadow: {
           alpha: 0.85,
@@ -377,7 +709,7 @@ export class GameScene extends Scene {
       },
     });
     hint.anchor.set(0.5);
-    hint.position.set(250, 60);
+    hint.position.set(250, 54);
 
     wrap.addChild(bg);
     wrap.addChild(hint);
@@ -400,30 +732,83 @@ export class GameScene extends Scene {
   }
 
   private wireDragVfxHooks() {
-    this.dragSystem.onRequestEntityPlace = (card, cell, tx, ty) => {
+    this.dragSystem.onRequestEntityPlace = (card, cell, _tx, _ty) => {
       const get = useGameStore.getState;
+      logSceneFlow('onRequestEntityPlace', {
+        card: `${card.cardData.id}:${card.cardData.type}`,
+        target: [cell.row, cell.col],
+        cans: get().cans,
+        cost: card.cardData.cost,
+      });
       if (get().cans < card.cardData.cost) {
         card.playReturnAnimation();
         return;
       }
+      const handIdx = this.resolveCardIndexInStore(card);
+      if (handIdx < 0) {
+        card.playReturnAnimation();
+        return;
+      }
+
+      const fromGlobal = new PIXI.Point();
+      card.getGlobalPosition(fromGlobal);
       const cellCenter = new PIXI.Point(
         cell.x + cell.cellWidth / 2,
         cell.y + cell.cellHeight / 2
       );
       const gg = this.gridContainer.toGlobal(cellCenter);
-      card.playPlaceEntityFx(tx, ty, this.fxLayer, gg.x, gg.y, () => {
-        card.emit('cardPlaced', { card, cell });
+      const gridCell = this.gridCells.find(c => c.row === cell.row && c.col === cell.col);
+      if (!gridCell) {
+        card.playReturnAnimation();
+        return;
+      }
+
+      const { row, col } = cell;
+      const cardSnapshot = structuredClone(card.cardData) as Card;
+
+      gridCell.setEntityPortraitSuppressed(true);
+      const ok = get().playCard(handIdx, row, col);
+      if (!ok) {
+        gridCell.setEntityPortraitSuppressed(false);
+        gridCell.syncStress(get().grid[row][col]);
+        card.playReturnAnimation();
+        return;
+      }
+
+      logSceneFlow('onRequestEntityPlace:playCardOkEnqueueVfx', {
+        card: `${cardSnapshot.id}:${cardSnapshot.type}`,
+        target: [row, col],
+      });
+
+      this.vfxQueue.enqueue(async () => {
+        try {
+          await runEntityPlaceVfx(this.fxLayer, cardSnapshot, fromGlobal, gg.x, gg.y, () => {
+            this.revealPlacedEntity(row, col);
+          });
+        } finally {
+          const gc = this.gridCells.find(c => c.row === row && c.col === col);
+          if (gc?.isEntityPortraitSuppressed()) {
+            this.revealPlacedEntity(row, col);
+          }
+        }
       });
     };
 
     this.dragSystem.onRequestActionTrigger = (card, idx) => {
       const get = useGameStore.getState;
       const hand = get().hand;
-      if (idx < 0 || idx >= hand.length) {
+      const liveIdx = idx >= 0 && idx < hand.length ? idx : this.resolveCardIndexInStore(card);
+      logSceneFlow('onRequestActionTrigger:start', {
+        card: `${card.cardData.id}:${card.cardData.type}`,
+        dragIdx: idx,
+        liveIdx,
+        hand: hand.map(c => `${c.id}:${c.type}`),
+      });
+      if (liveIdx < 0 || liveIdx >= hand.length) {
         card.playReturnAnimation();
         return;
       }
-      const data = hand[idx];
+      const data = hand[liveIdx];
       if (!data.type.toLowerCase().includes('action')) {
         card.playReturnAnimation();
         return;
@@ -433,19 +818,128 @@ export class GameScene extends Scene {
         return;
       }
 
+      if (getActionTargetMode(data.id) !== 'none') {
+        card.playReturnAnimation();
+        this.beginPendingTargetedAction(liveIdx, data.id);
+        return;
+      }
+
+      const fromGlobal = new PIXI.Point();
+      card.getGlobalPosition(fromGlobal);
       const center = new PIXI.Point();
       this.actionZoneHit?.getCenterGlobal(center);
-      const local = this.handContainer.toLocal(center);
-      card.playActionTriggerFx(local.x, local.y, this.fxLayer, center.x, center.y, () => {
-        const success = get().playCard(idx);
-        if (!success) {
-          card.isResolving = false;
-          card.alpha = 1;
-          card.scale.set(1);
-          card.playReturnAnimation();
-        }
+
+      const cardSnapshot = structuredClone(data) as Card;
+      const success = get().playCard(liveIdx);
+      if (!success) {
+        console.warn('[SceneFlow] onRequestActionTrigger:playCardFailed', {
+          card: `${card.cardData.id}:${card.cardData.type}`,
+          liveIdx,
+        });
+        card.playReturnAnimation();
+        return;
+      }
+
+      logSceneFlow('onRequestActionTrigger:playCardOkEnqueueVfx', {
+        card: `${cardSnapshot.id}:${cardSnapshot.type}`,
       });
+
+      this.vfxQueue.enqueue(() =>
+        runActionTriggerVfx(this.fxLayer, cardSnapshot, fromGlobal, center.x, center.y)
+      );
     };
+  }
+
+  private beginPendingTargetedAction(handIndex: number, actionId: string) {
+    if (useGameStore.getState().gameStatus !== 'playing') return;
+    this.pendingActionPick = { handIndex, actionId, firstCell: null };
+    this.dragSystem.setEnabled(false);
+    this.refreshActionPickOverlays();
+    const hint =
+      actionId === 'action_003'
+        ? '请选择第一格（需有单位；再点同一格可取消）'
+        : '请点击目标格子';
+    this.spawnHudFloat(hint, 0xfff9c4);
+  }
+
+  private refreshActionPickOverlays() {
+    const p = this.pendingActionPick;
+    this.gridCells.forEach(c => {
+      const eligible = !!p;
+      const selected =
+        !!p?.firstCell && p.firstCell.row === c.row && p.firstCell.col === c.col;
+      c.setActionPickVisual(eligible, selected);
+    });
+  }
+
+  /** 清除选格状态；无待定行动时也会清掉各格叠加层，防止残留 */
+  private clearPendingActionPick() {
+    const had = !!this.pendingActionPick;
+    this.pendingActionPick = null;
+    this.gridCells.forEach(c => c.clearActionPickOverlay());
+    if (had) {
+      this.dragSystem.setEnabled(true);
+    }
+  }
+
+  private onGridCellPointer(cell: GridCell) {
+    if (this.pendingActionPick) {
+      this.onGridCellActionPick(cell);
+      return;
+    }
+    const get = useGameStore.getState;
+    if (get().gameStatus !== 'playing') return;
+    if (!cell.isRuins) return;
+    const ok = get().rebuildCell(cell.row, cell.col);
+    if (ok) {
+      this.syncGridFromStore();
+      this.spawnHudFloat(`工位已重建（-${RUINS_REBUILD_COST}🥫）`, 0xabebc6);
+    } else {
+      this.spawnHudFloat(`废墟格需空且花费 ${RUINS_REBUILD_COST}🥫`, 0xffb3b3);
+    }
+  }
+
+  private onGridCellActionPick(cell: GridCell) {
+    const p = this.pendingActionPick;
+    if (!p) return;
+
+    const get = useGameStore.getState;
+    const grid = get().grid;
+
+    if (p.actionId === 'action_003') {
+      if (!p.firstCell) {
+        if (!grid[cell.row][cell.col]) {
+          this.spawnHudFloat('第一格需有单位', 0xffb3b3);
+          return;
+        }
+        p.firstCell = { row: cell.row, col: cell.col };
+        this.refreshActionPickOverlays();
+        this.spawnHudFloat('请选择第二格（再点第一格可取消选中）', 0xfff9c4);
+        return;
+      }
+      const r1 = p.firstCell.row;
+      const c1 = p.firstCell.col;
+      if (cell.row === r1 && cell.col === c1) {
+        p.firstCell = null;
+        this.refreshActionPickOverlays();
+        this.spawnHudFloat('已取消第一格，请重新选择', 0xfff9c4);
+        return;
+      }
+      const success = get().playCard(p.handIndex, r1, c1, cell.row, cell.col);
+      if (success) {
+        this.clearPendingActionPick();
+      } else {
+        this.spawnHudFloat('无法交换（两格均需有单位且不同）', 0xffb3b3);
+      }
+      return;
+    }
+
+    const success = get().playCard(p.handIndex, cell.row, cell.col);
+    if (success) {
+      this.clearPendingActionPick();
+    } else {
+      this.spawnHudFloat('无效目标', 0xffb3b3);
+    }
   }
 
   /** 拖拽行动牌时加亮释放区 */
@@ -544,7 +1038,7 @@ export class GameScene extends Scene {
   }
 
   private spawnHudFloat(text: string, color: number) {
-    const g = this.hudText.toGlobal(new PIXI.Point(200, 24));
+    const g = this.hudToastAnchor.toGlobal(new PIXI.Point(0, 0));
     const lp = this.fxLayer.toLocal(g);
     const outline =
       color === 0xfff9c4 ? strokeOnWarm : color === 0xabebc6 ? strokeOnCool : strokeDark;
@@ -568,7 +1062,11 @@ export class GameScene extends Scene {
   private async runEndTurnSequence() {
     if (this.roundResolving) return;
 
+    this.clearPendingActionPick();
+
     const get = useGameStore.getState;
+    if (get().gameStatus !== 'playing') return;
+
     const phase = get().phase;
     if (phase !== 'preparation' && phase !== 'action') {
       return;
@@ -615,7 +1113,7 @@ export class GameScene extends Scene {
         const waitAnim = Math.max(1100, breakdown.entities.length * INCOME_STAGGER_MS + 750);
         await waitMs(waitAnim);
 
-        get().applyIncomeTotal(breakdown.total);
+        get().applyIncomePhaseFromBreakdown(breakdown);
         await waitMs(POST_INCOME_MS);
       }
 
@@ -632,13 +1130,21 @@ export class GameScene extends Scene {
       });
       await waitMs(POST_STRESS_MS);
 
+      if (get().gameStatus !== 'playing') {
+        return;
+      }
+
       get().endTurn();
+      if (get().gameStatus !== 'playing') {
+        return;
+      }
       const turn = get().turn;
       await this.showPhaseBanner(`第 ${turn} 回合 · 准备阶段`, 520);
       await waitMs(PHASE_GAP_MS);
     } finally {
       this.roundResolving = false;
-      this.setEndTurnInteractable(true);
+      const playing = useGameStore.getState().gameStatus === 'playing';
+      this.setEndTurnInteractable(playing);
     }
   }
 
@@ -652,35 +1158,176 @@ export class GameScene extends Scene {
       end: '结束阶段',
     };
 
-    const lines = [
-      `🥫 小罐头 ${state.cans}    利息 +${state.interest}`,
-      `回合 ${state.turn}    ${phaseNames[state.phase] || state.phase}`,
-    ];
-    if (state.winStreak > 0) {
-      lines.push(`连胜 ${state.winStreak}`);
+    const dayDisplay = Math.min(state.turn, VICTORY_DAYS);
+    const phaseLabel = phaseNames[state.phase] || state.phase;
+
+    this.hudCansValue.text = String(state.cans);
+    this.hudInterestLine.text = `银行利息 +${state.interest} 🥫/回合`;
+
+    this.hudHeartsValue.text = String(state.hearts);
+    const heartRatio = Math.min(1, state.hearts / Math.max(1, VICTORY_HEARTS));
+    const hw = 252 * heartRatio;
+    this.hudHeartsBarFill.clear();
+    if (hw > 2) {
+      this.hudHeartsBarFill.beginFill(PET_UI.barHeart, 1);
+      this.hudHeartsBarFill.drawRoundedRect(18, 82, hw, 14, 7);
+      this.hudHeartsBarFill.endFill();
     }
-    if (state.loseStreak > 0) {
-      lines.push(`连败 ${state.loseStreak}`);
+
+    this.hudDayLine.text = `📅 今日营业 · 第 ${dayDisplay} / ${VICTORY_DAYS} 天`;
+    this.hudPhaseLine.text = `✨ ${phaseLabel}`;
+
+    this.hudHpLine.text = `${state.playerHp} / ${state.maxPlayerHp}`;
+    const hpRatio = Math.min(1, state.playerHp / Math.max(1, state.maxPlayerHp));
+    const hpw = 232 * hpRatio;
+    this.hudHpBarFill.clear();
+    if (hpw > 2) {
+      this.hudHpBarFill.beginFill(PET_UI.barHp, 1);
+      this.hudHpBarFill.drawRoundedRect(18, 64, hpw, 16, 8);
+      this.hudHpBarFill.endFill();
     }
-    this.hudText.text = lines.join('\n');
+
+    const showWin = state.winStreak > 0;
+    const showLose = state.loseStreak > 0;
+    this.hudWinPill.visible = showWin;
+    this.hudLosePill.visible = showLose;
+    if (showWin) {
+      this.hudWinText.text = `连胜 ${state.winStreak} 🔥`;
+    }
+    if (showLose) {
+      this.hudLoseText.text = `连败 ${state.loseStreak} 🥺`;
+    }
+    if (showWin && showLose) {
+      this.hudWinPill.position.set(-184, 0);
+      this.hudLosePill.position.set(16, 0);
+    } else if (showWin) {
+      this.hudWinPill.position.set(-84, 0);
+    } else if (showLose) {
+      this.hudLosePill.position.set(-84, 0);
+    }
   }
 
   /** 与 Zustand grid 对齐占位格显示（放置、移除、拆家等） */
   private syncGridFromStore() {
-    const grid = useGameStore.getState().grid;
+    const { grid, cellDurability } = useGameStore.getState();
     this.gridCells.forEach(cell => {
       const entity = grid[cell.row][cell.col];
-      cell.setOccupied(!!entity);
-      cell.setGridEntity(entity);
-      cell.syncStress(entity);
+      const d = cellDurability[cell.row][cell.col] ?? 0;
+      cell.syncFromStore(entity, d);
     });
+  }
+
+  private removeGameOverOverlay() {
+    if (this.gameOverLayer) {
+      this.gameOverLayer.destroy({ children: true });
+      this.gameOverLayer = null;
+    }
+  }
+
+  private syncGameOverOverlay() {
+    const st = useGameStore.getState();
+    if (st.gameStatus === 'playing') {
+      this.removeGameOverOverlay();
+      return;
+    }
+    if (this.gameOverLayer) return;
+
+    const layer = new PIXI.Container();
+    layer.position.set(960, 520);
+    this.gameOverLayer = layer;
+
+    const dim = new PIXI.Graphics();
+    dim.beginFill(0x4e342e, 0.55);
+    dim.drawRoundedRect(-520, -210, 1040, 420, 28);
+    dim.endFill();
+    layer.addChild(dim);
+
+    const card = new PIXI.Graphics();
+    card.beginFill(PET_UI.cream, 0.98);
+    card.lineStyle(4, PET_UI.honeyLine, 0.65);
+    card.drawRoundedRect(-440, -170, 880, 340, 26);
+    card.endFill();
+    layer.addChild(card);
+
+    let title = '';
+    let sub = '';
+    if (st.gameStatus === 'won') {
+      title = '🎉 大成功！萌宠直播间上市啦';
+      sub = `撑满 ${VICTORY_DAYS} 天，人气也达标啦～`;
+    } else if (st.endReason === 'hp') {
+      title = '😿 要先休息一下…';
+      sub = '店长元气见底了，改天再来营业吧';
+    } else if (st.endReason === 'grid') {
+      title = '🏚️ 工位全没了…';
+      sub = '直播间塌成废墟啦，试试更温柔的排班？';
+    } else {
+      title = '📉 人气还差一点点';
+      sub = `${VICTORY_DAYS} 天到了，小红心还没攒够哦`;
+    }
+
+    const titleTxt = new PIXI.Text({
+      text: title,
+      style: {
+        fontSize: 36,
+        fill: PET_UI.text,
+        fontWeight: 'bold',
+        stroke: strokePetBrown,
+        align: 'center',
+      },
+    });
+    titleTxt.anchor.set(0.5, 0);
+    titleTxt.y = -142;
+    layer.addChild(titleTxt);
+
+    const subTxt = new PIXI.Text({
+      text: sub,
+      style: {
+        fontSize: 22,
+        fill: PET_UI.textMuted,
+        fontWeight: 'bold',
+        stroke: strokePetBrown,
+        align: 'center',
+        wordWrap: true,
+        wordWrapWidth: 760,
+      },
+    });
+    subTxt.anchor.set(0.5, 0);
+    subTxt.y = -72;
+    layer.addChild(subTxt);
+
+    const btn = new PIXI.Graphics();
+    btn.beginFill(PET_UI.coral);
+    btn.lineStyle(3, PET_UI.coralLine, 0.85);
+    btn.drawRoundedRect(0, 0, 240, 56, 18);
+    btn.endFill();
+    btn.eventMode = 'static';
+    btn.cursor = 'pointer';
+    btn.position.set(-120, 88);
+    const btnLabel = new PIXI.Text({
+      text: '再开一局 🐾',
+      style: { fontSize: 22, fill: 0xffffff, fontWeight: 'bold', stroke: strokeDarkBold },
+    });
+    btnLabel.anchor.set(0.5);
+    btnLabel.position.set(120, 28);
+    btn.addChild(btnLabel);
+    btn.on('pointerdown', () => {
+      useGameStore.getState().restartRun();
+    });
+    layer.addChild(btn);
+
+    this.fxLayer.addChild(layer);
   }
 
   private onStoreUpdate() {
     this.syncGridFromStore();
+    this.syncGameOverOverlay();
     const hand = useGameStore.getState().hand;
-    const sig = this.getHandSignature(hand);
-    if (sig !== this.lastHandSignature || hand.length !== this.handCards.length) {
+    logSceneFlow('onStoreUpdate', {
+      sameRef: hand === this.lastHandRef,
+      storeHand: hand.map(c => `${c.id}:${c.type}`),
+      sceneHand: this.handCards.map(c => `${c.cardData.id}:${c.cardData.type}`),
+    });
+    if (hand !== this.lastHandRef || hand.length !== this.handCards.length) {
       this.updateHandCards(hand);
     }
   }

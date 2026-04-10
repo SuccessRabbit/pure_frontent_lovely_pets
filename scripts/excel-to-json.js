@@ -30,6 +30,33 @@ const RARITY_MAP = {
   '传说': 'legendary'
 };
 
+/** 与 public/assets/cards 下子目录一致；指令类统一进 actions（修复原先 split 成 buff/debuff 目录的错误） */
+function cardImageFolder(cardType) {
+  if (cardType === 'entity_pet') return 'pets';
+  if (cardType === 'entity_worker') return 'workers';
+  if (cardType.startsWith('action_')) return 'actions';
+  if (cardType === 'entity_facility') return 'facilities';
+  return 'actions';
+}
+
+/**
+ * Excel 中也可增加一行与之下完全一致；若表内无此 ID，转换时会自动并入 actions.json
+ * 列示例：ID=action_resentment | 名称=怨气卡 | 类型=指令-减压 | 费用=0 | 稀有度=普通 | 描述=画大饼的代价：负面情绪反噬 | 标签=curse | 特殊效果=打出时：全场萌宠压力+2
+ */
+const POST_MERGE_ACTION_CARDS = [
+  {
+    id: 'action_resentment',
+    name: '怨气卡',
+    type: 'action_debuff',
+    cost: 0,
+    rarity: 'common',
+    description: '画大饼的代价：负面情绪反噬',
+    image: '/assets/cards/actions/action_resentment.svg',
+    tags: ['curse'],
+    effects: [{ type: 'raw', description: '打出时：全场萌宠压力+2' }]
+  }
+];
+
 /**
  * 读取 Excel 文件
  */
@@ -83,14 +110,15 @@ function validateRow(row, index) {
  * 转换单行数据
  */
 function transformRow(row) {
+  const type = CARD_TYPE_MAP[row['类型']];
   const card = {
     id: row['ID'].toString().trim(),
     name: row['名称'].trim(),
-    type: CARD_TYPE_MAP[row['类型']],
-    cost: parseInt(row['费用']),
+    type,
+    cost: parseInt(row['费用'], 10),
     rarity: RARITY_MAP[row['稀有度']],
     description: row['描述'].trim(),
-    image: `/assets/cards/${CARD_TYPE_MAP[row['类型']].split('_')[1]}/${row['ID']}.png`,
+    image: `/assets/cards/${cardImageFolder(type)}/${row['ID']}.svg`,
     tags: row['标签'] ? row['标签'].split(',').map(t => t.trim()) : []
   };
 
@@ -271,6 +299,21 @@ function main() {
 
   // 按类型分组
   const groups = groupByType(cards);
+
+  let mergedActionCount = 0;
+  POST_MERGE_ACTION_CARDS.forEach(extra => {
+    if (!groups.actions.some(c => c.id === extra.id)) {
+      groups.actions.push({ ...extra });
+      mergedActionCount++;
+    }
+  });
+  if (mergedActionCount > 0) {
+    console.log(`📎 已自动并入指令牌（Excel 无对应行）: ${mergedActionCount} 张\n`);
+  }
+
+  const augments = POST_MERGE_ACTION_CARDS.filter(e => !cards.some(c => c.id === e.id));
+  const fullCardList = [...cards, ...augments];
+
   console.log('📊 卡牌分布:');
   console.log(`   - 萌宠: ${groups.pets.length} 张`);
   console.log(`   - 牛马: ${groups.workers.length} 张`);
@@ -300,10 +343,10 @@ function main() {
     JSON.stringify(groups.actions, null, 2)
   );
 
-  // 完整输出
+  // 完整输出（含自动并入的指令牌，与 actions.json 一致）
   const database = {
     ...groups,
-    all: cards
+    all: fullCardList
   };
   fs.writeFileSync(
     path.join(OUTPUT_DIR, 'cards.json'),
@@ -318,7 +361,7 @@ function main() {
   if (!fs.existsSync(typesDir)) {
     fs.mkdirSync(typesDir, { recursive: true });
   }
-  fs.writeFileSync(TYPES_OUTPUT, generateTypes(cards));
+  fs.writeFileSync(TYPES_OUTPUT, generateTypes(fullCardList));
   console.log(`✅ 类型定义已生成到 ${TYPES_OUTPUT}\n`);
 
   // 生成统计报告
@@ -340,4 +383,4 @@ if (require.main === module) {
   main();
 }
 
-module.exports = { readExcel, transformRow, validateRow };
+module.exports = { readExcel, transformRow, validateRow, cardImageFolder, POST_MERGE_ACTION_CARDS };

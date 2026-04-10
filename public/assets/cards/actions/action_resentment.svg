@@ -1,0 +1,9 @@
+<!-- (a -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <rect width="200" height="280" fill="#2d1f2f" rx="12"/>
+  <rect x="8" y="8" width="184" height="264" rx="10" stroke="#8e44ad" stroke-width="3" fill="none" opacity="0.9"/>
+  <path d="M100 48 L118 92 L100 78 L82 92 Z" fill="#c0392b"/>
+  <circle cx="100" cy="150" r="52" fill="#4a235a" stroke="#922b21" stroke-width="3"/>
+  <text x="100" y="158" font-family="Arial,sans-serif" font-size="22" fill="#ecf0f1" text-anchor="middle" font-weight="bold">(</text>
+  <text x="100" y="230" font-family="Arial,sans-serif" font-size="14" fill="#bdc3c7" text-anchor="middle">‹› +2</text>
+</svg>

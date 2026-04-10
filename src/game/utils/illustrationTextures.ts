@@ -1,5 +1,15 @@
 import { Assets, Texture } from 'pixi.js';
 import { getCardAssetPaths } from '../../utils/assetLoader';
+const DEBUG_TEXTURE_LOAD = true;
+
+function logTextureLoad(message: string, payload?: unknown) {
+  if (!DEBUG_TEXTURE_LOAD) return;
+  if (payload === undefined) {
+    console.log(`[TextureLoad] ${message}`);
+  } else {
+    console.log(`[TextureLoad] ${message}`, payload);
+  }
+}
 
 export function illustrationFolder(cardType: string): 'pets' | 'workers' | 'actions' {
   const t = cardType.toLowerCase();
@@ -65,15 +75,20 @@ async function textureFromImageElement(url: string): Promise<Texture> {
  * 依次尝试 URL：先 Pixi Assets（含缓存），再原生 Image（SVG/PNG 更稳）
  */
 export async function loadIllustrationTexture(urls: string[]): Promise<Texture> {
+  logTextureLoad('loadIllustrationTexture:start', { urls });
   for (const url of urls) {
     try {
       const asset = await Assets.load(url);
       const tex = asset instanceof Texture ? asset : (asset as { texture?: Texture }).texture;
       if (tex && tex.width > 0 && tex.height > 0) {
+        logTextureLoad('loadIllustrationTexture:assetsHit', {
+          url,
+          size: [tex.width, tex.height],
+        });
         return tex;
       }
     } catch {
-      /* try next */
+      logTextureLoad('loadIllustrationTexture:assetsMiss', { url });
     }
   }
 
@@ -81,13 +96,18 @@ export async function loadIllustrationTexture(urls: string[]): Promise<Texture> 
     try {
       const tex = await textureFromImageElement(url);
       if (tex.width > 0 && tex.height > 0) {
+        logTextureLoad('loadIllustrationTexture:imageHit', {
+          url,
+          size: [tex.width, tex.height],
+        });
         return tex;
       }
     } catch {
-      /* try next */
+      logTextureLoad('loadIllustrationTexture:imageMiss', { url });
     }
   }
 
+  console.warn('[TextureLoad] loadIllustrationTexture:fallbackWhite', { urls });
   return Texture.WHITE;
 }
 

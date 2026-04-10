@@ -4,14 +4,63 @@ import { loadIllustrationForEntity } from '../utils/illustrationTextures';
 import { layoutSpriteContain } from '../utils/spriteFit';
 import { strokeDark } from '../utils/fxTextStyles';
 import { Tween, Easing } from '../utils/Tween';
+const DEBUG_GRID_CELL = true;
+
+function logGridCell(message: string, payload?: unknown) {
+  if (!DEBUG_GRID_CELL) return;
+  if (payload === undefined) {
+    console.log(`[GridCell] ${message}`);
+  } else {
+    console.log(`[GridCell] ${message}`, payload);
+  }
+}
+
+function lerpByte(a: number, b: number, t: number): number {
+  return Math.round(a + (b - a) * t);
+}
+
+function lerpColorRgb(from: number, to: number, t: number): number {
+  const u = Math.min(1, Math.max(0, t));
+  const fr = (from >> 16) & 255;
+  const fg = (from >> 8) & 255;
+  const fb = from & 255;
+  const tr = (to >> 16) & 255;
+  const tg = (to >> 8) & 255;
+  const tb = to & 255;
+  const r = lerpByte(fr, tr, u);
+  const g = lerpByte(fg, tg, u);
+  const b = lerpByte(fb, tb, u);
+  return (r << 16) | (g << 8) | b;
+}
+
+/** 暴躁填充比例 0~1：绿 → 黄 → 红（越接近满值越红） */
+function stressBarColorForRatio(ratio: number): number {
+  const t = Math.min(1, Math.max(0, ratio));
+  if (t <= 0.5) {
+    return lerpColorRgb(0x2ecc71, 0xf1c40f, t / 0.5);
+  }
+  return lerpColorRgb(0xf1c40f, 0xff2d2d, (t - 0.5) / 0.5);
+}
 
 export class GridCell extends PIXI.Container {
   private background!: PIXI.Graphics;
   private highlight!: PIXI.Graphics;
+  /** 行动牌选格：与拖拽高亮分离 */
+  private actionPickGfx!: PIXI.Graphics;
+  private actionPickEligible = false;
+  private actionPickSelected = false;
   private isHighlighted = false;
   private entitySprite: PIXI.Sprite | null = null;
+  private entitySpriteRestX = 0;
+  private entitySpriteRestY = 0;
   private entityLoadGen = 0;
   private currentEntityKey: string | null = null;
+  /** 仅宠物：用于每帧颤抖 */
+  private stressShakeRatio = 0;
+  private stressShakePet = false;
+  private stressShakePhase = 0;
+  /** 打出宠物/员工时逻辑已上格，立绘等飞入落地后再显示 */
+  private entityPortraitSuppressed = false;
   private stressContainer: PIXI.Container;
   private stressTrack!: PIXI.Graphics;
   private stressFill!: PIXI.Graphics;
@@ -20,6 +69,8 @@ export class GridCell extends PIXI.Container {
   public row: number;
   public col: number;
   public isEmpty = true;
+  /** 工位耐久已毁，不可部署；可花罐头重建 */
+  public isRuins = false;
   /** 布局尺寸（与 hitArea 一致；勿用 Container.width，避免 bounds 未更新时为 0） */
   public readonly cellWidth: number;
   public readonly cellHeight: number;
@@ -39,6 +90,7 @@ export class GridCell extends PIXI.Container {
     this.createStressUi(width, height);
     this.addChild(this.stressContainer);
     this.createHighlight(width, height);
+    this.createActionPickOverlay();
   }
 
   private createBackground(width: number, height: number) {
@@ -89,6 +141,62 @@ export class GridCell extends PIXI.Container {
     this.addChild(this.highlight);
   }
 
+  private createActionPickOverlay() {
+    this.actionPickGfx = new PIXI.Graphics();
+    this.actionPickGfx.visible = false;
+    this.actionPickGfx.eventMode = 'none';
+    this.addChild(this.actionPickGfx);
+  }
+
+  private redrawActionPickOverlay() {
+    const w = this.cellWidth;
+    const h = this.cellHeight;
+    const rr = 8;
+    Tween.killTarget(this.actionPickGfx);
+    this.actionPickGfx.clear();
+
+    if (!this.actionPickEligible && !this.actionPickSelected) {
+      this.actionPickGfx.visible = false;
+      return;
+    }
+
+    if (this.actionPickSelected) {
+      this.actionPickGfx.lineStyle(4, 0xd946ef, 1);
+      this.actionPickGfx.beginFill(0xc084fc, 0.24);
+      this.actionPickGfx.drawRoundedRect(2, 2, w - 4, h - 4, rr);
+      this.actionPickGfx.endFill();
+    } else {
+      this.actionPickGfx.lineStyle(3, 0xf59e0b, 1);
+      this.actionPickGfx.beginFill(0xfbbf24, 0.18);
+      this.actionPickGfx.drawRoundedRect(3, 3, w - 6, h - 6, rr);
+      this.actionPickGfx.endFill();
+    }
+
+    this.actionPickGfx.visible = true;
+    this.actionPickGfx.alpha = 0;
+    Tween.to(this.actionPickGfx, { alpha: 1 }, 200, Easing.easeOutCubic);
+  }
+
+  /**
+   * 行动牌选格样式（一次写入，避免先关 eligible 再关 selected 时闪一帧）
+   * - 仅 eligible：琥珀提示框
+   * - selected：紫环（交换第一格）；可与 eligible 同时为真
+   */
+  public setActionPickVisual(eligible: boolean, selected: boolean) {
+    if (this.actionPickEligible === eligible && this.actionPickSelected === selected) return;
+    this.actionPickEligible = eligible;
+    this.actionPickSelected = selected;
+    this.redrawActionPickOverlay();
+  }
+
+  public clearActionPickOverlay() {
+    Tween.killTarget(this.actionPickGfx);
+    this.actionPickEligible = false;
+    this.actionPickSelected = false;
+    this.actionPickGfx.clear();
+    this.actionPickGfx.visible = false;
+  }
+
   public setHighlight(highlighted: boolean) {
     if (this.isHighlighted === highlighted) return;
 
@@ -114,10 +222,46 @@ export class GridCell extends PIXI.Container {
 
   public setOccupied(occupied: boolean) {
     this.isEmpty = !occupied;
-    const { cellWidth: w, cellHeight: h } = this;
+    this.redrawBackgroundShell();
+  }
 
+  /** 与 store 对齐：耐久、实体、立绘与压力条 */
+  public syncFromStore(entity: GridEntity | null, durability: number) {
+    const ruins = durability <= 0;
+    this.isRuins = ruins;
+    this.isEmpty = !entity;
+    this.redrawBackgroundShell();
+
+    if (ruins) {
+      this.setGridEntity(null);
+      this.stressContainer.visible = false;
+      this.stressShakePet = false;
+      this.stressShakeRatio = 0;
+      this.cursor = 'pointer';
+      return;
+    }
+
+    this.cursor = 'default';
+    this.setGridEntity(entity);
+    this.syncStress(entity);
+  }
+
+  private redrawBackgroundShell() {
+    const { cellWidth: w, cellHeight: h } = this;
     this.background.clear();
-    if (occupied) {
+
+    if (this.isRuins) {
+      this.background.beginFill(0x2c3c4c, 0.92);
+      this.background.lineStyle(2, 0x95a5a6, 1);
+      this.background.drawRoundedRect(0, 0, w, h, 8);
+      this.background.endFill();
+      this.background.lineStyle(2, 0x566573, 0.55);
+      this.background.moveTo(10, h - 10);
+      this.background.lineTo(w - 10, 10);
+      return;
+    }
+
+    if (!this.isEmpty) {
       this.background.beginFill(0x1e8449, 0.85);
       this.background.lineStyle(2, 0x58d68d, 1);
     } else {
@@ -136,21 +280,67 @@ export class GridCell extends PIXI.Container {
       this.entitySprite = null;
     }
     this.currentEntityKey = null;
+    this.stressShakePhase = 0;
+    this.stressShakePet = false;
+    this.stressShakeRatio = 0;
+  }
+
+  private resetEntitySpriteToRest() {
+    if (!this.entitySprite) return;
+    this.entitySprite.x = this.entitySpriteRestX;
+    this.entitySprite.y = this.entitySpriteRestY;
+  }
+
+  public setEntityPortraitSuppressed(suppress: boolean) {
+    this.entityPortraitSuppressed = suppress;
+    if (this.entitySprite) {
+      this.entitySprite.visible = !suppress;
+    }
+  }
+
+  public isEntityPortraitSuppressed(): boolean {
+    return this.entityPortraitSuppressed;
   }
 
   /** 同步网格实体立绘（空位则清除） */
   public setGridEntity(entity: GridEntity | null): void {
+    if (!entity) {
+      this.entityPortraitSuppressed = false;
+    }
     const key = entity ? `${entity.id}|${entity.cardId}|${entity.type}` : null;
     if (key && key === this.currentEntityKey && this.entitySprite) {
+      logGridCell('setGridEntity:reuse', {
+        cell: [this.row, this.col],
+        key,
+      });
       return;
     }
 
     const gen = ++this.entityLoadGen;
     this.clearEntitySprite();
-    if (!entity) return;
+    if (!entity) {
+      logGridCell('setGridEntity:clear', { cell: [this.row, this.col] });
+      return;
+    }
+    logGridCell('setGridEntity:loadStart', {
+      cell: [this.row, this.col],
+      key,
+      cardId: entity.cardId,
+      type: entity.type,
+      gen,
+    });
 
     void loadIllustrationForEntity(entity.cardId, entity.type).then(tex => {
-      if (this.destroyed || gen !== this.entityLoadGen) return;
+      if (this.destroyed || gen !== this.entityLoadGen) {
+        logGridCell('setGridEntity:loadAborted', {
+          cell: [this.row, this.col],
+          key,
+          gen,
+          currentGen: this.entityLoadGen,
+          destroyed: this.destroyed,
+        });
+        return;
+      }
 
       const pad = 6;
       const iw = this.cellWidth - pad * 2;
@@ -158,8 +348,16 @@ export class GridCell extends PIXI.Container {
       const spr = new PIXI.Sprite(tex);
       layoutSpriteContain(spr, tex, pad, pad, iw, ih);
       this.entitySprite = spr;
+      this.entitySpriteRestX = spr.x;
+      this.entitySpriteRestY = spr.y;
       this.currentEntityKey = key;
+      spr.visible = !this.entityPortraitSuppressed;
       this.addChildAt(spr, 1);
+      logGridCell('setGridEntity:loadDone', {
+        cell: [this.row, this.col],
+        key,
+        texSize: [tex.width, tex.height],
+      });
     });
   }
 
@@ -167,6 +365,17 @@ export class GridCell extends PIXI.Container {
   public syncStress(entity: GridEntity | null) {
     if (!entity) {
       this.stressContainer.visible = false;
+      this.stressShakePet = false;
+      this.stressShakeRatio = 0;
+      this.resetEntitySpriteToRest();
+      return;
+    }
+
+    if (this.entityPortraitSuppressed) {
+      this.stressContainer.visible = false;
+      this.stressShakePet = false;
+      this.stressShakeRatio = 0;
+      this.resetEntitySpriteToRest();
       return;
     }
 
@@ -178,8 +387,13 @@ export class GridCell extends PIXI.Container {
     const max = Math.max(1, entity.maxStress);
     const ratio = Math.min(1, entity.stress / max);
 
-    const color =
-      ratio < 0.45 ? 0x2ecc71 : ratio < 0.75 ? 0xf1c40f : 0xe74c3c;
+    const color = stressBarColorForRatio(ratio);
+
+    this.stressShakeRatio = ratio;
+    this.stressShakePet = entity.type === 'pet';
+    if (!this.stressShakePet) {
+      this.resetEntitySpriteToRest();
+    }
 
     this.stressFill.clear();
     if (ratio > 0) {
@@ -190,6 +404,24 @@ export class GridCell extends PIXI.Container {
 
     this.stressText.text = `暴躁 ${entity.stress}/${entity.maxStress}`;
     this.stressText.style.fill = color;
+  }
+
+  /** 每帧更新：宠物立绘随暴躁度颤抖（由 GameScene.update 驱动） */
+  public updatePetStressShake(deltaTime: number) {
+    if (!this.entitySprite || !this.stressShakePet) return;
+    const r = this.stressShakeRatio;
+    if (r <= 0.001) {
+      this.resetEntitySpriteToRest();
+      return;
+    }
+    // 振幅与频率随比例升高，略加重高段（更「暴躁」）
+    const amp = r * (1.2 + 4 * r);
+    const speed = 6 + 18 * r;
+    this.stressShakePhase += deltaTime * speed;
+    const ox = Math.sin(this.stressShakePhase) * amp;
+    const oy = Math.cos(this.stressShakePhase * 1.4) * amp * 0.9;
+    this.entitySprite.x = this.entitySpriteRestX + ox;
+    this.entitySprite.y = this.entitySpriteRestY + oy;
   }
 
   /** 结算阶段强调压力条与文案 */

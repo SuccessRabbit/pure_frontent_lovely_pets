@@ -133,8 +133,20 @@ class TweenManager {
   }
 
   public update(deltaTime: number) {
-    // 更新所有 tween，移除已完成的
-    this.tweens = this.tweens.filter(tween => !tween.update(deltaTime));
+    // 关键修复：
+    // tween.update() 的 onComplete 里可能继续 Tween.to(...)。
+    // 之前用 filter 基于旧数组重建，会把回调里新 push 的 tween 覆盖丢失。
+    // 这里改为对当前快照迭代，并把仍存活的 tween 追加回新的 this.tweens，
+    // 这样 onComplete 中新建的 tween 会保留在 this.tweens 里，下一帧继续执行。
+    const activeTweens = this.tweens;
+    this.tweens = [];
+
+    for (const tween of activeTweens) {
+      const completed = tween.update(deltaTime);
+      if (!completed) {
+        this.tweens.push(tween);
+      }
+    }
   }
 
   public clear() {

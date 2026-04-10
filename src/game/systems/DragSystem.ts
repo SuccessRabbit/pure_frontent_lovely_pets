@@ -2,8 +2,19 @@ import * as PIXI from 'pixi.js';
 import { CardSprite } from '../entities/CardSprite';
 import { GridCell } from '../entities/GridCell';
 import { InputManager } from '../core/InputManager';
+import { Tween } from '../utils/Tween';
 
 export type HandDragKind = 'entity' | 'action';
+const DEBUG_DRAG_FLOW = true;
+
+function logDragFlow(message: string, payload?: unknown) {
+  if (!DEBUG_DRAG_FLOW) return;
+  if (payload === undefined) {
+    console.log(`[DragFlow] ${message}`);
+  } else {
+    console.log(`[DragFlow] ${message}`, payload);
+  }
+}
 
 /** 屏幕坐标下检测行动牌释放区 */
 export interface ActionZoneHit {
@@ -29,7 +40,7 @@ export class DragSystem {
   /** 当前帧行动区是否悬停（供 GameScene 画高亮） */
   private actionZoneHovered = false;
 
-  /** 实体牌落格：由 GameScene 实现飞入 + 溶解 + emit cardPlaced */
+  /** 实体牌落格：由 GameScene 实现校验、立即 playCard + 排队 VFX（未设置 hook 时无法落格） */
   public onRequestEntityPlace:
     | ((card: CardSprite, cell: GridCell, targetX: number, targetY: number) => void)
     | null = null;
@@ -58,14 +69,35 @@ export class DragSystem {
   public setEnabled(on: boolean) {
     this.enabled = on;
     if (!on && this.draggingCard) {
-      this.draggingCard.playDragEndAnimation();
-      this.draggingCard.playReturnAnimation();
-      this.draggingCard = null;
-      this.dragKind = null;
-      this.dragCardIndex = -1;
-      this.actionZoneHovered = false;
-      this.clearHighlights();
+      const c = this.draggingCard;
+      if (!c.destroyed && c.parent) {
+        c.playDragEndAnimation();
+        c.playReturnAnimation();
+      }
+      this.clearDragStateOnly();
     }
+  }
+
+  /** 手牌整排销毁前必须调用：避免仍指向已 destroy 的 CardSprite 导致每帧写属性崩溃 */
+  public prepareForHandRebuild() {
+    if (!this.draggingCard) return;
+    const card = this.draggingCard;
+    Tween.killTarget(card);
+    Tween.killTarget(card.scale);
+    card.isDragging = false;
+    this.clearDragStateOnly();
+  }
+
+  private clearDragStateOnly() {
+    this.draggingCard = null;
+    this.dragKind = null;
+    this.dragCardIndex = -1;
+    this.actionZoneHovered = false;
+    this.clearHighlights();
+  }
+
+  private isDragTargetAlive(card: CardSprite | null): card is CardSprite {
+    return card != null && !card.destroyed && card.parent != null;
   }
 
   public startDrag(
@@ -76,6 +108,20 @@ export class DragSystem {
     cardIndex: number
   ) {
     if (!this.enabled) return;
+    if (!this.isDragTargetAlive(card)) return;
+
+    if (this.draggingCard && this.draggingCard !== card) {
+      const prev = this.draggingCard;
+      if (this.isDragTargetAlive(prev)) {
+        Tween.killTarget(prev);
+        Tween.killTarget(prev.scale);
+        prev.isDragging = false;
+        prev.playDragEndAnimation();
+        prev.playReturnAnimation();
+      }
+      this.clearDragStateOnly();
+    }
+
     this.draggingCard = card;
     this.dragKind = kind;
     this.dragCardIndex = cardIndex;
@@ -90,11 +136,25 @@ export class DragSystem {
       this.clearHighlights();
     }
 
-    console.log('Drag started:', card.cardData.name, kind);
+    logDragFlow('startDrag', {
+      card: `${card.cardData.id}:${card.cardData.type}`,
+      kind,
+      cardIndex,
+      screen: [screenX, screenY],
+      offset: this.dragOffset,
+    });
   }
 
   public update() {
-    if (!this.enabled || !this.draggingCard || !this.dragKind) return;
+    if (!this.enabled) return;
+
+    if (this.draggingCard && !this.isDragTargetAlive(this.draggingCard)) {
+      logDragFlow('update:staleDragTargetCleared');
+      this.clearDragStateOnly();
+      return;
+    }
+
+    if (!this.draggingCard || !this.dragKind) return;
 
     const mouse = this.inputManager.getMouse();
     const local = this.handContainer.toLocal({ x: mouse.x, y: mouse.y });
@@ -104,7 +164,7 @@ export class DragSystem {
     if (this.dragKind === 'entity') {
       const hoveredCell = this.findHoveredCell(mouse.x, mouse.y);
       this.gridCells.forEach(cell => {
-        if (cell === hoveredCell && cell.isEmpty) {
+        if (cell === hoveredCell && cell.isEmpty && !cell.isRuins) {
           cell.setHighlight(true);
         } else {
           cell.setHighlight(false);
@@ -117,6 +177,12 @@ export class DragSystem {
     }
 
     if (mouse.justReleased) {
+      logDragFlow('update:mouseReleased', {
+        card: this.draggingCard ? `${this.draggingCard.cardData.id}:${this.draggingCard.cardData.type}` : null,
+        kind: this.dragKind,
+        screen: [mouse.x, mouse.y],
+        actionZoneHovered: this.actionZoneHovered,
+      });
       if (this.dragKind === 'action') {
         this.endDragAction(mouse.x, mouse.y);
       } else {
@@ -137,15 +203,21 @@ export class DragSystem {
 
     this.clearHighlights();
 
-    if (targetCell && targetCell.isEmpty) {
+    logDragFlow('endDragEntity', {
+      card: `${card.cardData.id}:${card.cardData.type}`,
+      dragCardIndex: idx,
+      targetCell: targetCell ? [targetCell.row, targetCell.col] : null,
+      targetEmpty: targetCell?.isEmpty ?? null,
+    });
+
+    if (targetCell && targetCell.isEmpty && !targetCell.isRuins) {
       card.playDragEndAnimation({ keepFront: true });
       this.runEntityPlace(card, targetCell, idx);
     } else {
       card.playDragEndAnimation();
       card.playReturnAnimation();
     }
-
-    console.log('Drag ended (entity)');
+    logDragFlow('endDragEntity:done');
   }
 
   private runEntityPlace(card: CardSprite, cell: GridCell, _cardIndex: number) {
@@ -157,14 +229,20 @@ export class DragSystem {
     const targetInHand = this.handContainer.toLocal(globalDest);
 
     if (this.onRequestEntityPlace) {
+      logDragFlow('runEntityPlace:hook', {
+        card: `${card.cardData.id}:${card.cardData.type}`,
+        cell: [cell.row, cell.col],
+        targetInHand: [targetInHand.x, targetInHand.y],
+      });
       this.onRequestEntityPlace(card, cell, targetInHand.x, targetInHand.y);
     } else {
-      card.playPlaceAnimation(targetInHand.x, targetInHand.y, () => {
-        card.emit('cardPlaced', { card, cell });
-      });
+      console.warn('[DragSystem] onRequestEntityPlace is not set; entity drop ignored.');
+      card.playReturnAnimation();
     }
-
-    console.log(`Card place FX: ${card.cardData.name} at [${cell.row}, ${cell.col}]`);
+    logDragFlow('runEntityPlace:scheduledFx', {
+      card: `${card.cardData.id}:${card.cardData.type}`,
+      cell: [cell.row, cell.col],
+    });
   }
 
   private endDragAction(screenX: number, screenY: number) {
@@ -180,6 +258,12 @@ export class DragSystem {
     this.clearHighlights();
 
     const inZone = this.actionZone?.containsScreen(screenX, screenY) ?? false;
+    logDragFlow('endDragAction', {
+      card: `${card.cardData.id}:${card.cardData.type}`,
+      dragCardIndex: idx,
+      screen: [screenX, screenY],
+      inZone,
+    });
     if (inZone && this.onRequestActionTrigger) {
       card.playDragEndAnimation({ keepFront: true });
       this.onRequestActionTrigger(card, idx);
@@ -187,8 +271,7 @@ export class DragSystem {
       card.playDragEndAnimation();
       card.playReturnAnimation();
     }
-
-    console.log('Drag ended (action)', inZone ? 'trigger' : 'cancel');
+    logDragFlow('endDragAction:done', { inZone });
   }
 
   private findHoveredCell(screenX: number, screenY: number): GridCell | null {
@@ -199,7 +282,7 @@ export class DragSystem {
 
   private highlightValidCells() {
     this.gridCells.forEach(cell => {
-      if (cell.isEmpty) {
+      if (cell.isEmpty && !cell.isRuins) {
         cell.setHighlight(true);
       }
     });

@@ -1,0 +1,8 @@
+<!-- (a “; 4:3 -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#1a1020"/>
+  <circle cx="200" cy="150" r="90" fill="#4a235a" opacity="0.85"/>
+  <path d="M200 70 L230 130 L200 110 L170 130 Z" fill="#c0392b" opacity="0.9"/>
+  <text x="200" y="168" font-family="Arial,sans-serif" font-size="56" fill="#ecf0f1" text-anchor="middle" font-weight="bold">(</text>
+  <text x="200" y="248" font-family="Arial,sans-serif" font-size="22" fill="#95a5a6" text-anchor="middle">h:† +2 ¥Å</text>
+</svg>
