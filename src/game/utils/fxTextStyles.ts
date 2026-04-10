@@ -1,6 +1,7 @@
 /**
  * 动效 / HUD 文字描边，避免与背景色融在一起
  * Pixi v8：stroke 使用 { color, width, join }
+ * 全局 UI 使用 1px 描边（见各导出常量的 width）
  */
 export const strokeDark = {
   color: 0x050508,

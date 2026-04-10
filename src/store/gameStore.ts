@@ -5,6 +5,7 @@ import { getEntityCardTemplate } from '../utils/cardCatalog';
 import { buildShuffledStartingDeck } from '../utils/deckFactory';
 import {
   CELL_DURABILITY_MAX,
+  HAND_SIZE_MAX,
   HEARTS_ENTITY_INCOME_MULTIPLIER,
   MELTDOWN_HP_LOSS,
   PLAYER_HP_START,
@@ -117,6 +118,8 @@ export interface GameState {
   workerIncomeMultiplierThisTurn: number;
   /** 下回合开始时置入弃牌堆（如画大饼生成的怨气卡） */
   pendingCardsNextTurnDiscard: Card[];
+  /** 本日结算后手牌超过上限，需先弃牌/打出整理后才能进入次日抽牌 */
+  awaitingHandTrim: boolean;
 }
 
 // 游戏操作
@@ -157,7 +160,12 @@ export interface GameActions {
     targetRow2?: number,
     targetCol2?: number
   ) => boolean;
-  discardCard: (cardIndex: number) => void;
+  /** 打牌/效果结算后从手牌移入弃牌堆（不检查 canDiscard） */
+  removeHandCardAfterPlay: (cardIndex: number) => void;
+  /** 手里超上限或 awaitingHandTrim 时：弃一张可弃牌；不可弃则返回 false */
+  discardHandCardForTrim: (cardIndex: number) => boolean;
+  /** 手牌已不超过上限时结束整理并执行进入次日与抽牌 */
+  finishHandTrimAndAdvanceTurn: () => void;
 
   // 压力系统
   addStress: (row: number, col: number, amount: number) => void;
@@ -198,6 +206,7 @@ const initialState: GameState = {
   petIncomeMultiplierThisTurn: 1,
   workerIncomeMultiplierThisTurn: 1,
   pendingCardsNextTurnDiscard: [],
+  awaitingHandTrim: false,
 };
 
 export const useGameStore = create<GameState & GameActions>()(
@@ -282,7 +291,13 @@ export const useGameStore = create<GameState & GameActions>()(
           get().addCans(breakdown.total);
         }
         if (heartsGain > 0) {
-          set(s => ({ hearts: s.hearts + heartsGain }));
+          set(s => {
+            const nextHearts = s.hearts + heartsGain;
+            if (nextHearts >= VICTORY_HEARTS) {
+              return { hearts: nextHearts, gameStatus: 'won', endReason: null };
+            }
+            return { hearts: nextHearts };
+          });
         }
       },
 
@@ -300,17 +315,43 @@ export const useGameStore = create<GameState & GameActions>()(
         });
       },
 
-      // 结束回合
+      // 进入次日：重置倍率、回合数+1、注入延迟卡、抽牌（手牌整理完成后调用）
       endTurn: () => {
         if (get().gameStatus !== 'playing') return;
+
+        const hand = get().hand;
+        if (hand.length > HAND_SIZE_MAX) {
+          const discardable = hand.filter(c => c.canDiscard !== false).length;
+          const need = hand.length - HAND_SIZE_MAX;
+          if (discardable < need) {
+            console.warn('[StoreFlow] handTrim: not enough discardable cards', {
+              handSize: hand.length,
+              discardable,
+              need,
+              HAND_SIZE_MAX,
+            });
+          }
+          set({ awaitingHandTrim: true });
+          return;
+        }
+
+        get().finishHandTrimAndAdvanceTurn();
+      },
+
+      finishHandTrimAndAdvanceTurn: () => {
+        if (get().gameStatus !== 'playing') return;
+        if (get().hand.length > HAND_SIZE_MAX) return;
+
+        if (get().awaitingHandTrim) {
+          set({ awaitingHandTrim: false });
+        }
 
         const { turn, grid, discardPile, pendingCardsNextTurnDiscard } = get();
 
         console.log('Ending turn', turn);
 
-        // 重置所有实体的行动状态
         const newGrid = grid.map(row =>
-          row.map(entity => entity ? { ...entity, isExhausted: false } : null)
+          row.map(entity => (entity ? { ...entity, isExhausted: false } : null))
         );
 
         const inject = [...pendingCardsNextTurnDiscard];
@@ -523,7 +564,7 @@ export const useGameStore = create<GameState & GameActions>()(
       ) => {
         if (get().gameStatus !== 'playing') return false;
 
-        const { hand, placeEntity, discardCard } = get();
+        const { hand, placeEntity, removeHandCardAfterPlay } = get();
         logStoreFlow('playCard:start', {
           cardIndex,
           targetRow,
@@ -560,7 +601,7 @@ export const useGameStore = create<GameState & GameActions>()(
             target: [targetRow, targetCol],
           });
           if (success) {
-            discardCard(cardIndex);
+            removeHandCardAfterPlay(cardIndex);
           }
           return success;
         }
@@ -587,7 +628,7 @@ export const useGameStore = create<GameState & GameActions>()(
           }
 
           const { spendCans, addCans } = get();
-          if (!spendCans(card.cost)) {
+          if (card.cost > 0 && !spendCans(card.cost)) {
             console.warn('[StoreFlow] playCard:actionSpendFailed', {
               card: `${card.id}:${card.type}`,
               cans: get().cans,
@@ -606,12 +647,12 @@ export const useGameStore = create<GameState & GameActions>()(
             targetCol2
           );
           if (!ok) {
-            addCans(card.cost);
+            if (card.cost > 0) addCans(card.cost);
             logStoreFlow('playCard:actionEffectFailed', { card: card.id });
             return false;
           }
 
-          discardCard(cardIndex);
+          removeHandCardAfterPlay(cardIndex);
           logStoreFlow('playCard:actionSuccess', {
             card: `${card.id}:${card.type}`,
           });
@@ -624,15 +665,14 @@ export const useGameStore = create<GameState & GameActions>()(
         return false;
       },
 
-      // 弃牌
-      discardCard: (cardIndex: number) => {
+      removeHandCardAfterPlay: (cardIndex: number) => {
         const { hand, discardPile } = get();
         if (cardIndex < 0 || cardIndex >= hand.length) return;
 
         const card = hand[cardIndex];
         const newHand = hand.filter((_, i) => i !== cardIndex);
         const newDiscard = [...discardPile, card];
-        logStoreFlow('discardCard', {
+        logStoreFlow('removeHandCardAfterPlay', {
           cardIndex,
           card: `${card.id}:${card.type}`,
           beforeHand: hand.map(c => `${c.id}:${c.type}`),
@@ -640,6 +680,17 @@ export const useGameStore = create<GameState & GameActions>()(
         });
 
         set({ hand: newHand, discardPile: newDiscard });
+      },
+
+      discardHandCardForTrim: (cardIndex: number) => {
+        if (get().gameStatus !== 'playing') return false;
+        const { hand } = get();
+        if (!get().awaitingHandTrim && hand.length <= HAND_SIZE_MAX) return false;
+        if (cardIndex < 0 || cardIndex >= hand.length) return false;
+        const card = hand[cardIndex];
+        if (card.canDiscard === false) return false;
+        get().removeHandCardAfterPlay(cardIndex);
+        return true;
       },
 
       // 增加压力

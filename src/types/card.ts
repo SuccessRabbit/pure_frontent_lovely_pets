@@ -28,4 +28,6 @@ export interface Card {
   income?: number;
   stress?: number;
   stressLimit?: number;
+  /** 回合末整理时是否允许拖入弃牌区；未定义或 true 为可弃；false 为仅可打出 */
+  canDiscard?: boolean;
 }

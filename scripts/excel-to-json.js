@@ -41,7 +41,7 @@ function cardImageFolder(cardType) {
 
 /**
  * Excel 中也可增加一行与之下完全一致；若表内无此 ID，转换时会自动并入 actions.json
- * 列示例：ID=action_resentment | 名称=怨气卡 | 类型=指令-减压 | 费用=0 | 稀有度=普通 | 描述=画大饼的代价：负面情绪反噬 | 标签=curse | 特殊效果=打出时：全场萌宠压力+2
+ * 列示例：… | 可弃牌=否（可选，否/false/0 → canDiscard false）
  */
 const POST_MERGE_ACTION_CARDS = [
   {
@@ -50,7 +50,8 @@ const POST_MERGE_ACTION_CARDS = [
     type: 'action_debuff',
     cost: 0,
     rarity: 'common',
-    description: '画大饼的代价：负面情绪反噬',
+    canDiscard: false,
+    description: '打出不消耗罐头，不可弃置只能打出；打出时全场萌宠压力+2',
     image: '/assets/cards/actions/action_resentment.svg',
     tags: ['curse'],
     effects: [{ type: 'raw', description: '打出时：全场萌宠压力+2' }]
@@ -132,6 +133,15 @@ function transformRow(row) {
   // 特殊效果
   if (row['特殊效果']) {
     card.effects = parseEffects(row['特殊效果']);
+  }
+
+  // 可弃牌：列「可弃牌」为 否 / false / 0 时写入 canDiscard: false；默认可弃不写
+  const discardCol = row['可弃牌'];
+  if (discardCol !== undefined && discardCol !== null && String(discardCol).trim() !== '') {
+    const v = String(discardCol).trim().toLowerCase();
+    if (v === '否' || v === 'false' || v === '0' || v === 'no') {
+      card.canDiscard = false;
+    }
   }
 
   return card;

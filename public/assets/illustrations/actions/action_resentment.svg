@@ -1,8 +1,48 @@
-<!-- (a “; 4:3 -->
+<!-- ????? 4:3 - ?????????? -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
-  <rect width="400" height="300" fill="#1a1020"/>
-  <circle cx="200" cy="150" r="90" fill="#4a235a" opacity="0.85"/>
-  <path d="M200 70 L230 130 L200 110 L170 130 Z" fill="#c0392b" opacity="0.9"/>
-  <text x="200" y="168" font-family="Arial,sans-serif" font-size="56" fill="#ecf0f1" text-anchor="middle" font-weight="bold">(</text>
-  <text x="200" y="248" font-family="Arial,sans-serif" font-size="22" fill="#95a5a6" text-anchor="middle">h:† +2 ¥Å</text>
+  <defs>
+    <linearGradient id="illResentBg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#120810"/>
+      <stop offset="100%" stop-color="#2d1530"/>
+    </linearGradient>
+    <radialGradient id="illResentCore" cx="50%" cy="48%" r="50%">
+      <stop offset="0%" stop-color="#922b21" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#1a0a14" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="400" height="300" fill="url(#illResentBg)"/>
+  <rect width="400" height="300" fill="url(#illResentCore)"/>
+
+  <!-- ???? -->
+  <ellipse cx="320" cy="70" rx="70" ry="28" fill="#1f0f24" opacity="0.8"/>
+  <ellipse cx="90" cy="55" rx="55" ry="22" fill="#1f0f24" opacity="0.7"/>
+
+  <!-- ???? -->
+  <path d="M200 78 L248 118 L236 135 L200 102 L158 128 L145 110 L185 82 Z" fill="#4e342e" opacity="0.3"/>
+  <path d="M200 98 L265 145 L248 165 L200 125 L142 162 L125 142 L175 105 Z" fill="#3e2723" opacity="0.22"/>
+
+  <!-- ???? -->
+  <path d="M200 40 C260 70 290 130 265 185 C240 240 165 255 110 220 C60 190 55 120 95 80 C130 48 200 40 200 40Z"
+        fill="none" stroke="#c0392b" stroke-width="3" opacity="0.4"/>
+  <path d="M200 55 C245 78 268 125 248 170 C228 215 175 228 130 200 C95 178 92 125 125 95 C150 75 200 55 200 55Z"
+        fill="none" stroke="#8e44ad" stroke-width="2" opacity="0.35"/>
+
+  <!-- ??????? -->
+  <circle cx="200" cy="155" r="72" fill="#1f0a18" stroke="#922b21" stroke-width="3"/>
+  <g stroke="#e74c3c" stroke-width="2.5" stroke-linecap="round" opacity="0.8">
+    <line x1="200" y1="65" x2="200" y2="38"/>
+    <line x1="285" y1="120" x2="312" y2="105"/>
+    <line x1="285" y1="190" x2="312" y2="205"/>
+    <line x1="200" y1="245" x2="200" y2="272"/>
+    <line x1="115" y1="190" x2="88" y2="205"/>
+    <line x1="115" y1="120" x2="88" y2="105"/>
+  </g>
+
+  <!-- ???? -->
+  <path d="M155 148 L175 125 L200 148 L225 125 L245 148 L220 175 L245 198 L200 188 L155 198 L180 175 Z"
+        fill="#c0392b" opacity="0.92"/>
+  <circle cx="185" cy="145" r="6" fill="#0d0208"/>
+  <circle cx="215" cy="145" r="6" fill="#0d0208"/>
+
+  <text x="200" y="268" font-family="Arial,PingFang SC,sans-serif" font-size="20" fill="#bdc3c7" text-anchor="middle" font-weight="bold">????</text>
 </svg>

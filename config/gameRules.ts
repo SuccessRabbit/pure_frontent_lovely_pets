@@ -8,3 +8,6 @@ export const RUINS_REBUILD_COST = 2;
 
 /** 每回合小红心 += floor(实体收入合计 × 此倍率)；实体收入与 getIncomeBreakdown.entities 一致 */
 export const HEARTS_ENTITY_INCOME_MULTIPLIER = 2.5;
+
+/** 回合末进入新一天抽牌前，手牌不得超过此数量；超出须先弃牌/打出整理 */
+export const HAND_SIZE_MAX = 6;

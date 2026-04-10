@@ -133,7 +133,8 @@
     "type": "action_debuff",
     "cost": 0,
     "rarity": "common",
-    "description": "画大饼的代价：负面情绪反噬",
+    "canDiscard": false,
+    "description": "打出不消耗罐头，不可弃置只能打出；打出时全场萌宠压力+2",
     "image": "/assets/cards/actions/action_resentment.svg",
     "tags": ["curse"],
     "effects": [

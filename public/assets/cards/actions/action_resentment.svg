@@ -1,9 +1,48 @@
-<!-- (a -->
+<!-- ??? - ???????????? -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
-  <rect width="200" height="280" fill="#2d1f2f" rx="12"/>
-  <rect x="8" y="8" width="184" height="264" rx="10" stroke="#8e44ad" stroke-width="3" fill="none" opacity="0.9"/>
-  <path d="M100 48 L118 92 L100 78 L82 92 Z" fill="#c0392b"/>
-  <circle cx="100" cy="150" r="52" fill="#4a235a" stroke="#922b21" stroke-width="3"/>
-  <text x="100" y="158" font-family="Arial,sans-serif" font-size="22" fill="#ecf0f1" text-anchor="middle" font-weight="bold">(</text>
-  <text x="100" y="230" font-family="Arial,sans-serif" font-size="14" fill="#bdc3c7" text-anchor="middle">‹› +2</text>
+  <defs>
+    <linearGradient id="bgResent" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1a0a14"/>
+      <stop offset="100%" stop-color="#3d1f35"/>
+    </linearGradient>
+    <radialGradient id="glowResent" cx="50%" cy="45%" r="55%">
+      <stop offset="0%" stop-color="#922b21" stop-opacity="0.45"/>
+      <stop offset="70%" stop-color="#4a148c" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#1a0a14" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="200" height="280" fill="url(#bgResent)" rx="12"/>
+  <rect width="200" height="280" fill="url(#glowResent)" rx="12"/>
+  <rect x="8" y="8" width="184" height="264" rx="10" stroke="#7b241c" stroke-width="2.5" fill="none" opacity="0.85"/>
+
+  <!-- ???????????? -->
+  <path d="M100 95 L125 118 L118 128 L95 108 L78 125 L72 115 L95 98 Z" fill="#5d4037" opacity="0.35"/>
+  <path d="M100 108 L132 132 L124 142 L100 122 L72 138 L65 128 Z" fill="#4e342e" opacity="0.25"/>
+
+  <!-- ???? -->
+  <path d="M100 52 C130 72 145 110 130 145 C115 180 75 185 52 158 C35 138 38 105 58 88 C78 72 100 52 100 52Z"
+        fill="none" stroke="#c0392b" stroke-width="2" opacity="0.5"/>
+  <path d="M100 62 C118 78 128 108 118 138 C108 168 78 172 60 150 C48 135 50 108 68 95 C82 85 100 62 100 62Z"
+        fill="none" stroke="#8e44ad" stroke-width="1.5" opacity="0.45"/>
+
+  <!-- ????? -->
+  <circle cx="100" cy="148" r="48" fill="#2c0e1f" stroke="#922b21" stroke-width="2.5"/>
+  <g stroke="#e74c3c" stroke-width="2" stroke-linecap="round" opacity="0.75">
+    <line x1="100" y1="88" x2="100" y2="72"/>
+    <line x1="142" y1="120" x2="156" y2="112"/>
+    <line x1="142" y1="176" x2="156" y2="184"/>
+    <line x1="100" y1="208" x2="100" y2="224"/>
+    <line x1="58" y1="176" x2="44" y2="184"/>
+    <line x1="58" y1="120" x2="44" y2="112"/>
+  </g>
+
+  <!-- ???? -->
+  <path d="M78 138 L88 128 L100 142 L112 128 L122 138 L108 152 L122 162 L100 158 L78 162 L92 152 Z"
+        fill="#c0392b" opacity="0.9"/>
+  <circle cx="92" cy="136" r="4" fill="#1a0a14"/>
+  <circle cx="108" cy="136" r="4" fill="#1a0a14"/>
+
+  <rect x="58" y="218" width="84" height="18" rx="3" fill="#2d1f2f" stroke="#922b21" stroke-width="1"/>
+  <text x="100" y="231" font-family="Arial,PingFang SC,sans-serif" font-size="11" fill="#ecf0f1" text-anchor="middle" font-weight="bold">??</text>
+  <text x="100" y="252" font-family="Arial,PingFang SC,sans-serif" font-size="9" fill="#95a5a6" text-anchor="middle">???? +2</text>
 </svg>

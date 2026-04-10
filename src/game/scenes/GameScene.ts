@@ -9,7 +9,12 @@ import { InputManager } from '../core/InputManager';
 import { useGameStore } from '../../store/gameStore';
 import { getActionTargetMode } from '../../store/actionEffects';
 import type { Card } from '../../types/card';
-import { RUINS_REBUILD_COST, VICTORY_DAYS, VICTORY_HEARTS } from '@config/gameRules';
+import {
+  HAND_SIZE_MAX,
+  RUINS_REBUILD_COST,
+  VICTORY_DAYS,
+  VICTORY_HEARTS,
+} from '@config/gameRules';
 import { Tween, Easing } from '../utils/Tween';
 import {
   strokeDark,
@@ -115,6 +120,11 @@ export class GameScene extends Scene {
   private actionZoneBg!: PIXI.Graphics;
   private actionZoneHit: ActionZoneHit | null = null;
 
+  /** 手牌整理：底边弧形弃牌提示（随拖拽接近度变色） */
+  private handTrimBottomOverlayWrap!: PIXI.Container;
+  private handTrimBottomArcGfx!: PIXI.Graphics;
+  private handTrimBottomHint!: PIXI.Text;
+
   /** 需点格子的行动牌：手牌索引 + 交换第一格 */
   private pendingActionPick: null | {
     handIndex: number;
@@ -157,7 +167,10 @@ export class GameScene extends Scene {
     this.createHand();
     this.createUI();
     this.createActionDropZone();
+    this.createHandTrimBottomDiscardOverlay();
     this.wireDragVfxHooks();
+    this.dragSystem.setAwaitingHandTrimGetter(() => this.isHandTrimUiActive());
+    this.dragSystem.setDiscardDesignRoot(this.container);
     this.wirePendingActionOutsideCancel();
 
     this.storeUnsub = useGameStore.subscribe(() => this.onStoreUpdate());
@@ -173,6 +186,7 @@ export class GameScene extends Scene {
   /** React 卸载或销毁引擎前调用，避免订阅回调访问已销毁的显示对象 */
   public detachFromStore(): void {
     this.unwirePendingActionOutsideCancel();
+    this.dragSystem.setDiscardDesignRoot(null);
     this.storeUnsub?.();
     this.storeUnsub = null;
     this.clearPendingActionPick();
@@ -186,6 +200,7 @@ export class GameScene extends Scene {
     // 更新拖拽系统
     this.dragSystem.update();
     this.updateActionZoneVisual();
+    this.updateHandTrimBottomDiscardOverlay();
 
     for (const cell of this.gridCells) {
       cell.updatePetStressShake(deltaTime);
@@ -666,6 +681,10 @@ export class GameScene extends Scene {
     button.addChild(this.endTurnLabel);
 
     button.on('pointerdown', () => {
+      if (this.isHandTrimUiActive()) {
+        this.spawnHudFloat(`请先将手牌整理至 ${HAND_SIZE_MAX} 张以内`, 0xfff9c4);
+        return;
+      }
       void this.runEndTurnSequence();
     });
 
@@ -686,25 +705,32 @@ export class GameScene extends Scene {
     const bg = new PIXI.Graphics();
     this.actionZoneBg = bg;
     bg.beginFill(0xe1bee7, 1);
-    bg.lineStyle(3, 0xce93d8, 0.65);
+    bg.lineStyle(2, 0xce93d8, 0.35);
     bg.drawRoundedRect(0, 0, 500, 108, 24);
     bg.endFill();
-    bg.alpha = 0.22;
+    /** 底色更淡，避免压住文字 */
+    bg.alpha = 0.08;
+
+    const hintPlate = new PIXI.Graphics();
+    hintPlate.beginFill(0xfffefb, 0.92);
+    hintPlate.lineStyle(1, 0xba68c8, 0.45);
+    hintPlate.drawRoundedRect(22, 28, 456, 52, 16);
+    hintPlate.endFill();
 
     const hint = new PIXI.Text({
       text: '🎀 行动牌拖到这里 · 触发萌宠特技',
       style: {
-        fontSize: 20,
-        fill: 0x4a148c,
+        fontSize: 21,
+        fill: 0x3e2723,
         fontWeight: 'bold',
         stroke: strokePetBrown,
         align: 'center',
         dropShadow: {
-          alpha: 0.85,
+          alpha: 0.35,
           angle: Math.PI / 5,
-          blur: 6,
-          color: 0x000000,
-          distance: 2,
+          blur: 2,
+          color: 0xffffff,
+          distance: 0,
         },
       },
     });
@@ -712,6 +738,7 @@ export class GameScene extends Scene {
     hint.position.set(250, 54);
 
     wrap.addChild(bg);
+    wrap.addChild(hintPlate);
     wrap.addChild(hint);
     this.uiContainer.addChild(wrap);
 
@@ -731,6 +758,105 @@ export class GameScene extends Scene {
     this.dragSystem.setActionZone(hit);
   }
 
+  /** 回合末手牌整理：拖向屏幕底边弃牌时的弧形红区提示 */
+  private createHandTrimBottomDiscardOverlay() {
+    const wrap = new PIXI.Container();
+    this.handTrimBottomOverlayWrap = wrap;
+    wrap.position.set(0, 0);
+    wrap.eventMode = 'none';
+    wrap.visible = false;
+
+    const arc = new PIXI.Graphics();
+    this.handTrimBottomArcGfx = arc;
+    wrap.addChild(arc);
+
+    const hint = new PIXI.Text({
+      text: '向下拖至底边红区可弃牌',
+      style: {
+        fontSize: 21,
+        fill: 0xffebee,
+        fontWeight: 'bold',
+        stroke: { color: 0x3e2723, width: 5 },
+        align: 'center',
+        lineHeight: 28,
+        wordWrap: true,
+        wordWrapWidth: 880,
+      },
+    });
+    hint.anchor.set(0.5, 1);
+    hint.position.set(960, 1048);
+    this.handTrimBottomHint = hint;
+    wrap.addChild(hint);
+
+    this.uiContainer.addChildAt(wrap, 0);
+  }
+
+  private redrawHandTrimBottomArc(g: PIXI.Graphics, proximity: number) {
+    g.clear();
+    const w = 1920;
+    const h = 1080;
+    const p = Math.max(0, Math.min(1, proximity));
+    if (p < 0.02) return;
+
+    const bulge = 28 + 210 * p;
+    const sideLift = 18 + 52 * p;
+    const fillA = 0.07 + 0.5 * p;
+    const strokeA = 0.22 + 0.58 * p;
+
+    g.beginFill(0xb71c1c, fillA);
+    g.moveTo(0, h);
+    g.lineTo(0, h - sideLift);
+    g.quadraticCurveTo(w * 0.5, h - bulge, w, h - sideLift);
+    g.lineTo(w, h);
+    g.closePath();
+    g.endFill();
+
+    g.lineStyle(4, 0xff8a80, strokeA);
+    g.moveTo(0, h - sideLift);
+    g.quadraticCurveTo(w * 0.5, h - bulge, w, h - sideLift);
+  }
+
+  private updateHandTrimBottomDiscardOverlay() {
+    const wrap = this.handTrimBottomOverlayWrap;
+    const g = this.handTrimBottomArcGfx;
+    const hint = this.handTrimBottomHint;
+    if (!wrap || !g || !hint) return;
+
+    if (!this.isHandTrimUiActive()) {
+      wrap.visible = false;
+      return;
+    }
+
+    const dragging = this.dragSystem.isDraggingForHandTrim();
+    if (!dragging) {
+      wrap.visible = false;
+      g.clear();
+      return;
+    }
+
+    wrap.visible = true;
+    const p = this.dragSystem.getHandTrimBottomDiscardProximity();
+    this.redrawHandTrimBottomArc(g, p);
+
+    hint.alpha = 0.42 + 0.58 * p;
+    if (p >= DragSystem.HAND_TRIM_DISCARD_RELEASE) {
+      hint.style.fill = 0xe8f5e9;
+      hint.text =
+        '✓ 已达弃牌线\n松手将尝试弃牌；不可弃置卡仍会弹回';
+    } else if (p >= 0.38) {
+      hint.style.fill = 0xffebee;
+      hint.text = '再向下拖近底边\n未达弃牌线时松手不会弃牌';
+    } else {
+      hint.style.fill = 0xffebee;
+      hint.text = '向下拖向底边红区\n未达弃牌线时松手不会弃牌';
+    }
+  }
+
+  private isHandTrimUiActive(): boolean {
+    const state = useGameStore.getState();
+    return state.awaitingHandTrim || state.hand.length > HAND_SIZE_MAX;
+  }
+
   private wireDragVfxHooks() {
     this.dragSystem.onRequestEntityPlace = (card, cell, _tx, _ty) => {
       const get = useGameStore.getState;
@@ -740,7 +866,7 @@ export class GameScene extends Scene {
         cans: get().cans,
         cost: card.cardData.cost,
       });
-      if (get().cans < card.cardData.cost) {
+      if (card.cardData.cost > 0 && get().cans < card.cardData.cost) {
         card.playReturnAnimation();
         return;
       }
@@ -813,7 +939,7 @@ export class GameScene extends Scene {
         card.playReturnAnimation();
         return;
       }
-      if (get().cans < data.cost) {
+      if (data.cost > 0 && get().cans < data.cost) {
         card.playReturnAnimation();
         return;
       }
@@ -847,6 +973,20 @@ export class GameScene extends Scene {
       this.vfxQueue.enqueue(() =>
         runActionTriggerVfx(this.fxLayer, cardSnapshot, fromGlobal, center.x, center.y)
       );
+    };
+
+    this.dragSystem.onRequestHandTrimDiscard = (card, idx) => {
+      const get = useGameStore.getState;
+      const liveIdx = idx >= 0 && idx < get().hand.length ? idx : this.resolveCardIndexInStore(card);
+      if (liveIdx < 0 || liveIdx >= get().hand.length) {
+        card.playReturnAnimation();
+        return;
+      }
+      const ok = get().discardHandCardForTrim(liveIdx);
+      if (!ok) {
+        this.spawnHudFloat('此卡不可弃置，请打出', 0xffb3b3);
+        card.playReturnAnimation();
+      }
     };
   }
 
@@ -955,9 +1095,10 @@ export class GameScene extends Scene {
       wrap.alpha = wrapTarget;
     }
 
-    let target = 0.24;
+    /** 拖拽时略提亮，整体仍偏淡，保证字在 hintPlate 上清晰 */
+    let target = 0.09;
     if (this.dragSystem.isDraggingAction()) {
-      target = this.dragSystem.isActionZoneHovered() ? 0.44 : 0.28;
+      target = this.dragSystem.isActionZoneHovered() ? 0.16 : 0.11;
     }
     bg.alpha += (target - bg.alpha) * 0.22;
     if (Math.abs(target - bg.alpha) < 0.004) {
@@ -966,8 +1107,10 @@ export class GameScene extends Scene {
   }
 
   private setEndTurnInteractable(on: boolean) {
-    this.endTurnButton.eventMode = on ? 'static' : 'none';
-    this.endTurnButton.alpha = on ? 1 : 0.38;
+    const trim = this.isHandTrimUiActive();
+    const btnOn = on && !trim;
+    this.endTurnButton.eventMode = btnOn ? 'static' : 'none';
+    this.endTurnButton.alpha = btnOn ? 1 : 0.38;
     this.handContainer.eventMode = on ? 'static' : 'none';
     this.dragSystem.setEnabled(on);
   }
@@ -1138,6 +1281,13 @@ export class GameScene extends Scene {
       if (get().gameStatus !== 'playing') {
         return;
       }
+      if (get().awaitingHandTrim) {
+        this.spawnHudFloat(
+          `手牌超过 ${HAND_SIZE_MAX} 张，请打出或将可弃牌拖向屏幕底边红区弃牌`,
+          0xfff9c4
+        );
+        return;
+      }
       const turn = get().turn;
       await this.showPhaseBanner(`第 ${turn} 回合 · 准备阶段`, 520);
       await waitMs(PHASE_GAP_MS);
@@ -1159,7 +1309,14 @@ export class GameScene extends Scene {
     };
 
     const dayDisplay = Math.min(state.turn, VICTORY_DAYS);
-    const phaseLabel = phaseNames[state.phase] || state.phase;
+    let phaseLabel = phaseNames[state.phase] || state.phase;
+    if (this.isHandTrimUiActive()) {
+      phaseLabel = `弃牌整理（≤${HAND_SIZE_MAX} 张）`;
+    }
+
+    const endTurnEnabled = state.gameStatus === 'playing' && !this.roundResolving && !this.isHandTrimUiActive();
+    this.endTurnButton.eventMode = endTurnEnabled ? 'static' : 'none';
+    this.endTurnButton.alpha = endTurnEnabled ? 1 : 0.38;
 
     this.hudCansValue.text = String(state.cans);
     this.hudInterestLine.text = `银行利息 +${state.interest} 🥫/回合`;
@@ -1253,7 +1410,10 @@ export class GameScene extends Scene {
     let sub = '';
     if (st.gameStatus === 'won') {
       title = '🎉 大成功！萌宠直播间上市啦';
-      sub = `撑满 ${VICTORY_DAYS} 天，人气也达标啦～`;
+      sub =
+        st.turn > VICTORY_DAYS
+          ? `撑满 ${VICTORY_DAYS} 天，人气也达标啦～`
+          : `人气突破 ${VICTORY_HEARTS}，提前完成上市目标～`;
     } else if (st.endReason === 'hp') {
       title = '😿 要先休息一下…';
       sub = '店长元气见底了，改天再来营业吧';
@@ -1329,6 +1489,36 @@ export class GameScene extends Scene {
     });
     if (hand !== this.lastHandRef || hand.length !== this.handCards.length) {
       this.updateHandCards(hand);
+    }
+    this.maybeResolveHandTrim();
+  }
+
+  /** 手牌整理达标后进入次日并播放准备阶段横幅 */
+  private maybeResolveHandTrim() {
+    const s = useGameStore.getState();
+    if (s.gameStatus !== 'playing') return;
+    if (!s.awaitingHandTrim) return;
+    if (s.hand.length > HAND_SIZE_MAX) return;
+    useGameStore.getState().finishHandTrimAndAdvanceTurn();
+    const after = useGameStore.getState();
+    if (after.gameStatus === 'playing') {
+      void this.playAfterHandTrimBanner();
+    }
+  }
+
+  private async playAfterHandTrimBanner() {
+    if (this.roundResolving) return;
+    this.roundResolving = true;
+    this.setEndTurnInteractable(false);
+    try {
+      if (useGameStore.getState().gameStatus !== 'playing') return;
+      const turn = useGameStore.getState().turn;
+      await this.showPhaseBanner(`第 ${turn} 回合 · 准备阶段`, 520);
+      await waitMs(PHASE_GAP_MS);
+    } finally {
+      this.roundResolving = false;
+      const playing = useGameStore.getState().gameStatus === 'playing';
+      this.setEndTurnInteractable(playing);
     }
   }
 }

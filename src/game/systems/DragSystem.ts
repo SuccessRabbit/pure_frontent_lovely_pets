@@ -27,6 +27,13 @@ export interface ActionZoneHit {
  * 卡牌挂在 handContainer 下，位置必须用 toLocal 换算，不能与屏幕坐标混用。
  */
 export class DragSystem {
+  /** 卡牌中心 Y 超过此值开始计入「接近底边」 */
+  private static readonly HAND_TRIM_DISCARD_Y0 = 520;
+  /** 卡牌中心 Y 达到此值附近可松手弃牌 */
+  private static readonly HAND_TRIM_DISCARD_Y1 = 1000;
+  /** 接近度 ≥ 此值时视为在弃牌释放区内（与 UI 提示一致） */
+  public static readonly HAND_TRIM_DISCARD_RELEASE = 0.88;
+
   private draggingCard: CardSprite | null = null;
   private dragKind: HandDragKind | null = null;
   private dragCardIndex = -1;
@@ -39,6 +46,16 @@ export class DragSystem {
   private actionZone: ActionZoneHit | null = null;
   /** 当前帧行动区是否悬停（供 GameScene 画高亮） */
   private actionZoneHovered = false;
+  /** 底边弃牌：接近度足够，松手将弃牌 */
+  private handTrimBottomDiscardReady = false;
+  /** 是否处于回合末手牌整理（拖向底边弃牌） */
+  private awaitingHandTrim: (() => boolean) | null = null;
+  /**
+   * 设计分辨率根节点（如 GameScene.container）。用于把指针从画布像素转换到 1920×1080 设计坐标，
+   * 与 stage 缩放/位移对齐；缺省时误用 getGlobalPosition 会与 InputManager 坐标系不一致。
+   */
+  private discardDesignRoot: PIXI.Container | null = null;
+  private readonly _pointerDesignTmp = new PIXI.Point();
 
   /** 实体牌落格：由 GameScene 实现校验、立即 playCard + 排队 VFX（未设置 hook 时无法落格） */
   public onRequestEntityPlace:
@@ -47,6 +64,9 @@ export class DragSystem {
 
   /** 行动牌在释放区松手 */
   public onRequestActionTrigger: ((card: CardSprite, cardIndex: number) => void) | null = null;
+
+  /** 整理阶段：拖向屏幕底边红区松手弃牌 */
+  public onRequestHandTrimDiscard: ((card: CardSprite, cardIndex: number) => void) | null = null;
 
   constructor(
     inputManager: InputManager,
@@ -64,6 +84,14 @@ export class DragSystem {
 
   public setActionZone(zone: ActionZoneHit | null) {
     this.actionZone = zone;
+  }
+
+  public setAwaitingHandTrimGetter(fn: (() => boolean) | null) {
+    this.awaitingHandTrim = fn;
+  }
+
+  public setDiscardDesignRoot(root: PIXI.Container | null) {
+    this.discardDesignRoot = root;
   }
 
   public setEnabled(on: boolean) {
@@ -93,7 +121,40 @@ export class DragSystem {
     this.dragKind = null;
     this.dragCardIndex = -1;
     this.actionZoneHovered = false;
+    this.handTrimBottomDiscardReady = false;
     this.clearHighlights();
+  }
+
+  private isAwaitingHandTrim(): boolean {
+    return this.awaitingHandTrim?.() ?? false;
+  }
+
+  /**
+   * 手牌整理拖拽时：按指针在设计坐标系中的 Y 与底边的接近程度 0~1（与手牌跟随指针一致）。
+   */
+  public getHandTrimBottomDiscardProximity(): number {
+    if (!this.draggingCard || !this.isAwaitingHandTrim()) return 0;
+    const designY = this.getPointerDesignY();
+    if (designY === null) return 0;
+    const y0 = DragSystem.HAND_TRIM_DISCARD_Y0;
+    const y1 = DragSystem.HAND_TRIM_DISCARD_Y1;
+    if (designY <= y0) return 0;
+    if (designY >= y1) return 1;
+    return (designY - y0) / (y1 - y0);
+  }
+
+  /** 指针当前在设计坐标系中的 Y；无法换算时返回 null */
+  private getPointerDesignY(): number | null {
+    const root = this.discardDesignRoot;
+    if (!root) return null;
+    const mouse = this.inputManager.getMouse();
+    this._pointerDesignTmp.set(mouse.x, mouse.y);
+    root.toLocal(this._pointerDesignTmp, undefined, this._pointerDesignTmp);
+    return this._pointerDesignTmp.y;
+  }
+
+  private computeHandTrimBottomDiscardReady(): boolean {
+    return this.getHandTrimBottomDiscardProximity() >= DragSystem.HAND_TRIM_DISCARD_RELEASE;
   }
 
   private isDragTargetAlive(card: CardSprite | null): card is CardSprite {
@@ -161,19 +222,32 @@ export class DragSystem {
     this.draggingCard.x = local.x - this.dragOffset.x;
     this.draggingCard.y = local.y - this.dragOffset.y;
 
+    const trim = this.isAwaitingHandTrim();
+    const discardP = trim ? this.getHandTrimBottomDiscardProximity() : 0;
+    this.handTrimBottomDiscardReady = trim && this.computeHandTrimBottomDiscardReady();
+    const towardBottomDiscard = trim && discardP > 0.08;
+
     if (this.dragKind === 'entity') {
-      const hoveredCell = this.findHoveredCell(mouse.x, mouse.y);
-      this.gridCells.forEach(cell => {
-        if (cell === hoveredCell && cell.isEmpty && !cell.isRuins) {
-          cell.setHighlight(true);
-        } else {
-          cell.setHighlight(false);
-        }
-      });
+      if (towardBottomDiscard) {
+        this.clearHighlights();
+      } else {
+        const hoveredCell = this.findHoveredCell(mouse.x, mouse.y);
+        this.gridCells.forEach(cell => {
+          if (cell === hoveredCell && cell.isEmpty && !cell.isRuins) {
+            cell.setHighlight(true);
+          } else {
+            cell.setHighlight(false);
+          }
+        });
+      }
       this.actionZoneHovered = false;
     } else {
       this.clearHighlights();
-      this.actionZoneHovered = this.actionZone?.containsScreen(mouse.x, mouse.y) ?? false;
+      if (towardBottomDiscard) {
+        this.actionZoneHovered = false;
+      } else {
+        this.actionZoneHovered = this.actionZone?.containsScreen(mouse.x, mouse.y) ?? false;
+      }
     }
 
     if (mouse.justReleased) {
@@ -182,6 +256,7 @@ export class DragSystem {
         kind: this.dragKind,
         screen: [mouse.x, mouse.y],
         actionZoneHovered: this.actionZoneHovered,
+        handTrimBottomDiscardReady: this.handTrimBottomDiscardReady,
       });
       if (this.dragKind === 'action') {
         this.endDragAction(mouse.x, mouse.y);
@@ -197,11 +272,15 @@ export class DragSystem {
 
     const card = this.draggingCard;
     const idx = this.dragCardIndex;
+    const trim = this.isAwaitingHandTrim();
+    const doHandTrimDiscard = trim && this.computeHandTrimBottomDiscardReady();
+
     this.draggingCard = null;
     this.dragKind = null;
     this.dragCardIndex = -1;
 
     this.clearHighlights();
+    this.handTrimBottomDiscardReady = false;
 
     logDragFlow('endDragEntity', {
       card: `${card.cardData.id}:${card.cardData.type}`,
@@ -209,6 +288,18 @@ export class DragSystem {
       targetCell: targetCell ? [targetCell.row, targetCell.col] : null,
       targetEmpty: targetCell?.isEmpty ?? null,
     });
+
+    if (doHandTrimDiscard) {
+      if (this.onRequestHandTrimDiscard) {
+        card.playDragEndAnimation({ keepFront: true });
+        this.onRequestHandTrimDiscard(card, idx);
+      } else {
+        card.playDragEndAnimation();
+        card.playReturnAnimation();
+      }
+      logDragFlow('endDragEntity:handTrimDiscard');
+      return;
+    }
 
     if (targetCell && targetCell.isEmpty && !targetCell.isRuins) {
       card.playDragEndAnimation({ keepFront: true });
@@ -250,12 +341,28 @@ export class DragSystem {
 
     const card = this.draggingCard;
     const idx = this.dragCardIndex;
+    const trim = this.isAwaitingHandTrim();
+    const doHandTrimDiscard = trim && this.computeHandTrimBottomDiscardReady();
+
     this.draggingCard = null;
     this.dragKind = null;
     this.dragCardIndex = -1;
     this.actionZoneHovered = false;
+    this.handTrimBottomDiscardReady = false;
 
     this.clearHighlights();
+
+    if (doHandTrimDiscard) {
+      if (this.onRequestHandTrimDiscard) {
+        card.playDragEndAnimation({ keepFront: true });
+        this.onRequestHandTrimDiscard(card, idx);
+      } else {
+        card.playDragEndAnimation();
+        card.playReturnAnimation();
+      }
+      logDragFlow('endDragAction:handTrimDiscard');
+      return;
+    }
 
     const inZone = this.actionZone?.containsScreen(screenX, screenY) ?? false;
     logDragFlow('endDragAction', {
@@ -302,5 +409,13 @@ export class DragSystem {
 
   public isActionZoneHovered(): boolean {
     return this.actionZoneHovered;
+  }
+
+  public isDiscardZoneHovered(): boolean {
+    return this.handTrimBottomDiscardReady;
+  }
+
+  public isDraggingForHandTrim(): boolean {
+    return this.draggingCard !== null && this.isAwaitingHandTrim();
   }
 }
