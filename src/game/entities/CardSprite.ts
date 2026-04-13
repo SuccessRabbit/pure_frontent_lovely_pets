@@ -12,6 +12,13 @@ import {
 
 const CARD_W = 200;
 const CARD_H = 280;
+const CARD_TEXT_PADDING_X = 14;
+const DESC_TEXT_Y = 184;
+const DESC_TEXT_BOTTOM_PADDING = 14;
+const DESC_TEXT_WIDTH = CARD_W - CARD_TEXT_PADDING_X * 2;
+const DESC_TEXT_MAX_HEIGHT = CARD_H - DESC_TEXT_Y - DESC_TEXT_BOTTOM_PADDING;
+const DESC_FONT_MAX = 13;
+const DESC_FONT_MIN = 9;
 /** 手牌静止时随机倾斜幅度（弧度），约 ±6° */
 const HAND_TILT_MAX = (6 * Math.PI) / 180;
 
@@ -128,15 +135,11 @@ export class CardSprite extends PIXI.Container {
     this.nameText.y = 155;
     this.addChild(this.nameText);
 
-    // 卡牌描述
-    this.descText = new PIXI.Text(this.cardData.description, {
-      fontSize: 12,
-      fill: 0x666666,
-      wordWrap: true,
-      wordWrapWidth: 180,
-    });
-    this.descText.x = 10;
-    this.descText.y = 185;
+    // 卡牌描述：按卡牌内边距换行，并根据描述区域高度自适应字号。
+    this.descText = new PIXI.Text(this.cardData.description, this.createDescriptionStyle(DESC_FONT_MAX));
+    this.descText.x = CARD_TEXT_PADDING_X;
+    this.descText.y = DESC_TEXT_Y;
+    this.fitDescriptionText();
     this.addChild(this.descText);
 
     // 属性显示（收益/压力）
@@ -145,9 +148,10 @@ export class CardSprite extends PIXI.Container {
         fontSize: 14,
         fill: 0x27ae60,
         fontWeight: 'bold',
+        stroke: { color: 0xffffff, width: 3 },
       });
-      incomeText.x = 10;
-      incomeText.y = 250;
+      incomeText.x = 14;
+      incomeText.y = 122;
       this.addChild(incomeText);
     }
 
@@ -156,10 +160,32 @@ export class CardSprite extends PIXI.Container {
         fontSize: 14,
         fill: 0xe74c3c,
         fontWeight: 'bold',
+        stroke: { color: 0xffffff, width: 3 },
       });
-      stressText.x = 100;
-      stressText.y = 250;
+      stressText.x = 106;
+      stressText.y = 122;
       this.addChild(stressText);
+    }
+  }
+
+  private createDescriptionStyle(fontSize: number) {
+    return {
+      fontSize,
+      lineHeight: Math.ceil(fontSize * 1.22),
+      fill: 0x666666,
+      wordWrap: true,
+      wordWrapWidth: DESC_TEXT_WIDTH,
+      breakWords: true,
+      whiteSpace: 'normal' as const,
+    };
+  }
+
+  private fitDescriptionText() {
+    for (let fontSize = DESC_FONT_MAX; fontSize >= DESC_FONT_MIN; fontSize--) {
+      this.descText.style = this.createDescriptionStyle(fontSize);
+      if (this.descText.height <= DESC_TEXT_MAX_HEIGHT && this.descText.width <= DESC_TEXT_WIDTH + 1) {
+        return;
+      }
     }
   }
 
@@ -169,7 +195,7 @@ export class CardSprite extends PIXI.Container {
     Tween.killTarget(this);
     Tween.killTarget(this.scale);
     this.zIndex = 1000;
-    Tween.to(this, { y: this.originalY - 54, rotation: 0 }, 260, Easing.easeOutCubic);
+    Tween.to(this, { y: this.originalY - 94, rotation: 0 }, 260, Easing.easeOutCubic);
     Tween.to(this.scale, { x: 1.14, y: 1.14 }, 260, Easing.easeOutCubic);
   }
 

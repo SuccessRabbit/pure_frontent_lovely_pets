@@ -2,7 +2,8 @@ import * as PIXI from 'pixi.js';
 import { CardSprite } from '../entities/CardSprite';
 import { GridCell } from '../entities/GridCell';
 import { InputManager } from '../core/InputManager';
-import { Tween } from '../utils/Tween';
+import { Tween, Easing } from '../utils/Tween';
+import type { IsometricPetRenderer } from '../renderers/IsometricPetRenderer';
 
 export type HandDragKind = 'entity' | 'action';
 const DEBUG_DRAG_FLOW = true;
@@ -27,10 +28,10 @@ export interface ActionZoneHit {
  * 卡牌挂在 handContainer 下，位置必须用 toLocal 换算，不能与屏幕坐标混用。
  */
 export class DragSystem {
-  /** 卡牌中心 Y 超过此值开始计入「接近底边」 */
-  private static readonly HAND_TRIM_DISCARD_Y0 = 520;
-  /** 卡牌中心 Y 达到此值附近可松手弃牌 */
-  private static readonly HAND_TRIM_DISCARD_Y1 = 1000;
+  /** 设计分辨率高度 */
+  private static readonly DESIGN_HEIGHT = 1080;
+  /** 距离底部多少像素内开始计入「接近底边弃牌区」 */
+  private static readonly DISCARD_ZONE_BOTTOM = 100;
   /** 接近度 ≥ 此值时视为在弃牌释放区内（与 UI 提示一致） */
   public static readonly HAND_TRIM_DISCARD_RELEASE = 0.88;
 
@@ -56,6 +57,12 @@ export class DragSystem {
    */
   private discardDesignRoot: PIXI.Container | null = null;
   private readonly _pointerDesignTmp = new PIXI.Point();
+  /** 3D 宠物渲染器引用（用于 3D 格子命中检测） */
+  private petRenderer: IsometricPetRenderer | null = null;
+  /** 当前悬停的格子（供 GameScene 同步 3D 高亮） */
+  private hoveredCell: GridCell | null = null;
+  /** 拖拽卡牌当前目标透明度，避免每帧重复创建 tween */
+  private dragCardAlphaTarget = 1;
 
   /** 实体牌落格：由 GameScene 实现校验、立即 playCard + 排队 VFX（未设置 hook 时无法落格） */
   public onRequestEntityPlace:
@@ -94,6 +101,14 @@ export class DragSystem {
     this.discardDesignRoot = root;
   }
 
+  public setPetRenderer(renderer: IsometricPetRenderer | null): void {
+    this.petRenderer = renderer;
+  }
+
+  public getHoveredCell(): GridCell | null {
+    return this.hoveredCell;
+  }
+
   public setEnabled(on: boolean) {
     this.enabled = on;
     if (!on && this.draggingCard) {
@@ -117,6 +132,11 @@ export class DragSystem {
   }
 
   private clearDragStateOnly() {
+    if (this.draggingCard && !this.draggingCard.destroyed) {
+      Tween.killTarget(this.draggingCard);
+      this.draggingCard.alpha = 1;
+    }
+    this.dragCardAlphaTarget = 1;
     this.draggingCard = null;
     this.dragKind = null;
     this.dragCardIndex = -1;
@@ -129,18 +149,19 @@ export class DragSystem {
     return this.awaitingHandTrim?.() ?? false;
   }
 
-  /**
-   * 手牌整理拖拽时：按指针在设计坐标系中的 Y 与底边的接近程度 0~1（与手牌跟随指针一致）。
+   /**
+   * 手牌整理拖拽时：按指针在设计坐标系中的 Y 与底边的接近程度 0~1。
+   * 弃牌区固定为底部 100 像素范围内。
    */
   public getHandTrimBottomDiscardProximity(): number {
     if (!this.draggingCard || !this.isAwaitingHandTrim()) return 0;
     const designY = this.getPointerDesignY();
     if (designY === null) return 0;
-    const y0 = DragSystem.HAND_TRIM_DISCARD_Y0;
-    const y1 = DragSystem.HAND_TRIM_DISCARD_Y1;
-    if (designY <= y0) return 0;
-    if (designY >= y1) return 1;
-    return (designY - y0) / (y1 - y0);
+    const bottom = DragSystem.DESIGN_HEIGHT;
+    const zoneTop = bottom - DragSystem.DISCARD_ZONE_BOTTOM;
+    if (designY < zoneTop) return 0;
+    if (designY >= bottom) return 1;
+    return (designY - zoneTop) / DragSystem.DISCARD_ZONE_BOTTOM;
   }
 
   /** 指针当前在设计坐标系中的 Y；无法换算时返回 null */
@@ -159,6 +180,14 @@ export class DragSystem {
 
   private isDragTargetAlive(card: CardSprite | null): card is CardSprite {
     return card != null && !card.destroyed && card.parent != null;
+  }
+
+  private tweenDraggingCardAlpha(targetAlpha: number) {
+    if (!this.draggingCard || this.draggingCard.destroyed) return;
+    if (Math.abs(this.dragCardAlphaTarget - targetAlpha) < 0.001) return;
+    this.dragCardAlphaTarget = targetAlpha;
+    Tween.killTarget(this.draggingCard);
+    Tween.to(this.draggingCard, { alpha: targetAlpha }, 160, Easing.easeOutCubic);
   }
 
   public startDrag(
@@ -186,6 +215,7 @@ export class DragSystem {
     this.draggingCard = card;
     this.dragKind = kind;
     this.dragCardIndex = cardIndex;
+    this.dragCardAlphaTarget = 1;
     const local = this.handContainer.toLocal({ x: screenX, y: screenY });
     this.dragOffset.x = local.x - card.x;
     this.dragOffset.y = local.y - card.y;
@@ -228,20 +258,24 @@ export class DragSystem {
     const towardBottomDiscard = trim && discardP > 0.08;
 
     if (this.dragKind === 'entity') {
+      let validHoveredCell: GridCell | null = null;
       if (towardBottomDiscard) {
         this.clearHighlights();
       } else {
         const hoveredCell = this.findHoveredCell(mouse.x, mouse.y);
         this.gridCells.forEach(cell => {
           if (cell === hoveredCell && cell.isEmpty && !cell.isRuins) {
+            validHoveredCell = cell;
             cell.setHighlight(true);
           } else {
             cell.setHighlight(false);
           }
         });
       }
+      this.tweenDraggingCardAlpha(validHoveredCell ? 0.2 : 1);
       this.actionZoneHovered = false;
     } else {
+      this.tweenDraggingCardAlpha(1);
       this.clearHighlights();
       if (towardBottomDiscard) {
         this.actionZoneHovered = false;
@@ -281,6 +315,9 @@ export class DragSystem {
 
     this.clearHighlights();
     this.handTrimBottomDiscardReady = false;
+    Tween.killTarget(card);
+    card.alpha = 1;
+    this.dragCardAlphaTarget = 1;
 
     logDragFlow('endDragEntity', {
       card: `${card.cardData.id}:${card.cardData.type}`,
@@ -349,6 +386,9 @@ export class DragSystem {
     this.dragCardIndex = -1;
     this.actionZoneHovered = false;
     this.handTrimBottomDiscardReady = false;
+    Tween.killTarget(card);
+    card.alpha = 1;
+    this.dragCardAlphaTarget = 1;
 
     this.clearHighlights();
 
@@ -382,9 +422,21 @@ export class DragSystem {
   }
 
   private findHoveredCell(screenX: number, screenY: number): GridCell | null {
-    return (
-      this.gridCells.find(cell => cell.containsScreenPoint(screenX, screenY)) || null
-    );
+    // 优先使用 3D 射线检测
+    if (this.petRenderer) {
+      const gridPos = this.petRenderer.screenToGridCell(screenX, screenY);
+      if (gridPos) {
+        const cell = this.gridCells.find(c => c.row === gridPos.row && c.col === gridPos.col);
+        this.hoveredCell = cell || null;
+        return this.hoveredCell;
+      }
+      this.hoveredCell = null;
+      return null;
+    }
+    // 降级：使用 2D 命中检测
+    const cell = this.gridCells.find(cell => cell.containsScreenPoint(screenX, screenY)) || null;
+    this.hoveredCell = cell;
+    return cell;
   }
 
   private highlightValidCells() {
@@ -397,6 +449,7 @@ export class DragSystem {
 
   private clearHighlights() {
     this.gridCells.forEach(cell => cell.setHighlight(false));
+    this.hoveredCell = null;
   }
 
   public isDragging(): boolean {

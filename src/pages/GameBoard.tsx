@@ -44,6 +44,8 @@ export function GameBoard() {
       ref={canvasRef}
       style={{
         display: 'block',
+        position: 'absolute',
+        inset: 0,
         width: '100vw',
         height: '100vh',
         margin: 0,

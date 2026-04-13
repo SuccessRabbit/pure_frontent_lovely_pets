@@ -86,6 +86,10 @@ export class InputManager {
     return this.mouse;
   }
 
+  public getCanvas(): HTMLCanvasElement {
+    return this.canvas;
+  }
+
   public destroy() {
     this.canvas.removeEventListener('mousedown', this.onMouseDown);
     this.canvas.removeEventListener('mouseup', this.onMouseUp);

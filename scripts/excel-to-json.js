@@ -3,9 +3,13 @@
  * 使用方法：node scripts/excel-to-json.js
  */
 
-const XLSX = require('xlsx');
-const fs = require('fs');
-const path = require('path');
+import XLSX from 'xlsx';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // 配置路径
 const EXCEL_PATH = path.join(__dirname, '../excel/cards.xlsx');
@@ -79,7 +83,7 @@ function readExcel(filePath) {
  */
 function validateRow(row, index) {
   const required = ['ID', '名称', '类型', '费用', '描述', '稀有度'];
-  const missing = required.filter(field => !row[field]);
+  const missing = required.filter(field => row[field] === undefined || row[field] === null);
 
   if (missing.length > 0) {
     console.error(`❌ 第 ${index + 2} 行缺少必填字段: ${missing.join(', ')}`);
@@ -389,8 +393,8 @@ function main() {
 }
 
 // 执行
-if (require.main === module) {
+if (import.meta.url === `file://${process.argv[1]}`) {
   main();
 }
 
-module.exports = { readExcel, transformRow, validateRow, cardImageFolder, POST_MERGE_ACTION_CARDS };
+export { readExcel, transformRow, validateRow, cardImageFolder, POST_MERGE_ACTION_CARDS };

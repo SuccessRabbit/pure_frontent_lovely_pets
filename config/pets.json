@@ -7,14 +7,17 @@
     "rarity": "common",
     "description": "可爱但容易焦虑的新人主播",
     "image": "/assets/cards/pets/pet_001.svg",
-    "tags": ["dog", "cute"],
+    "tags": [
+      "dog",
+      "cute"
+    ],
     "income": 2,
     "stress": 1,
     "stressLimit": 3,
     "effects": [
       {
-        "type": "raw",
-        "description": "相邻牛马效率+10%"
+        "type": "parsed",
+        "raw": "相邻牛马效率+10%"
       }
     ]
   },
@@ -26,7 +29,10 @@
     "rarity": "rare",
     "description": "高收益高风险的流量担当",
     "image": "/assets/cards/pets/pet_002.svg",
-    "tags": ["dog", "chaos"],
+    "tags": [
+      "dog",
+      "chaos"
+    ],
     "income": 5,
     "stress": 2,
     "stressLimit": 3,
@@ -45,7 +51,10 @@
     "rarity": "common",
     "description": "佛系主播，岁月静好",
     "image": "/assets/cards/pets/pet_003.svg",
-    "tags": ["chill", "cute"],
+    "tags": [
+      "chill",
+      "cute"
+    ],
     "income": 1,
     "stress": 0,
     "stressLimit": 5,
@@ -64,14 +73,17 @@
     "rarity": "common",
     "description": "吃播专家，但会传染焦虑",
     "image": "/assets/cards/pets/pet_004.svg",
-    "tags": ["cat", "cute"],
+    "tags": [
+      "cat",
+      "cute"
+    ],
     "income": 3,
     "stress": 1,
     "stressLimit": 3,
     "effects": [
       {
-        "type": "raw",
-        "description": "相邻萌宠每回合压力+1"
+        "type": "parsed",
+        "raw": "相邻萌宠每回合压力+1"
       }
     ]
   },
@@ -83,7 +95,10 @@
     "rarity": "rare",
     "description": "优雅的贵族主播",
     "image": "/assets/cards/pets/pet_005.svg",
-    "tags": ["cat", "elegant"],
+    "tags": [
+      "cat",
+      "elegant"
+    ],
     "income": 4,
     "stress": 1,
     "stressLimit": 3,
@@ -102,7 +117,10 @@
     "rarity": "epic",
     "description": "传说中的自律主播",
     "image": "/assets/cards/pets/pet_006.svg",
-    "tags": ["cat", "legendary"],
+    "tags": [
+      "cat",
+      "legendary"
+    ],
     "income": 3,
     "stress": 0,
     "stressLimit": 4,

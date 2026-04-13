@@ -7,7 +7,9 @@
     "rarity": "rare",
     "description": "瞬间安抚萌宠的神器",
     "image": "/assets/cards/actions/action_001.svg",
-    "tags": ["consumable"],
+    "tags": [
+      "consumable"
+    ],
     "effects": [
       {
         "type": "raw",
@@ -23,11 +25,13 @@
     "rarity": "epic",
     "description": "短期激励，长期隐患",
     "image": "/assets/cards/actions/action_002.svg",
-    "tags": ["risky"],
+    "tags": [
+      "risky"
+    ],
     "effects": [
       {
-        "type": "raw",
-        "description": "全场牛马本回合效率+100%，下回合加入1张怨气卡到弃牌堆"
+        "type": "parsed",
+        "raw": "全场牛马本回合效率+100"
       }
     ]
   },
@@ -39,7 +43,9 @@
     "rarity": "common",
     "description": "调整阵型的基础操作",
     "image": "/assets/cards/actions/action_003.svg",
-    "tags": ["utility"],
+    "tags": [
+      "utility"
+    ],
     "effects": [
       {
         "type": "raw",
@@ -55,7 +61,9 @@
     "rarity": "legendary",
     "description": "土豪刷火箭",
     "image": "/assets/cards/actions/action_004.svg",
-    "tags": ["powerful"],
+    "tags": [
+      "powerful"
+    ],
     "effects": [
       {
         "type": "raw",
@@ -71,11 +79,13 @@
     "rarity": "rare",
     "description": "团建活动",
     "image": "/assets/cards/actions/action_005.svg",
-    "tags": ["aoe"],
+    "tags": [
+      "aoe"
+    ],
     "effects": [
       {
-        "type": "raw",
-        "description": "全场萌宠压力-2"
+        "type": "parsed",
+        "raw": "全场萌宠压力-2"
       }
     ]
   },
@@ -87,7 +97,9 @@
     "rarity": "common",
     "description": "资本家的冷酷决策",
     "image": "/assets/cards/actions/action_006.svg",
-    "tags": ["sacrifice"],
+    "tags": [
+      "sacrifice"
+    ],
     "effects": [
       {
         "type": "raw",
@@ -103,7 +115,9 @@
     "rarity": "common",
     "description": "赌一把",
     "image": "/assets/cards/actions/action_007.svg",
-    "tags": ["draw"],
+    "tags": [
+      "draw"
+    ],
     "effects": [
       {
         "type": "raw",
@@ -119,7 +133,9 @@
     "rarity": "rare",
     "description": "临时撤退",
     "image": "/assets/cards/actions/action_008.svg",
-    "tags": ["utility"],
+    "tags": [
+      "utility"
+    ],
     "effects": [
       {
         "type": "raw",
@@ -133,15 +149,17 @@
     "type": "action_debuff",
     "cost": 0,
     "rarity": "common",
-    "canDiscard": false,
     "description": "打出不消耗罐头，不可弃置只能打出；打出时全场萌宠压力+2",
     "image": "/assets/cards/actions/action_resentment.svg",
-    "tags": ["curse"],
+    "tags": [
+      "curse"
+    ],
     "effects": [
       {
-        "type": "raw",
-        "description": "打出时：全场萌宠压力+2"
+        "type": "parsed",
+        "raw": "全场萌宠压力+2"
       }
-    ]
+    ],
+    "canDiscard": false
   }
 ]

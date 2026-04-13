@@ -7,10 +7,13 @@
     "rarity": "common",
     "description": "廉价劳动力，可以献祭",
     "image": "/assets/cards/workers/worker_001.svg",
-    "tags": ["worker", "intern"],
+    "tags": [
+      "worker",
+      "intern"
+    ],
     "income": 1,
     "stress": 0,
-    "stressLimit": 0,
+    "stressLimit": 3,
     "effects": [
       {
         "type": "raw",
@@ -26,10 +29,13 @@
     "rarity": "rare",
     "description": "经验丰富的老员工",
     "image": "/assets/cards/workers/worker_002.svg",
-    "tags": ["worker", "veteran"],
+    "tags": [
+      "worker",
+      "veteran"
+    ],
     "income": 3,
     "stress": 0,
-    "stressLimit": 0,
+    "stressLimit": 3,
     "effects": [
       {
         "type": "raw",
@@ -45,14 +51,17 @@
     "rarity": "rare",
     "description": "内卷之王，但会打击周围士气",
     "image": "/assets/cards/workers/worker_003.svg",
-    "tags": ["worker", "toxic"],
+    "tags": [
+      "worker",
+      "toxic"
+    ],
     "income": 5,
     "stress": 0,
-    "stressLimit": 0,
+    "stressLimit": 3,
     "effects": [
       {
-        "type": "raw",
-        "description": "相邻牛马效率-20%"
+        "type": "parsed",
+        "raw": "相邻牛马效率-20%"
       }
     ]
   },
@@ -64,10 +73,13 @@
     "rarity": "epic",
     "description": "精打细算的财务专家",
     "image": "/assets/cards/workers/worker_004.svg",
-    "tags": ["worker", "finance"],
+    "tags": [
+      "worker",
+      "finance"
+    ],
     "income": 1,
     "stress": 0,
-    "stressLimit": 0,
+    "stressLimit": 3,
     "effects": [
       {
         "type": "raw",
@@ -83,10 +95,13 @@
     "rarity": "epic",
     "description": "风险对冲专家",
     "image": "/assets/cards/workers/worker_005.svg",
-    "tags": ["worker", "finance"],
+    "tags": [
+      "worker",
+      "finance"
+    ],
     "income": 0,
     "stress": 0,
-    "stressLimit": 0,
+    "stressLimit": 3,
     "effects": [
       {
         "type": "raw",

@@ -50,6 +50,8 @@ export class GridCell extends PIXI.Container {
   private actionPickEligible = false;
   private actionPickSelected = false;
   private isHighlighted = false;
+  private renderBackground3DMode = false;
+  /** 3D 模式下不再使用 entitySprite，改为通过 onEntitySet 回调通知外部 */
   private entitySprite: PIXI.Sprite | null = null;
   private entitySpriteRestX = 0;
   private entitySpriteRestY = 0;
@@ -65,6 +67,7 @@ export class GridCell extends PIXI.Container {
   private stressTrack!: PIXI.Graphics;
   private stressFill!: PIXI.Graphics;
   private stressText!: PIXI.Text;
+  private readonly stressBaseWidth: number;
 
   public row: number;
   public col: number;
@@ -75,12 +78,16 @@ export class GridCell extends PIXI.Container {
   public readonly cellWidth: number;
   public readonly cellHeight: number;
 
+  /** 外部回调：当实体设置/清除时通知（用于 3D 渲染） */
+  public onEntitySet: ((entity: GridEntity | null, row: number, col: number) => void) | null = null;
+
   constructor(row: number, col: number, width: number, height: number) {
     super();
     this.row = row;
     this.col = col;
     this.cellWidth = width;
     this.cellHeight = height;
+    this.stressBaseWidth = width - 8;
 
     this.eventMode = 'static';
     this.hitArea = new PIXI.Rectangle(0, 0, width, height);
@@ -102,20 +109,20 @@ export class GridCell extends PIXI.Container {
     this.addChild(this.background);
   }
 
-  private createStressUi(width: number, height: number) {
+  private createStressUi(_width: number, height: number) {
     const pad = 4;
-    const barW = width - pad * 2;
+    const barW = this.stressBaseWidth;
     const barH = 7;
     const barY = height - barH - pad;
 
     this.stressText = new PIXI.Text('', {
-      fontSize: 11,
+      fontSize: 14,
       fill: 0xfce4ec,
       fontWeight: 'bold',
       stroke: strokeDark,
     });
     this.stressText.x = pad;
-    this.stressText.y = barY - 13;
+    this.stressText.y = barY - 20;
 
     this.stressTrack = new PIXI.Graphics();
     this.stressTrack.beginFill(0x1a1a2e, 0.95);
@@ -186,6 +193,7 @@ export class GridCell extends PIXI.Container {
     if (this.actionPickEligible === eligible && this.actionPickSelected === selected) return;
     this.actionPickEligible = eligible;
     this.actionPickSelected = selected;
+    if (this.renderBackground3DMode) return;
     this.redrawActionPickOverlay();
   }
 
@@ -201,6 +209,10 @@ export class GridCell extends PIXI.Container {
     if (this.isHighlighted === highlighted) return;
 
     this.isHighlighted = highlighted;
+    if (this.renderBackground3DMode) {
+      this.highlight.visible = false;
+      return;
+    }
     this.highlight.visible = highlighted;
 
     if (highlighted) {
@@ -283,6 +295,8 @@ export class GridCell extends PIXI.Container {
     this.stressShakePhase = 0;
     this.stressShakePet = false;
     this.stressShakeRatio = 0;
+    // 注意：不要在这里调用 onEntitySet 回调
+    // 调用者 setGridEntity 会在清除后负责设置新实体或通知外部
   }
 
   private resetEntitySpriteToRest() {
@@ -302,13 +316,32 @@ export class GridCell extends PIXI.Container {
     return this.entityPortraitSuppressed;
   }
 
-  /** 同步网格实体立绘（空位则清除） */
+  /** 设置为 3D 渲染模式：隐藏 2D 背景（由 Three.js 3D 格子替代） */
+  public setRenderBackground3DMode(enabled: boolean): void {
+    this.renderBackground3DMode = enabled;
+    this.background.visible = !enabled;
+    this.highlight.visible = !enabled && this.isHighlighted;
+    if (enabled) {
+      this.setStressOverlay3DAnchor(null);
+    } else {
+      this.stressContainer.position.set(0, 0);
+      this.stressContainer.scale.set(1);
+    }
+    if (enabled) {
+      Tween.killTarget(this.actionPickGfx);
+      this.actionPickGfx.visible = false;
+    } else {
+      this.redrawActionPickOverlay();
+    }
+  }
+
+  /** 同步网格实体立绘（空位则清除）- 3D 模式下委托给外部渲染 */
   public setGridEntity(entity: GridEntity | null): void {
     if (!entity) {
       this.entityPortraitSuppressed = false;
     }
     const key = entity ? `${entity.id}|${entity.cardId}|${entity.type}` : null;
-    if (key && key === this.currentEntityKey && this.entitySprite) {
+    if (key && key === this.currentEntityKey && !this.entitySprite && this.onEntitySet === null) {
       logGridCell('setGridEntity:reuse', {
         cell: [this.row, this.col],
         key,
@@ -320,6 +353,9 @@ export class GridCell extends PIXI.Container {
     this.clearEntitySprite();
     if (!entity) {
       logGridCell('setGridEntity:clear', { cell: [this.row, this.col] });
+      // 通知外部（3D 渲染器）移除模型
+      console.log('[GridCell] setGridEntity:clear, onEntitySet:', this.onEntitySet !== null, 'at', this.row, this.col);
+      this.onEntitySet?.(null, this.row, this.col);
       return;
     }
     logGridCell('setGridEntity:loadStart', {
@@ -330,6 +366,20 @@ export class GridCell extends PIXI.Container {
       gen,
     });
 
+    // 如果有外部回调（3D 模式），使用外部渲染
+    if (this.onEntitySet) {
+      console.log('[GridCell] setGridEntity:3DMode', entity.cardId, 'at', this.row, this.col);
+      this.currentEntityKey = key;
+      this.onEntitySet(entity, this.row, this.col);
+      logGridCell('setGridEntity:3DMode', {
+        cell: [this.row, this.col],
+        key,
+      });
+      return;
+    }
+
+    console.log('[GridCell] setGridEntity:2DMode (onEntitySet is null!)', entity.cardId, 'at', this.row, this.col);
+    // 原有 2D 精灵模式（备用）
     void loadIllustrationForEntity(entity.cardId, entity.type).then(tex => {
       if (this.destroyed || gen !== this.entityLoadGen) {
         logGridCell('setGridEntity:loadAborted', {
@@ -437,5 +487,25 @@ export class GridCell extends PIXI.Container {
     Tween.to(this.stressFill, { alpha: 0.35 }, 200, Easing.easeOutQuad, () => {
       Tween.to(this.stressFill, { alpha: 1 }, 280, Easing.easeInQuad);
     });
+  }
+
+  public setStressOverlay3DAnchor(
+    anchor: { x: number; y: number; scale?: number } | null
+  ) {
+    if (!this.renderBackground3DMode) {
+      this.stressContainer.position.set(0, 0);
+      this.stressContainer.scale.set(1);
+      return;
+    }
+    if (!anchor) {
+      this.stressContainer.visible = false;
+      return;
+    }
+
+    const scale = anchor.scale ?? 1;
+    const offsetX = anchor.x - this.x - (this.stressBaseWidth * scale) / 2 - 4 * scale;
+    const offsetY = anchor.y - this.y;
+    this.stressContainer.position.set(offsetX, offsetY);
+    this.stressContainer.scale.set(scale);
   }
 }

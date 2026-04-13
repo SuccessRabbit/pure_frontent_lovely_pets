@@ -9,6 +9,7 @@ import { InputManager } from '../core/InputManager';
 import { useGameStore } from '../../store/gameStore';
 import { getActionTargetMode } from '../../store/actionEffects';
 import type { Card } from '../../types/card';
+import type { GridEntity } from '../../store/gameStore';
 import {
   HAND_SIZE_MAX,
   RUINS_REBUILD_COST,
@@ -16,6 +17,7 @@ import {
   VICTORY_HEARTS,
 } from '@config/gameRules';
 import { Tween, Easing } from '../utils/Tween';
+import { IsometricPetRenderer } from '../renderers/IsometricPetRenderer';
 import {
   strokeDark,
   strokeDarkBold,
@@ -28,6 +30,9 @@ const PHASE_GAP_MS = 380;
 const INCOME_STAGGER_MS = 175;
 const POST_INCOME_MS = 520;
 const POST_STRESS_MS = 820;
+const DESIGN_WIDTH = 1920;
+const DESIGN_HEIGHT = 1080;
+const HAND_TRIM_DISCARD_ZONE_HEIGHT = 100;
 const DEBUG_SCENE_FLOW = true;
 
 function logSceneFlow(message: string, payload?: unknown) {
@@ -77,6 +82,10 @@ export class GameScene extends Scene {
   private storeUnsub: (() => void) | null = null;
   private roundResolving = false;
   private vfxQueue = new VfxQueue();
+  /** 3D 等轴视角宠物渲染器 */
+  private petRenderer: IsometricPetRenderer | null = null;
+  /** 3D 渲染器窗口 resize 处理 */
+  private readonly boundPetRendererResize = () => this.onPetRendererResize();
 
   // UI 容器
   private gridContainer: PIXI.Container;
@@ -173,6 +182,9 @@ export class GameScene extends Scene {
     this.dragSystem.setDiscardDesignRoot(this.container);
     this.wirePendingActionOutsideCancel();
 
+    // 初始化 3D 宠物渲染器
+    this.initPetRenderer();
+
     this.storeUnsub = useGameStore.subscribe(() => this.onStoreUpdate());
     this.syncGridFromStore();
     this.syncGameOverOverlay();
@@ -191,6 +203,7 @@ export class GameScene extends Scene {
     this.storeUnsub = null;
     this.clearPendingActionPick();
     this.removeGameOverOverlay();
+    this.destroyPetRenderer();
   }
 
   public update(deltaTime: number): void {
@@ -202,12 +215,36 @@ export class GameScene extends Scene {
     this.updateActionZoneVisual();
     this.updateHandTrimBottomDiscardOverlay();
 
-    for (const cell of this.gridCells) {
-      cell.updatePetStressShake(deltaTime);
+    // 同步 3D 格子高亮状态
+    if (this.petRenderer) {
+      const hoveredCell = this.dragSystem.getHoveredCell();
+      this.gridCells.forEach(cell => {
+        const isHovered = cell === hoveredCell;
+        const isEligible = cell.isEmpty && !cell.isRuins;
+        this.petRenderer?.setCellHighlight(cell.row, cell.col, isHovered && isEligible);
+      });
     }
+
+    // 3D 宠物渲染（不再使用 2D 颤抖）
+    this.petRenderer?.render();
+    this.sync3DStressOverlays();
 
     // 更新 UI 显示
     this.updateUI();
+  }
+
+  private sync3DStressOverlays() {
+    if (!this.petRenderer) return;
+    const { grid } = useGameStore.getState();
+    this.gridCells.forEach(cell => {
+      const entity = grid[cell.row][cell.col];
+      if (!entity) {
+        cell.setStressOverlay3DAnchor(null);
+        return;
+      }
+      const anchor = this.petRenderer?.getPetStressAnchor(cell.row, cell.col) ?? null;
+      cell.setStressOverlay3DAnchor(anchor);
+    });
   }
 
   /** 设计分辨率全屏命中，便于点在「空白处」也能收到 pointerdown */
@@ -290,7 +327,119 @@ export class GameScene extends Scene {
     // 设置网格到拖拽系统
     this.dragSystem.setGridCells(this.gridCells);
 
+    // 启用 3D 模式：隐藏 2D 格子背景
+    this.gridCells.forEach(cell => cell.setRenderBackground3DMode(true));
+
+    // 设置格子实体变化回调（用于 3D 渲染）
+    this.gridCells.forEach(cell => {
+      cell.onEntitySet = (entity, row, col) => {
+        this.onGridCellEntitySet(entity, row, col);
+      };
+    });
+
     console.log('Grid created: 3x6');
+  }
+
+  /** 初始化 3D 等轴视角宠物渲染器 */
+  private initPetRenderer(): void {
+    const pixiCanvas = this.inputManager.getCanvas();
+    const parent = pixiCanvas.parentElement as HTMLElement;
+
+    const threeCanvas = document.createElement('canvas');
+    Object.assign(threeCanvas.style, {
+      position: 'absolute',
+      pointerEvents: 'none',
+      zIndex: '2',
+    });
+    threeCanvas.id = 'three-canvas';
+    this.syncThreeCanvasViewport(threeCanvas);
+
+    // 插入到 PixiJS canvas 之后（透明 Pixi 覆盖在上层）
+    parent.appendChild(threeCanvas);
+
+    // 创建渲染器
+    this.petRenderer = new IsometricPetRenderer(threeCanvas);
+
+    // 创建 3D 网格格子
+    this.petRenderer.createGridCells();
+
+    // 传入 DragSystem 引用（用于 3D 格子命中检测）
+    this.dragSystem.setPetRenderer(this.petRenderer);
+
+    // 初始同步所有已有实体和格子状态
+    const { grid } = useGameStore.getState();
+    const { cellDurability } = useGameStore.getState();
+    let petCount = 0;
+    grid.forEach((rowEntities, r) => {
+      rowEntities.forEach((entity, c) => {
+        if (entity) {
+          petCount++;
+          this.petRenderer?.spawnPet(r, c, entity);
+        }
+        // 同步格子状态
+        const durability = cellDurability[r]?.[c] ?? 0;
+        const ruins = durability <= 0;
+        this.petRenderer?.syncCellState(r, c, ruins ? 'ruins' : entity ? 'occupied' : 'empty');
+      });
+    });
+    console.log('[3D] Initial pets spawned:', petCount);
+    console.log('IsometricPetRenderer initialized');
+
+    // 监听窗口 resize，同步 Three.js canvas 尺寸
+    window.addEventListener('resize', this.boundPetRendererResize);
+  }
+
+  private getDesignViewportRect() {
+    const scale = Math.min(window.innerWidth / DESIGN_WIDTH, window.innerHeight / DESIGN_HEIGHT);
+    const width = DESIGN_WIDTH * scale;
+    const height = DESIGN_HEIGHT * scale;
+    const left = (window.innerWidth - width) * 0.5;
+    const top = (window.innerHeight - height) * 0.5;
+    return { left, top, width, height };
+  }
+
+  private syncThreeCanvasViewport(canvas: HTMLCanvasElement): void {
+    const { left, top, width, height } = this.getDesignViewportRect();
+    canvas.width = Math.max(1, Math.round(width));
+    canvas.height = Math.max(1, Math.round(height));
+    Object.assign(canvas.style, {
+      left: `${left}px`,
+      top: `${top}px`,
+      width: `${width}px`,
+      height: `${height}px`,
+    });
+  }
+
+  /** 销毁 3D 宠物渲染器 */
+  private destroyPetRenderer(): void {
+    window.removeEventListener('resize', this.boundPetRendererResize);
+    if (this.petRenderer) {
+      this.petRenderer.destroy();
+      this.petRenderer = null;
+      console.log('IsometricPetRenderer destroyed');
+    }
+  }
+
+  /** 3D 渲染器窗口 resize 回调 */
+  private onPetRendererResize(): void {
+    const threeCanvas = document.getElementById('three-canvas') as HTMLCanvasElement | null;
+    if (!threeCanvas || !this.petRenderer) return;
+    this.syncThreeCanvasViewport(threeCanvas);
+    const { width, height } = this.getDesignViewportRect();
+    this.petRenderer.resize(width, height);
+    console.log('[3D] PetRenderer resized to', width, 'x', height);
+  }
+
+  /** GridCell 实体变化回调 - 同步到 3D 渲染器 */
+  private onGridCellEntitySet(entity: GridEntity | null, row: number, col: number): void {
+    console.log('[3D] onGridCellEntitySet:', entity?.cardId, 'at', row, col, 'petRenderer exists:', !!this.petRenderer);
+    if (!this.petRenderer) return;
+
+    if (entity) {
+      this.petRenderer.spawnPet(row, col, entity);
+    } else {
+      this.petRenderer.removePet(row, col);
+    }
   }
 
   private createHand() {
@@ -784,7 +933,7 @@ export class GameScene extends Scene {
       },
     });
     hint.anchor.set(0.5, 1);
-    hint.position.set(960, 1048);
+    hint.position.set(960, 1030);
     this.handTrimBottomHint = hint;
     wrap.addChild(hint);
 
@@ -795,25 +944,20 @@ export class GameScene extends Scene {
     g.clear();
     const w = 1920;
     const h = 1080;
+    const zoneHeight = HAND_TRIM_DISCARD_ZONE_HEIGHT;
     const p = Math.max(0, Math.min(1, proximity));
     if (p < 0.02) return;
 
-    const bulge = 28 + 210 * p;
-    const sideLift = 18 + 52 * p;
-    const fillA = 0.07 + 0.5 * p;
-    const strokeA = 0.22 + 0.58 * p;
+    const fillA = 0.12 + 0.55 * p;
+    const strokeA = 0.28 + 0.58 * p;
 
     g.beginFill(0xb71c1c, fillA);
-    g.moveTo(0, h);
-    g.lineTo(0, h - sideLift);
-    g.quadraticCurveTo(w * 0.5, h - bulge, w, h - sideLift);
-    g.lineTo(w, h);
-    g.closePath();
+    g.drawRect(0, h - zoneHeight, w, zoneHeight);
     g.endFill();
 
-    g.lineStyle(4, 0xff8a80, strokeA);
-    g.moveTo(0, h - sideLift);
-    g.quadraticCurveTo(w * 0.5, h - bulge, w, h - sideLift);
+    g.lineStyle(3, 0xff8a80, strokeA);
+    g.moveTo(0, h - zoneHeight);
+    g.lineTo(w, h - zoneHeight);
   }
 
   private updateHandTrimBottomDiscardOverlay() {
@@ -843,12 +987,12 @@ export class GameScene extends Scene {
       hint.style.fill = 0xe8f5e9;
       hint.text =
         '✓ 已达弃牌线\n松手将尝试弃牌；不可弃置卡仍会弹回';
-    } else if (p >= 0.38) {
+    } else if (p >= 0.2) {
       hint.style.fill = 0xffebee;
-      hint.text = '再向下拖近底边\n未达弃牌线时松手不会弃牌';
+      hint.text = '再向下拖至底部红区\n未达弃牌线时松手不会弃牌';
     } else {
       hint.style.fill = 0xffebee;
-      hint.text = '向下拖向底边红区\n未达弃牌线时松手不会弃牌';
+      hint.text = '向下拖至底部 100 像素红区\n未达弃牌线时松手不会弃牌';
     }
   }
 
@@ -878,11 +1022,6 @@ export class GameScene extends Scene {
 
       const fromGlobal = new PIXI.Point();
       card.getGlobalPosition(fromGlobal);
-      const cellCenter = new PIXI.Point(
-        cell.x + cell.cellWidth / 2,
-        cell.y + cell.cellHeight / 2
-      );
-      const gg = this.gridContainer.toGlobal(cellCenter);
       const gridCell = this.gridCells.find(c => c.row === cell.row && c.col === cell.col);
       if (!gridCell) {
         card.playReturnAnimation();
@@ -890,6 +1029,12 @@ export class GameScene extends Scene {
       }
 
       const { row, col } = cell;
+      const projectedCell = this.petRenderer?.getGridCellCenterAnchor(row, col) ?? null;
+      const gg = projectedCell
+        ? this.container.toGlobal(new PIXI.Point(projectedCell.x, projectedCell.y))
+        : this.gridContainer.toGlobal(
+            new PIXI.Point(cell.x + cell.cellWidth / 2, cell.y + cell.cellHeight / 2)
+          );
       const cardSnapshot = structuredClone(card.cardData) as Card;
 
       gridCell.setEntityPortraitSuppressed(true);
@@ -1157,7 +1302,10 @@ export class GameScene extends Scene {
   private spawnIncomeFloat(row: number, col: number, amount: number) {
     const cell = this.gridCells.find(c => c.row === row && c.col === col);
     if (!cell) return;
-    const g = cell.toGlobal(new PIXI.Point(cell.cellWidth * 0.5, cell.cellHeight * 0.28));
+    const anchor = this.petRenderer?.getCellGuiAnchor(row, col, 18) ?? null;
+    const g = anchor
+      ? this.container.toGlobal(new PIXI.Point(anchor.x, anchor.y))
+      : cell.toGlobal(new PIXI.Point(cell.cellWidth * 0.5, cell.cellHeight * 0.28));
     const lp = this.fxLayer.toLocal(g);
     const t = new PIXI.Text({
       text: `+${amount} 🥫`,
@@ -1266,6 +1414,7 @@ export class GameScene extends Scene {
 
       get().applyTurnEndStress();
       this.syncGridFromStore();
+      this.sync3DStressOverlays();
       this.gridCells.forEach(c => {
         if (get().grid[c.row][c.col]) {
           c.pulseStressBar();
@@ -1370,7 +1519,18 @@ export class GameScene extends Scene {
     this.gridCells.forEach(cell => {
       const entity = grid[cell.row][cell.col];
       const d = cellDurability[cell.row][cell.col] ?? 0;
+      const ruins = d <= 0;
       cell.syncFromStore(entity, d);
+
+      // 同步格子状态到 3D 渲染器
+      if (this.petRenderer) {
+        this.petRenderer.syncCellState(cell.row, cell.col, ruins ? 'ruins' : entity ? 'occupied' : 'empty');
+      }
+
+      // 同步 stress 到 3D 渲染器（驱动动画切换）
+      if (entity && this.petRenderer) {
+        this.petRenderer.updatePetStress(cell.row, cell.col, entity.stress, entity.maxStress);
+      }
     });
   }
 

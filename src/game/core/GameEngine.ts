@@ -25,7 +25,7 @@ export class GameEngine {
       canvas,
       width: w,
       height: h,
-      background: 0x1a1a2e,
+      backgroundAlpha: 0,
       resolution: window.devicePixelRatio || 1,
       autoDensity: true,
       antialias: true,
@@ -36,8 +36,12 @@ export class GameEngine {
     this.sceneManager = new SceneManager(app.stage);
 
     canvas.style.display = 'block';
+    canvas.style.position = 'absolute';
+    canvas.style.top = '0';
+    canvas.style.left = '0';
     canvas.style.width = '100%';
     canvas.style.height = '100%';
+    canvas.style.zIndex = '3'; // 透明 Pixi 前景层，覆盖在 Three.js 之上
 
     window.addEventListener('resize', this.boundResize);
     this.resizeCanvas();
@@ -56,6 +60,20 @@ export class GameEngine {
     const scale = Math.min(w / 1920, h / 1080);
     app.stage.scale.set(scale);
     app.stage.position.set((w - 1920 * scale) / 2, (h - 1080 * scale) / 2);
+  }
+
+  /** 获取舞台缩放比例（供外部同步 Three.js canvas） */
+  public getStageScale(): number {
+    return Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+  }
+
+  /** 获取舞台偏移（供外部同步 Three.js canvas） */
+  public getStageOffset(): { x: number; y: number } {
+    const scale = this.getStageScale();
+    return {
+      x: (window.innerWidth - 1920 * scale) / 2,
+      y: (window.innerHeight - 1080 * scale) / 2,
+    };
   }
 
   start() {
