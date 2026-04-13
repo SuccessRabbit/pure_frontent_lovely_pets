@@ -172,7 +172,11 @@ export function runActionCardEffect(
   }
 
   if (id === 'action_007') {
-    get().drawCards(2);
+    get().drawCards(2, {
+      source: 'action',
+      sourceCardId: id,
+      sourceLabel: '盲盒零食',
+    });
     return true;
   }
 

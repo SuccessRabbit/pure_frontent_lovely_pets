@@ -3,6 +3,7 @@ import { createLowPolyPet, type PetRig } from '../factories/LowPolyPetFactory';
 import { Tween, Easing } from '../utils/Tween';
 import type { GridEntity } from '../../store/gameStore';
 import { GridCell3D } from './GridCell3D';
+import { DeckRenderer } from './DeckRenderer';
 
 type PetAnimationState = 'idle' | 'angry';
 
@@ -58,6 +59,7 @@ export class IsometricPetRenderer {
   private petMeshes = new Map<string, PetMesh>();
   private gridCellMeshes = new Map<string, GridCell3D>();
   private raycaster = new THREE.Raycaster();
+  private deckRenderer: DeckRenderer;
 
   /** 网格参数（与 GameScene.createGrid 一致） */
   private readonly GRID_START_X = 400;
@@ -85,6 +87,12 @@ export class IsometricPetRenderer {
     this.scene = new THREE.Scene();
     this.setupCamera();
     this.setupLights();
+    this.deckRenderer = new DeckRenderer(
+      this.scene,
+      world => this.projectWorldToDesignPoint(world),
+      255,
+      918
+    );
   }
 
   private setupCamera() {
@@ -411,6 +419,18 @@ export class IsometricPetRenderer {
         this.gridCellMeshes.set(`${row}|${col}`, cell3d);
       }
     }
+  }
+
+  public setDeckCount(count: number): void {
+    this.deckRenderer.setCount(count);
+  }
+
+  public pulseDeckDraw(): void {
+    this.deckRenderer.pulseDraw();
+  }
+
+  public getDeckDrawAnchor(): { x: number; y: number } | null {
+    return this.deckRenderer.getDrawAnchor();
   }
 
   public screenToWorld3D(screenX: number, screenY: number): THREE.Vector3 | null {
@@ -826,6 +846,7 @@ export class IsometricPetRenderer {
       cell3d.dispose();
     }
     this.gridCellMeshes.clear();
+    this.deckRenderer.dispose();
     this.renderer.dispose();
   }
 }

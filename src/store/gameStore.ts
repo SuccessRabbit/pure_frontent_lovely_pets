@@ -74,6 +74,46 @@ export interface IncomeBreakdown {
   total: number;
 }
 
+export interface DrawCardsMeta {
+  source?: 'setup' | 'turn_start' | 'action' | 'skill' | 'system';
+  sourceLabel?: string;
+  sourceCardId?: string;
+  sourceEntityId?: string;
+  sourceRow?: number;
+  sourceCol?: number;
+  uiMode?: 'store_event' | 'manual';
+}
+
+export interface DrawEvent {
+  id: number;
+  countRequested: number;
+  drawnCards: Card[];
+  reshuffled: boolean;
+  deckBefore: number;
+  deckAfter: number;
+  discardBefore: number;
+  discardAfter: number;
+  handBefore: number;
+  handAfter: number;
+  source: NonNullable<DrawCardsMeta['source']>;
+  sourceLabel: string;
+  sourceCardId?: string;
+  sourceEntityId?: string;
+  sourceRow?: number;
+  sourceCol?: number;
+}
+
+export interface StressResolutionResult {
+  outcome: 'applied' | 'black_red' | 'meltdown';
+  row: number;
+  col: number;
+  entityId: string;
+  entityName: string;
+  stress: number;
+  maxStress: number;
+  bonusIncome?: number;
+}
+
 // 游戏状态
 export interface GameState {
   // 基础状态
@@ -120,6 +160,8 @@ export interface GameState {
   pendingCardsNextTurnDiscard: Card[];
   /** 本日结算后手牌超过上限，需先弃牌/打出整理后才能进入次日抽牌 */
   awaitingHandTrim: boolean;
+  lastDrawEvent: DrawEvent | null;
+  nextDrawEventId: number;
 }
 
 // 游戏操作
@@ -140,6 +182,7 @@ export interface GameActions {
 
   // 经济操作
   addCans: (amount: number) => void;
+  addHearts: (amount: number) => void;
   spendCans: (amount: number) => boolean;
   calculateInterest: () => number;
 
@@ -152,7 +195,7 @@ export interface GameActions {
   rebuildCell: (row: number, col: number) => boolean;
 
   // 手牌操作
-  drawCards: (count: number) => void;
+  drawCards: (count: number, meta?: DrawCardsMeta) => DrawEvent | null;
   playCard: (
     cardIndex: number,
     targetRow?: number,
@@ -168,8 +211,8 @@ export interface GameActions {
   finishHandTrimAndAdvanceTurn: () => void;
 
   // 压力系统
-  addStress: (row: number, col: number, amount: number) => void;
-  triggerMeltdown: (row: number, col: number) => void;
+  addStress: (row: number, col: number, amount: number) => StressResolutionResult | null;
+  triggerMeltdown: (row: number, col: number) => StressResolutionResult | null;
 
   // 游戏初始化
   initGame: (initialDeck?: Card[]) => void;
@@ -207,6 +250,8 @@ const initialState: GameState = {
   workerIncomeMultiplierThisTurn: 1,
   pendingCardsNextTurnDiscard: [],
   awaitingHandTrim: false,
+  lastDrawEvent: null,
+  nextDrawEventId: 1,
 };
 
 export const useGameStore = create<GameState & GameActions>()(
@@ -291,13 +336,7 @@ export const useGameStore = create<GameState & GameActions>()(
           get().addCans(breakdown.total);
         }
         if (heartsGain > 0) {
-          set(s => {
-            const nextHearts = s.hearts + heartsGain;
-            if (nextHearts >= VICTORY_HEARTS) {
-              return { hearts: nextHearts, gameStatus: 'won', endReason: null };
-            }
-            return { hearts: nextHearts };
-          });
+          get().addHearts(heartsGain);
         }
       },
 
@@ -379,13 +418,27 @@ export const useGameStore = create<GameState & GameActions>()(
 
         if (get().gameStatus === 'playing') {
           console.log('Drawing 3 cards for new turn');
-          get().drawCards(3);
+          get().drawCards(3, {
+            source: 'turn_start',
+            sourceLabel: '每日抽牌',
+          });
         }
       },
 
       // 添加罐头
       addCans: (amount: number) => {
         set(state => ({ cans: state.cans + amount }));
+      },
+
+      addHearts: (amount: number) => {
+        if (amount <= 0) return;
+        set(s => {
+          const nextHearts = s.hearts + amount;
+          if (nextHearts >= VICTORY_HEARTS) {
+            return { hearts: nextHearts, gameStatus: 'won', endReason: null };
+          }
+          return { hearts: nextHearts };
+        });
       },
 
       // 消费罐头
@@ -515,11 +568,17 @@ export const useGameStore = create<GameState & GameActions>()(
       },
 
       // 抽牌
-      drawCards: (count: number) => {
+      drawCards: (count: number, meta?: DrawCardsMeta) => {
+        if (count <= 0) return null;
         const { deck, hand, discardPile } = get();
         let newDeck = [...deck];
         let newHand = [...hand];
         let newDiscard = [...discardPile];
+        const drawnCards: Card[] = [];
+        let reshuffled = false;
+        const deckBefore = newDeck.length;
+        const discardBefore = newDiscard.length;
+        const handBefore = newHand.length;
 
         console.log('Drawing cards:', {
           count,
@@ -534,12 +593,14 @@ export const useGameStore = create<GameState & GameActions>()(
             console.log('Deck empty, shuffling discard pile');
             newDeck = [...newDiscard].sort(() => Math.random() - 0.5);
             newDiscard = [];
+            reshuffled = true;
           }
 
           // 抽牌
           if (newDeck.length > 0) {
             const card = newDeck.pop()!;
             newHand.push(card);
+            drawnCards.push(card);
           } else {
             console.warn('No cards available to draw!');
           }
@@ -551,7 +612,52 @@ export const useGameStore = create<GameState & GameActions>()(
           discardSize: newDiscard.length
         });
 
-        set({ deck: newDeck, hand: newHand, discardPile: newDiscard });
+        if (drawnCards.length === 0) {
+          set({ deck: newDeck, hand: newHand, discardPile: newDiscard });
+          return null;
+        }
+
+        const source = meta?.source ?? 'system';
+        const sourceLabel =
+          meta?.sourceLabel ??
+          (source === 'setup'
+            ? '初始抽牌'
+            : source === 'turn_start'
+              ? '每日抽牌'
+              : source === 'action'
+                ? '行动牌抽牌'
+                : source === 'skill'
+                  ? '技能抽牌'
+                  : '抽牌');
+
+        const event: DrawEvent = {
+          id: get().nextDrawEventId,
+          countRequested: count,
+          drawnCards,
+          reshuffled,
+          deckBefore,
+          deckAfter: newDeck.length,
+          discardBefore,
+          discardAfter: newDiscard.length,
+          handBefore,
+          handAfter: newHand.length,
+          source,
+          sourceLabel,
+          sourceCardId: meta?.sourceCardId,
+          sourceEntityId: meta?.sourceEntityId,
+          sourceRow: meta?.sourceRow,
+          sourceCol: meta?.sourceCol,
+        };
+
+        const uiMode = meta?.uiMode ?? 'store_event';
+        set({
+          deck: newDeck,
+          hand: newHand,
+          discardPile: newDiscard,
+          lastDrawEvent: uiMode === 'manual' ? get().lastDrawEvent : event,
+          nextDrawEventId: event.id + 1,
+        });
+        return event;
       },
 
       // 打出手牌
@@ -695,18 +801,17 @@ export const useGameStore = create<GameState & GameActions>()(
 
       // 增加压力
       addStress: (row: number, col: number, amount: number) => {
-        if (get().gameStatus !== 'playing') return;
+        if (get().gameStatus !== 'playing') return null;
         const { grid } = get();
         const entity = grid[row][col];
 
-        if (!entity) return;
+        if (!entity) return null;
 
         const newStress = Math.min(entity.stress + amount, entity.maxStress);
 
         // 如果压力达到上限，触发拆家
         if (newStress >= entity.maxStress) {
-          get().triggerMeltdown(row, col);
-          return;
+          return get().triggerMeltdown(row, col);
         }
 
         const newGrid = grid.map((r, i) =>
@@ -716,16 +821,25 @@ export const useGameStore = create<GameState & GameActions>()(
         );
 
         set({ grid: newGrid });
+        return {
+          outcome: 'applied',
+          row,
+          col,
+          entityId: entity.id,
+          entityName: entity.name,
+          stress: newStress,
+          maxStress: entity.maxStress,
+        } satisfies StressResolutionResult;
       },
 
       // 触发拆家
       triggerMeltdown: (row: number, col: number) => {
-        if (get().gameStatus !== 'playing') return;
+        if (get().gameStatus !== 'playing') return null;
 
         const { grid, turn, meltdownHistory, cellDurability, discardPile, playerHp } = get();
         const entity = grid[row][col];
 
-        if (!entity) return;
+        if (!entity) return null;
 
         // 50%概率成功（5倍收益），50%完全崩溃
         const success = Math.random() < 0.5;
@@ -744,7 +858,16 @@ export const useGameStore = create<GameState & GameActions>()(
             grid: newGrid,
             meltdownHistory: [...meltdownHistory, histEntry],
           });
-          return;
+          return {
+            outcome: 'black_red',
+            row,
+            col,
+            entityId: entity.id,
+            entityName: entity.name,
+            stress: 0,
+            maxStress: entity.maxStress,
+            bonusIncome,
+          } satisfies StressResolutionResult;
         }
 
         const cardTpl = getEntityCardTemplate(entity.cardId);
@@ -780,14 +903,31 @@ export const useGameStore = create<GameState & GameActions>()(
         });
 
         const after = get();
-        if (after.gameStatus !== 'playing') return;
+        if (after.gameStatus !== 'playing') return null;
         if (after.playerHp <= 0) {
           set({ gameStatus: 'lost', endReason: 'hp' });
-          return;
+          return {
+            outcome: 'meltdown',
+            row,
+            col,
+            entityId: entity.id,
+            entityName: entity.name,
+            stress: entity.maxStress,
+            maxStress: entity.maxStress,
+          } satisfies StressResolutionResult;
         }
         if (allCellsRuins(after.cellDurability)) {
           set({ gameStatus: 'lost', endReason: 'grid' });
         }
+        return {
+          outcome: 'meltdown',
+          row,
+          col,
+          entityId: entity.id,
+          entityName: entity.name,
+          stress: entity.maxStress,
+          maxStress: entity.maxStress,
+        } satisfies StressResolutionResult;
       },
 
       rebuildCell: (row: number, col: number) => {
@@ -815,7 +955,10 @@ export const useGameStore = create<GameState & GameActions>()(
         });
 
         if (currentDeck.length > 0) {
-          get().drawCards(5);
+          get().drawCards(5, {
+            source: 'setup',
+            sourceLabel: '初始抽牌',
+          });
         }
 
         console.log('Game initialized:', {
@@ -842,7 +985,10 @@ export const useGameStore = create<GameState & GameActions>()(
           cellDurability: createFullDurability(),
           deck: buildShuffledStartingDeck(),
         });
-        get().drawCards(5);
+        get().drawCards(5, {
+          source: 'setup',
+          sourceLabel: '初始抽牌',
+        });
       },
     }),
     { name: 'GameStore' }
