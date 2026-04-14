@@ -4,6 +4,7 @@ import { GridCell } from '../entities/GridCell';
 import { InputManager } from '../core/InputManager';
 import { Tween, Easing } from '../utils/Tween';
 import type { IsometricPetRenderer } from '../renderers/IsometricPetRenderer';
+import { getActionTargetMode } from '../../store/actionEffects';
 
 export type HandDragKind = 'entity' | 'action';
 const DEBUG_DRAG_FLOW = true;
@@ -71,6 +72,10 @@ export class DragSystem {
 
   /** 行动牌在释放区松手 */
   public onRequestActionTrigger: ((card: CardSprite, cardIndex: number) => void) | null = null;
+  /** 指向性行动牌拖到目标格后松手 */
+  public onRequestActionTargetDrop:
+    | ((card: CardSprite, cardIndex: number, cell: GridCell) => void)
+    | null = null;
 
   /** 整理阶段：拖向屏幕底边红区松手弃牌 */
   public onRequestHandTrimDiscard: ((card: CardSprite, cardIndex: number) => void) | null = null;
@@ -275,12 +280,32 @@ export class DragSystem {
       this.tweenDraggingCardAlpha(validHoveredCell ? 0.2 : 1);
       this.actionZoneHovered = false;
     } else {
-      this.tweenDraggingCardAlpha(1);
-      this.clearHighlights();
-      if (towardBottomDiscard) {
-        this.actionZoneHovered = false;
+      const actionTargetMode = getActionTargetMode(this.draggingCard.cardData.id);
+      if (actionTargetMode === 'none') {
+        this.tweenDraggingCardAlpha(1);
+        this.clearHighlights();
+        if (towardBottomDiscard) {
+          this.actionZoneHovered = false;
+        } else {
+          this.actionZoneHovered = this.actionZone?.containsScreen(mouse.x, mouse.y) ?? false;
+        }
       } else {
-        this.actionZoneHovered = this.actionZone?.containsScreen(mouse.x, mouse.y) ?? false;
+        let validHoveredCell: GridCell | null = null;
+        if (towardBottomDiscard) {
+          this.clearHighlights();
+        } else {
+          const hoveredCell = this.findHoveredCell(mouse.x, mouse.y);
+          this.gridCells.forEach(cell => {
+            if (cell === hoveredCell && !cell.isRuins && !cell.isEmpty) {
+              validHoveredCell = cell;
+              cell.setHighlight(true);
+            } else {
+              cell.setHighlight(false);
+            }
+          });
+        }
+        this.tweenDraggingCardAlpha(validHoveredCell ? 0.2 : 1);
+        this.actionZoneHovered = false;
       }
     }
 
@@ -404,14 +429,28 @@ export class DragSystem {
       return;
     }
 
-    const inZone = this.actionZone?.containsScreen(screenX, screenY) ?? false;
+    const actionTargetMode = getActionTargetMode(card.cardData.id);
+    const targetCell =
+      actionTargetMode === 'none' ? null : this.findHoveredCell(screenX, screenY);
+    const inZone = actionTargetMode === 'none' && (this.actionZone?.containsScreen(screenX, screenY) ?? false);
     logDragFlow('endDragAction', {
       card: `${card.cardData.id}:${card.cardData.type}`,
       dragCardIndex: idx,
       screen: [screenX, screenY],
       inZone,
+      actionTargetMode,
+      targetCell: targetCell ? [targetCell.row, targetCell.col] : null,
     });
-    if (inZone && this.onRequestActionTrigger) {
+    if (
+      actionTargetMode !== 'none' &&
+      targetCell &&
+      !targetCell.isRuins &&
+      !targetCell.isEmpty &&
+      this.onRequestActionTargetDrop
+    ) {
+      card.playDragEndAnimation({ keepFront: true });
+      this.onRequestActionTargetDrop(card, idx, targetCell);
+    } else if (inZone && this.onRequestActionTrigger) {
       card.playDragEndAnimation({ keepFront: true });
       this.onRequestActionTrigger(card, idx);
     } else {
@@ -458,6 +497,26 @@ export class DragSystem {
 
   public isDraggingAction(): boolean {
     return this.draggingCard !== null && this.dragKind === 'action';
+  }
+
+  public isDraggingEntity(): boolean {
+    return this.draggingCard !== null && this.dragKind === 'entity';
+  }
+
+  public isDraggingZoneAction(): boolean {
+    return (
+      this.draggingCard !== null &&
+      this.dragKind === 'action' &&
+      getActionTargetMode(this.draggingCard.cardData.id) === 'none'
+    );
+  }
+
+  public isDraggingTargetedAction(): boolean {
+    return (
+      this.draggingCard !== null &&
+      this.dragKind === 'action' &&
+      getActionTargetMode(this.draggingCard.cardData.id) !== 'none'
+    );
   }
 
   public isActionZoneHovered(): boolean {

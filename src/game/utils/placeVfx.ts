@@ -155,3 +155,64 @@ export function runActionTriggerVfx(
       card.destroy({ children: true });
     });
 }
+
+/**
+ * 指向性行动牌拖到网格目标后的表现
+ */
+export function runActionTargetVfx(
+  fxLayer: PIXI.Container,
+  cardData: Card,
+  fromGlobal: PIXI.PointData,
+  targetGlobalX: number,
+  targetGlobalY: number
+): Promise<void> {
+  const card = new CardSprite(cardData);
+  card.isDragging = false;
+  card.isResolving = true;
+  card.eventMode = 'none';
+  card.cursor = 'default';
+  card.zIndex = 2600;
+  fxLayer.sortableChildren = true;
+  fxLayer.addChild(card);
+
+  const lpFrom = fxLayer.toLocal(fromGlobal);
+  const lpTo = fxLayer.toLocal({ x: targetGlobalX, y: targetGlobalY });
+  card.position.set(lpFrom.x, lpFrom.y);
+  card.rotation = 0;
+  card.alpha = 1;
+  card.scale.set(1.02, 1.02);
+
+  Tween.killTarget(card);
+  Tween.killTarget(card.scale);
+
+  return tweenTo(card, { x: lpTo.x, y: lpTo.y, rotation: 0 }, 300, Easing.easeOutCubic, () => {
+    burstParticlesAtGlobal(fxLayer, targetGlobalX, targetGlobalY, {
+      count: 36,
+      colors: ACTION_BURST_COLORS,
+      spread: 108,
+      durationMin: 360,
+      durationMax: 620,
+    });
+    const gp = new PIXI.Point();
+    card.getGlobalPosition(gp);
+    burstParticlesAtGlobal(fxLayer, gp.x, gp.y, {
+      count: 18,
+      colors: SHARD_BURST_COLORS,
+      spread: 46,
+      durationMin: 300,
+      durationMax: 480,
+    });
+  })
+    .then(() =>
+      Promise.all([
+        tweenTo(card.scale, { x: 0.86, y: 0.86 }, 320, Easing.easeOutQuad),
+        tweenTo(card, { alpha: 0 }, 320, Easing.easeInCubic),
+      ])
+    )
+    .then(() => undefined)
+    .finally(() => {
+      Tween.killTarget(card);
+      Tween.killTarget(card.scale);
+      card.destroy({ children: true });
+    });
+}

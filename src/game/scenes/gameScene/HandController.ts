@@ -262,7 +262,6 @@ export class HandController {
     let deckDisplayCount = event.deckBefore;
     this.setDeckDisplayOverrideCount(deckDisplayCount);
 
-    const sourceGlobal = this.getDeckDrawAnchorGlobal();
     for (const cardData of cards) {
       const latestHand = this.getStoreState().hand;
       const slot = this.buildHandLayout(latestHand).find(entry => entry.card === cardData);
@@ -270,7 +269,9 @@ export class HandController {
 
       let card = this.handCards.find(entry => entry.cardData === cardData);
       if (!card) {
+        const sourceGlobal = this.getDeckDrawAnchorGlobal();
         card = this.createHandCardSprite(cardData);
+        card.isResolving = true;
         const sourceLocal = this.handContainer.toLocal(sourceGlobal);
         card.position.set(sourceLocal.x, sourceLocal.y);
         card.scale.set(0.42, 0.42);
@@ -286,6 +287,8 @@ export class HandController {
         this.syncHandCards(latestHand, { excludeCards: this.pendingDrawCards });
       }
 
+      card.isResolving = true;
+      card.eventMode = 'none';
       this.getPetRenderer()?.pulseDeckDraw();
       const deckAnchor = this.getDeckDrawAnchorGlobal();
       burstParticlesAtGlobal(this.fxLayer, deckAnchor.x, deckAnchor.y, {
@@ -309,6 +312,7 @@ export class HandController {
       ]);
 
       card.zIndex = card.handZIndex;
+      card.isResolving = false;
       card.eventMode = 'static';
       this.pendingDrawCards.delete(cardData);
       deckDisplayCount = Math.max(event.deckAfter, deckDisplayCount - 1);

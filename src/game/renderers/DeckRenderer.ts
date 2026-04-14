@@ -40,6 +40,7 @@ export class DeckRenderer {
 
   private count = 0;
   private pulseAlpha = { value: 0.92 };
+  private lastDrawAnchor: ProjectedPoint | null = null;
 
   constructor(
     scene: THREE.Scene,
@@ -114,7 +115,12 @@ export class DeckRenderer {
     const local = new THREE.Vector3(topIndex * 1.2 + 18, topIndex * 2.2 + 22, -topIndex * 1.8 + 4);
     this.group.updateMatrixWorld(true);
     const world = local.applyMatrix4(this.group.matrixWorld);
-    return this.projector(world);
+    const projected = this.projector(world);
+    if (projected) {
+      this.lastDrawAnchor = projected;
+      return projected;
+    }
+    return this.lastDrawAnchor;
   }
 
   public dispose(): void {

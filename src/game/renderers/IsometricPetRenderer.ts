@@ -90,8 +90,8 @@ export class IsometricPetRenderer {
     this.deckRenderer = new DeckRenderer(
       this.scene,
       world => this.projectWorldToDesignPoint(world),
-      255,
-      918
+      1500,
+      120
     );
   }
 
@@ -150,6 +150,7 @@ export class IsometricPetRenderer {
   }
 
   private projectWorldToDesignPoint(world: THREE.Vector3): { x: number; y: number } | null {
+    this.camera.updateMatrixWorld(true);
     const projected = world.clone().project(this.camera);
     if (
       projected.z < -1 ||
@@ -437,6 +438,7 @@ export class IsometricPetRenderer {
     const ndc = this.screenToNdc(screenX, screenY);
     if (!ndc) return null;
 
+    this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(ndc, this.camera);
     const groundPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
     const target = new THREE.Vector3();
@@ -449,6 +451,7 @@ export class IsometricPetRenderer {
     const ndc = this.screenToNdc(screenX, screenY);
     if (!ndc) return null;
 
+    this.camera.updateMatrixWorld(true);
     this.raycaster.setFromCamera(ndc, this.camera);
     const meshes: THREE.Mesh[] = [];
     this.gridCellMeshes.forEach(cell => meshes.push(cell.mesh));
@@ -473,6 +476,15 @@ export class IsometricPetRenderer {
   public setCellHighlight(row: number, col: number, highlighted: boolean): void {
     const cell = this.gridCellMeshes.get(`${row}|${col}`);
     cell?.setHighlighted(highlighted);
+  }
+
+  public setCellHoverMode(
+    row: number,
+    col: number,
+    mode: 'none' | 'placement' | 'targeting'
+  ): void {
+    const cell = this.gridCellMeshes.get(`${row}|${col}`);
+    cell?.setHoverMode(mode);
   }
 
   public setCellActionPick(row: number, col: number, eligible: boolean, selected: boolean): void {
@@ -828,12 +840,14 @@ export class IsometricPetRenderer {
   }
 
   public render(): void {
+    this.camera.updateMatrixWorld(true);
     this.renderer.render(this.scene, this.camera);
   }
 
   public resize(width: number, height: number): void {
     this.renderer.setSize(width, height);
     this.camera.updateProjectionMatrix();
+    this.camera.updateMatrixWorld(true);
   }
 
   public destroy(): void {

@@ -319,6 +319,7 @@ export class GridCell extends PIXI.Container {
   /** 设置为 3D 渲染模式：隐藏 2D 背景（由 Three.js 3D 格子替代） */
   public setRenderBackground3DMode(enabled: boolean): void {
     this.renderBackground3DMode = enabled;
+    this.eventMode = enabled ? 'none' : 'static';
     this.background.visible = !enabled;
     this.highlight.visible = !enabled && this.isHighlighted;
     if (enabled) {

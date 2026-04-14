@@ -2,6 +2,7 @@ import * as THREE from 'three';
 
 /** 格子状态 */
 type CellState = 'empty' | 'occupied' | 'ruins';
+type CellHoverMode = 'none' | 'placement' | 'targeting';
 
 /** 3D 网格格子 - 管理单个格子的 3D 平面和边框 */
 export class GridCell3D {
@@ -11,7 +12,9 @@ export class GridCell3D {
   public readonly borderMesh: THREE.LineSegments;
 
   private currentState: CellState = 'empty';
-  private isHighlighted = false;
+  private hoverMode: CellHoverMode = 'none';
+  private isActionPickEligible = false;
+  private isActionPickSelected = false;
 
   // 颜色定义
   private static readonly COLOR_EMPTY = 0x3d5a80;
@@ -20,8 +23,10 @@ export class GridCell3D {
   private static readonly COLOR_OCCUPIED_LINE = 0x58d68d;
   private static readonly COLOR_RUINS = 0x2c3c4c;
   private static readonly COLOR_RUINS_LINE = 0x566573;
-  private static readonly COLOR_HIGHLIGHT = 0x3498db;
-  private static readonly COLOR_HIGHLIGHT_LINE = 0x5dade2;
+  private static readonly COLOR_PLACEMENT = 0x3498db;
+  private static readonly COLOR_PLACEMENT_LINE = 0x5dade2;
+  private static readonly COLOR_TARGETING = 0xf59e0b;
+  private static readonly COLOR_TARGETING_LINE = 0xf8c471;
   private static readonly COLOR_SELECTED = 0xd946ef;
   private static readonly COLOR_ELIGIBLE = 0xf59e0b;
 
@@ -85,55 +90,76 @@ export class GridCell3D {
     }
   }
 
+  private applyVisualState(): void {
+    const mat = this.mesh.material as THREE.MeshLambertMaterial;
+    const borderMat = this.borderMesh.material as THREE.LineBasicMaterial;
+
+    if (this.isActionPickSelected) {
+      mat.color.setHex(GridCell3D.COLOR_SELECTED);
+      mat.opacity = 0.34;
+      borderMat.color.setHex(GridCell3D.COLOR_SELECTED);
+      return;
+    }
+
+    if (this.hoverMode === 'targeting') {
+      mat.color.setHex(GridCell3D.COLOR_TARGETING);
+      mat.opacity = this.isActionPickEligible ? 0.3 : 0.24;
+      borderMat.color.setHex(GridCell3D.COLOR_TARGETING_LINE);
+      return;
+    }
+
+    if (this.isActionPickEligible) {
+      mat.color.setHex(GridCell3D.COLOR_ELIGIBLE);
+      mat.opacity = 0.18;
+      borderMat.color.setHex(GridCell3D.COLOR_ELIGIBLE);
+      return;
+    }
+
+    if (this.hoverMode === 'placement') {
+      mat.color.setHex(GridCell3D.COLOR_PLACEMENT);
+      mat.opacity = 0.65;
+      borderMat.color.setHex(GridCell3D.COLOR_PLACEMENT_LINE);
+      return;
+    }
+
+    this.applyStateColor();
+  }
+
   /** 设置为空状态 */
   setEmpty(): void {
     this.currentState = 'empty';
-    this.applyStateColor();
+    this.applyVisualState();
   }
 
   /** 设置为占用状态 */
   setOccupied(): void {
     this.currentState = 'occupied';
-    this.applyStateColor();
+    this.applyVisualState();
   }
 
   /** 设置为废墟状态 */
   setRuins(): void {
     this.currentState = 'ruins';
-    this.applyStateColor();
+    this.applyVisualState();
   }
 
   /** 设置高亮状态 */
   setHighlighted(highlighted: boolean): void {
-    this.isHighlighted = highlighted;
-    const mat = this.mesh.material as THREE.MeshLambertMaterial;
-    const borderMat = this.borderMesh.material as THREE.LineBasicMaterial;
+    this.setHoverMode(highlighted ? 'placement' : 'none');
+  }
 
-    if (highlighted) {
-      mat.color.setHex(GridCell3D.COLOR_HIGHLIGHT);
-      mat.opacity = 0.65;
-      borderMat.color.setHex(GridCell3D.COLOR_HIGHLIGHT_LINE);
-    } else {
-      this.applyStateColor();
-    }
+  setHoverMode(mode: CellHoverMode): void {
+    if (this.hoverMode === mode) return;
+    this.hoverMode = mode;
+    this.applyVisualState();
   }
 
   /** 设置行动牌选格样式 */
   setActionPick(eligible: boolean, selected: boolean): void {
-    const mat = this.mesh.material as THREE.MeshLambertMaterial;
-    const borderMat = this.borderMesh.material as THREE.LineBasicMaterial;
-
-    if (selected) {
-      mat.color.setHex(GridCell3D.COLOR_SELECTED);
-      mat.opacity = 0.24;
-      borderMat.color.setHex(GridCell3D.COLOR_SELECTED);
-    } else if (eligible) {
-      mat.color.setHex(GridCell3D.COLOR_ELIGIBLE);
-      mat.opacity = 0.18;
-      borderMat.color.setHex(GridCell3D.COLOR_ELIGIBLE);
-    } else if (!this.isHighlighted) {
-      this.applyStateColor();
-    }
+    if (this.isActionPickEligible === eligible && this.isActionPickSelected === selected) return;
+    this.isActionPickEligible = eligible;
+    this.isActionPickSelected = selected;
+    this.applyVisualState();
   }
 
   /** 销毁格子，释放资源 */
