@@ -92,13 +92,20 @@ export class HandController {
 
   public updateFromStore(state: HandControllerStoreState) {
     const hand = state.hand;
-    if (state.lastDrawEvent && !this.handledDrawEventIds.has(state.lastDrawEvent.id)) {
+    const drawEventJustQueued =
+      !!state.lastDrawEvent && !this.handledDrawEventIds.has(state.lastDrawEvent.id);
+    if (drawEventJustQueued && state.lastDrawEvent) {
       this.queueDrawEvent(state.lastDrawEvent);
     } else {
       this.syncHandCards(hand, { excludeCards: this.pendingDrawCards });
     }
 
-    if (hand !== this.lastHandRef || hand.length !== this.handCards.length) {
+    // Only sync again if not handled by queueDrawEvent (which has its own sync inside)
+    // and the hand actually changed (not just the same reference after queueDrawEvent's sync)
+    if (
+      !drawEventJustQueued &&
+      (hand !== this.lastHandRef || hand.length !== this.handCards.length)
+    ) {
       this.syncHandCards(hand, { excludeCards: this.pendingDrawCards });
     }
   }

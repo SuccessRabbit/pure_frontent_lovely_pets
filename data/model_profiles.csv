@@ -1,0 +1,8 @@
+id,name,rendererType,source,scale,rotationY,offsetX,offsetY,offsetZ,shadowSize,thumbnailPath,notes
+model_corgi,新晋柯基 Low Poly,low_poly_preset,corgi,1,0,0,0,0,1,/assets/cards/pets/pet_001.svg,默认柯基预设
+model_husky,暴躁二哈 Low Poly,low_poly_preset,husky,1,0,0,0,0,1,/assets/cards/pets/pet_002.svg,默认二哈预设
+model_capybara,摸鱼水豚 Low Poly,low_poly_preset,capybara,1,0,0,0,0,1,/assets/cards/pets/pet_003.svg,默认水豚预设
+model_orange_cat,橘猫胖丁 Low Poly,low_poly_preset,orange_cat,1,0,0,0,0,1,/assets/cards/pets/pet_004.svg,默认橘猫预设
+model_ragdoll,高冷布偶 Low Poly,low_poly_preset,ragdoll,1,0,0,0,0,1,/assets/cards/pets/pet_005.svg,默认布偶预设
+model_eternal_cat,永动机猫 Low Poly,low_poly_preset,eternal_cat,1,0,0,0,0,1,/assets/cards/pets/pet_006.svg,默认永动机猫预设
+model_default,默认宠物模型,low_poly_preset,default,1,0,0,0,0,1,/assets/cards/pets/pet_001.svg,资源缺失时回退

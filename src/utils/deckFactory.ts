@@ -7,9 +7,9 @@ import actionsConfig from '../../config/actions.json';
 /** 与 useCardLoader 一致：全部卡 normalize 后各 2 份再洗牌 */
 export function buildShuffledStartingDeck(): Card[] {
   const allCards: Card[] = [
-    ...(petsConfig as Card[]),
-    ...(workersConfig as Card[]),
-    ...(actionsConfig as Card[]),
+    ...(petsConfig as unknown as Card[]),
+    ...(workersConfig as unknown as Card[]),
+    ...(actionsConfig as unknown as Card[]),
   ].map(card => normalizeCard(card as Card));
 
   const initialDeck: Card[] = [];

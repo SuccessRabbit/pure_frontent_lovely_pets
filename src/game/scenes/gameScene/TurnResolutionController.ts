@@ -1,24 +1,14 @@
-import {
-  HAND_SIZE_MAX,
-  HEARTS_ENTITY_INCOME_MULTIPLIER,
-} from '@config/gameRules';
-import { useGameStore } from '../../../store/gameStore';
-import type { DrawEvent, StressResolutionResult } from '../../../store/gameStore';
+import { snapshotGameState, useGameStore } from '../../../store/gameStore';
+import type { DrawEvent } from '../../../store/gameStore';
+import { runGameCommand, type ResolutionStep } from '../../rules/ResolutionEngine';
+import type { PresentationEvent } from '../../rules/presentation';
 
 const PHASE_GAP_MS = 380;
-const POST_INCOME_MS = 520;
-const POST_STRESS_MS = 820;
 
 function waitMs(ms: number): Promise<void> {
   return new Promise(resolve => {
     setTimeout(resolve, ms);
   });
-}
-
-interface ResolutionUnit {
-  row: number;
-  col: number;
-  entityId: string;
 }
 
 interface TurnResolutionControllerDeps {
@@ -81,55 +71,23 @@ export class TurnResolutionController {
     if (this.getRoundResolving()) return;
 
     this.clearPendingActionPick();
+    const current = useGameStore.getState();
+    if (current.gameStatus !== 'playing') return;
+    if (current.phase !== 'preparation' && current.phase !== 'action') return;
 
-    const get = useGameStore.getState;
-    if (get().gameStatus !== 'playing') return;
-
-    const phase = get().phase;
-    if (phase !== 'preparation' && phase !== 'action') return;
+    const result = runGameCommand(snapshotGameState(current), { type: 'resolve_turn_sequence' });
+    if (!result.success) return;
 
     this.setRoundResolving(true);
     this.setEndTurnInteractable(false);
 
     try {
-      if (get().phase === 'preparation') {
-        get().setPhase('action');
-        await this.showPhaseBanner('行动阶段', 420);
-        await waitMs(PHASE_GAP_MS);
+      for (const step of result.steps) {
+        await this.applyResolutionStep(step);
+        if (useGameStore.getState().gameStatus !== 'playing') {
+          break;
+        }
       }
-
-      if (get().phase === 'action') {
-        get().setPhase('income');
-        await this.showPhaseBanner('收入阶段', 480);
-        await waitMs(300);
-        await this.resolveIncomePhaseSequential();
-        if (get().gameStatus !== 'playing') return;
-        await waitMs(POST_INCOME_MS);
-      }
-
-      get().setPhase('end');
-      await this.showPhaseBanner('结算阶段 · 逐个结算暴躁度', 500);
-      await waitMs(280);
-
-      await this.resolveStressPhaseSequential();
-      await waitMs(POST_STRESS_MS);
-
-      if (get().gameStatus !== 'playing') return;
-
-      get().endTurn();
-      if (get().gameStatus !== 'playing') return;
-
-      if (get().awaitingHandTrim) {
-        this.spawnHudFloat(
-          `手牌超过 ${HAND_SIZE_MAX} 张，请打出或将可弃牌拖向屏幕底边红区弃牌`,
-          0xfff9c4
-        );
-        return;
-      }
-
-      const turn = get().turn;
-      await this.showPhaseBanner(`第 ${turn} 回合 · 准备阶段`, 520);
-      await waitMs(PHASE_GAP_MS);
     } finally {
       this.setRoundResolving(false);
       const playing = useGameStore.getState().gameStatus === 'playing';
@@ -137,128 +95,51 @@ export class TurnResolutionController {
     }
   }
 
-  private getResolutionOrderSnapshot(): ResolutionUnit[] {
-    const { grid } = useGameStore.getState();
-    const order: ResolutionUnit[] = [];
-    grid.forEach((row, rowIndex) => {
-      row.forEach((entity, colIndex) => {
-        if (!entity) return;
-        order.push({
-          row: rowIndex,
-          col: colIndex,
-          entityId: entity.id,
-        });
-      });
-    });
-    return order;
+  private async applyResolutionStep(step: ResolutionStep): Promise<void> {
+    useGameStore.setState(step.state);
+    this.syncGridFromStore();
+    this.sync3DStressOverlays();
+    await this.playPresentationEvents(step.presentation);
   }
 
-  private async resolveIncomePhaseSequential() {
-    const get = useGameStore.getState;
-    get().calculateInterest();
-    const breakdown = get().getIncomeBreakdown();
-    const incomeByCell = new Map(
-      breakdown.entities.map(ent => [`${ent.row}|${ent.col}`, ent] as const)
-    );
+  private async playPresentationEvents(events: PresentationEvent[]): Promise<void> {
+    for (const event of events) {
+      await this.playPresentationEvent(event);
+    }
+  }
 
-    let entityIncomeSum = 0;
-    const order = this.getResolutionOrderSnapshot();
-    for (const unit of order) {
-      const entry = incomeByCell.get(`${unit.row}|${unit.col}`);
-      const liveEntity = get().grid[unit.row][unit.col];
-      if (!entry || !liveEntity || liveEntity.id !== unit.entityId) continue;
+  private async playPresentationEvent(event: PresentationEvent): Promise<void> {
+    if (event.type === 'show_phase_banner') {
+      await this.showPhaseBanner(event.title, event.holdMs);
+      await waitMs(PHASE_GAP_MS);
+      return;
+    }
 
-      await this.showEntityCue(unit.row, unit.col, liveEntity.name, '收益结算', 0xffe082);
-      this.spawnIncomeFloat(unit.row, unit.col, entry.income);
-      get().addCans(entry.income);
-      entityIncomeSum += entry.income;
+    if (event.type === 'show_entity_cue') {
+      await this.showEntityCue(event.row, event.col, event.title, event.subtitle, event.color);
+      return;
+    }
+
+    if (event.type === 'spawn_income_float') {
+      this.spawnIncomeFloat(event.row, event.col, event.amount);
       await waitMs(320);
-      await this.resolveEntityIncomeTrigger(unit);
-      if (get().gameStatus !== 'playing') return;
+      return;
     }
 
-    if (breakdown.interest > 0) {
-      this.spawnHudFloat(`利息 +${breakdown.interest}`, 0xfff9c4);
-      get().addCans(breakdown.interest);
+    if (event.type === 'spawn_hud_float') {
+      this.spawnHudFloat(event.text, event.color);
       await waitMs(360);
-    }
-    if (breakdown.streakBonus > 0) {
-      this.spawnHudFloat(`连胜 +${breakdown.streakBonus}`, 0xabebc6);
-      get().addCans(breakdown.streakBonus);
-      await waitMs(360);
+      return;
     }
 
-    const heartsGain = Math.floor(entityIncomeSum * HEARTS_ENTITY_INCOME_MULTIPLIER);
-    if (heartsGain > 0) {
-      get().addHearts(heartsGain);
-      this.spawnHudFloat(`人气 +${heartsGain}`, 0xffd6e8);
-      await waitMs(360);
+    if (event.type === 'play_draw_event') {
+      await this.playManualDrawEvent(event.event);
+      return;
     }
-  }
 
-  private async resolveEntityIncomeTrigger(unit: ResolutionUnit) {
-    const live = useGameStore.getState().grid[unit.row][unit.col];
-    if (!live || live.id !== unit.entityId) return;
-
-    if (live.type === 'pet' && live.cardId === 'pet_006') {
-      await this.showEntityCue(unit.row, unit.col, '永动机猫', '技能触发：抽 1 张牌', 0xffd54f);
-      const event = useGameStore.getState().drawCards(1, {
-        source: 'skill',
-        sourceLabel: '永动机猫',
-        sourceCardId: live.cardId,
-        sourceEntityId: live.id,
-        sourceRow: unit.row,
-        sourceCol: unit.col,
-        uiMode: 'manual',
-      });
-      if (event) {
-        await this.playManualDrawEvent(event);
-      }
-    }
-  }
-
-  private async resolveStressPhaseSequential() {
-    const order = this.getResolutionOrderSnapshot();
-    for (const unit of order) {
-      const live = useGameStore.getState().grid[unit.row][unit.col];
-      if (!live || live.id !== unit.entityId) continue;
-
-      await this.showEntityCue(unit.row, unit.col, live.name, '暴躁 +1', 0xffb74d);
-      const result = useGameStore.getState().addStress(unit.row, unit.col, 1);
-      this.syncGridFromStore();
-      this.sync3DStressOverlays();
-      this.pulseStressCell(unit.row, unit.col);
-
-      if (!result) {
-        await waitMs(160);
-        continue;
-      }
-
-      await this.resolveStressOutcome(result);
-      if (useGameStore.getState().gameStatus !== 'playing') return;
-    }
-  }
-
-  private async resolveStressOutcome(result: StressResolutionResult) {
-    if (result.outcome === 'applied') {
+    if (event.type === 'pulse_stress_cell') {
+      this.pulseStressCell(event.row, event.col);
       await waitMs(240);
-      return;
     }
-
-    if (result.outcome === 'black_red') {
-      if (result.bonusIncome && result.bonusIncome > 0) {
-        this.spawnIncomeFloat(result.row, result.col, result.bonusIncome);
-      }
-      await this.showEntityCue(
-        result.row,
-        result.col,
-        '黑红暴走',
-        `额外收益 +${result.bonusIncome ?? 0}`,
-        0xff6f61
-      );
-      return;
-    }
-
-    await this.showEntityCue(result.row, result.col, '彻底拆家', '工位耐久受损，店长掉血', 0xff8a80);
   }
 }

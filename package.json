@@ -4,11 +4,12 @@
   "description": "萌宠直播公司 - Roguelike 卡牌游戏",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc && vite build",
+    "dev": "node scripts/dev-with-admin.js",
+    "dev:web": "vite",
+    "dev:admin-api": "node scripts/admin-api.js",
+    "compile:data": "node scripts/compile-data.js",
+    "build": "npm run compile:data && tsc && vite build",
     "preview": "vite preview",
-    "convert:cards": "node scripts/excel-to-json.js",
-    "generate:cards-template": "node scripts/generate-cards-template.js",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "type-check": "tsc --noEmit"
   },

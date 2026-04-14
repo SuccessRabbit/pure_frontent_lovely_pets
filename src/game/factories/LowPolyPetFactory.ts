@@ -591,22 +591,41 @@ function createDefaultPet(): PetRig {
   return rig;
 }
 
-/** 根据宠物 ID 创建对应的 Low-poly 模型 */
-export function createLowPolyPet(petId: string): PetRig {
-  switch (petId) {
-    case 'pet_001':
-      return createCorgi();
-    case 'pet_002':
-      return createHusky();
-    case 'pet_003':
-      return createCapybara();
-    case 'pet_004':
-      return createOrangeCat();
-    case 'pet_005':
-      return createRagdoll();
-    case 'pet_006':
-      return createEternalCat();
-    default:
-      return createDefaultPet();
-  }
+export type LowPolyPetPreset =
+  | 'corgi'
+  | 'husky'
+  | 'capybara'
+  | 'orange_cat'
+  | 'ragdoll'
+  | 'eternal_cat'
+  | 'default';
+
+const PRESET_FACTORIES: Record<LowPolyPetPreset, () => PetRig> = {
+  corgi: createCorgi,
+  husky: createHusky,
+  capybara: createCapybara,
+  orange_cat: createOrangeCat,
+  ragdoll: createRagdoll,
+  eternal_cat: createEternalCat,
+  default: createDefaultPet,
+};
+
+const CARD_ID_TO_PRESET: Record<string, LowPolyPetPreset> = {
+  pet_001: 'corgi',
+  pet_002: 'husky',
+  pet_003: 'capybara',
+  pet_004: 'orange_cat',
+  pet_005: 'ragdoll',
+  pet_006: 'eternal_cat',
+};
+
+export function getAvailableLowPolyPetPresets(): LowPolyPetPreset[] {
+  return Object.keys(PRESET_FACTORIES) as LowPolyPetPreset[];
+}
+
+/** 根据宠物 ID 或预设名创建对应的 Low-poly 模型 */
+export function createLowPolyPet(petIdOrPreset: string): PetRig {
+  const preset = CARD_ID_TO_PRESET[petIdOrPreset] ?? (petIdOrPreset as LowPolyPetPreset);
+  const factory = PRESET_FACTORIES[preset] ?? PRESET_FACTORIES.default;
+  return factory();
 }

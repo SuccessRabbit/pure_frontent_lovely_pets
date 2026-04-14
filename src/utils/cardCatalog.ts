@@ -7,10 +7,10 @@ const catalog = new Map<string, Card>();
 
 function ensureBuilt() {
   if (catalog.size > 0) return;
-  for (const raw of petsConfig as Card[]) {
+  for (const raw of petsConfig as unknown as Card[]) {
     catalog.set(raw.id, normalizeCard(raw as Card));
   }
-  for (const raw of workersConfig as Card[]) {
+  for (const raw of workersConfig as unknown as Card[]) {
     catalog.set(raw.id, normalizeCard(raw as Card));
   }
 }

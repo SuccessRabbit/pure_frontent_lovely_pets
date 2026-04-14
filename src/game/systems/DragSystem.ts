@@ -29,10 +29,8 @@ export interface ActionZoneHit {
  * 卡牌挂在 handContainer 下，位置必须用 toLocal 换算，不能与屏幕坐标混用。
  */
 export class DragSystem {
-  /** 设计分辨率高度 */
-  private static readonly DESIGN_HEIGHT = 1080;
-  /** 距离底部多少像素内开始计入「接近底边弃牌区」 */
-  private static readonly DISCARD_ZONE_BOTTOM = 100;
+  /** 距离屏幕底部多少 CSS 像素内开始计入「接近底边弃牌区」 */
+  private static readonly DISCARD_ZONE_BOTTOM_SCREEN = 200;
   /** 接近度 ≥ 此值时视为在弃牌释放区内（与 UI 提示一致） */
   public static readonly HAND_TRIM_DISCARD_RELEASE = 0.88;
 
@@ -52,12 +50,6 @@ export class DragSystem {
   private handTrimBottomDiscardReady = false;
   /** 是否处于回合末手牌整理（拖向底边弃牌） */
   private awaitingHandTrim: (() => boolean) | null = null;
-  /**
-   * 设计分辨率根节点（如 GameScene.container）。用于把指针从画布像素转换到 1920×1080 设计坐标，
-   * 与 stage 缩放/位移对齐；缺省时误用 getGlobalPosition 会与 InputManager 坐标系不一致。
-   */
-  private discardDesignRoot: PIXI.Container | null = null;
-  private readonly _pointerDesignTmp = new PIXI.Point();
   /** 3D 宠物渲染器引用（用于 3D 格子命中检测） */
   private petRenderer: IsometricPetRenderer | null = null;
   /** 当前悬停的格子（供 GameScene 同步 3D 高亮） */
@@ -103,7 +95,7 @@ export class DragSystem {
   }
 
   public setDiscardDesignRoot(root: PIXI.Container | null) {
-    this.discardDesignRoot = root;
+    void root;
   }
 
   public setPetRenderer(renderer: IsometricPetRenderer | null): void {
@@ -154,29 +146,19 @@ export class DragSystem {
     return this.awaitingHandTrim?.() ?? false;
   }
 
-   /**
-   * 手牌整理拖拽时：按指针在设计坐标系中的 Y 与底边的接近程度 0~1。
-   * 弃牌区固定为底部 100 像素范围内。
+  /**
+   * 手牌整理拖拽时：按指针在屏幕坐标中的 Y 与底边的接近程度 0~1。
+   * 弃牌区固定为屏幕底部 200 CSS 像素范围内。
    */
   public getHandTrimBottomDiscardProximity(): number {
     if (!this.draggingCard || !this.isAwaitingHandTrim()) return 0;
-    const designY = this.getPointerDesignY();
-    if (designY === null) return 0;
-    const bottom = DragSystem.DESIGN_HEIGHT;
-    const zoneTop = bottom - DragSystem.DISCARD_ZONE_BOTTOM;
-    if (designY < zoneTop) return 0;
-    if (designY >= bottom) return 1;
-    return (designY - zoneTop) / DragSystem.DISCARD_ZONE_BOTTOM;
-  }
-
-  /** 指针当前在设计坐标系中的 Y；无法换算时返回 null */
-  private getPointerDesignY(): number | null {
-    const root = this.discardDesignRoot;
-    if (!root) return null;
     const mouse = this.inputManager.getMouse();
-    this._pointerDesignTmp.set(mouse.x, mouse.y);
-    root.toLocal(this._pointerDesignTmp, undefined, this._pointerDesignTmp);
-    return this._pointerDesignTmp.y;
+    const screenY = mouse.y;
+    const bottom = Math.max(1, window.innerHeight);
+    const zoneTop = Math.max(0, bottom - DragSystem.DISCARD_ZONE_BOTTOM_SCREEN);
+    if (screenY < zoneTop) return 0;
+    if (screenY >= bottom) return 1;
+    return (screenY - zoneTop) / Math.max(1, bottom - zoneTop);
   }
 
   private computeHandTrimBottomDiscardReady(): boolean {

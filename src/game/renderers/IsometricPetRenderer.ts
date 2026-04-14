@@ -11,6 +11,7 @@ import {
   type QualityLevel,
   type SceneMood,
 } from '../theme/visualTheme';
+import { getCardModelProfile } from '../../utils/runtimeConfig';
 
 type PetAnimationState = 'idle' | 'angry';
 
@@ -449,8 +450,11 @@ export class IsometricPetRenderer {
     return materials;
   }
 
-  private createShadow(worldPos: THREE.Vector3): THREE.Mesh {
-    const shadow = new THREE.Mesh(new THREE.CircleGeometry(78, 28), createShadowMaterial());
+  private createShadow(worldPos: THREE.Vector3, shadowSize = 1): THREE.Mesh {
+    const shadow = new THREE.Mesh(
+      new THREE.CircleGeometry(78 * shadowSize, 28),
+      createShadowMaterial()
+    );
     shadow.rotation.x = -Math.PI / 2;
     shadow.position.set(worldPos.x, -0.9, worldPos.z + 6);
     shadow.renderOrder = 1;
@@ -731,22 +735,23 @@ export class IsometricPetRenderer {
     }
     if (existing) this.removePet(row, col);
 
-    const rig = createLowPolyPet(entity.cardId);
+    const modelProfile = getCardModelProfile(entity.cardId);
+    const rig = createLowPolyPet(modelProfile?.source ?? entity.cardId);
     const root = rig.root;
-    root.scale.setScalar(this.PET_WORLD_SCALE);
-    root.rotation.set(0, IsometricPetRenderer.PET_FACING_Y, 0);
+    root.scale.setScalar(this.PET_WORLD_SCALE * (modelProfile?.scale ?? 1));
+    root.rotation.set(0, IsometricPetRenderer.PET_FACING_Y + (modelProfile?.rotationY ?? 0), 0);
 
     const worldPos = this.gridToWorld(row, col);
     root.position.set(
-      worldPos.x,
-      this.computeGroundedY(root, worldPos.x, worldPos.z),
-      worldPos.z
+      worldPos.x + (modelProfile?.offsetX ?? 0),
+      this.computeGroundedY(root, worldPos.x, worldPos.z) + (modelProfile?.offsetY ?? 0),
+      worldPos.z + (modelProfile?.offsetZ ?? 0)
     );
     root.traverse(obj => {
       obj.renderOrder = 20 + row * 100 + col;
     });
 
-    const shadow = this.createShadow(worldPos);
+    const shadow = this.createShadow(worldPos, modelProfile?.shadowSize ?? 1);
     const materials = this.enhancePetMaterials(root);
     this.scene.add(root);
 

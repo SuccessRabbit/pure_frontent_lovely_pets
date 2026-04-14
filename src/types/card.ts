@@ -6,6 +6,19 @@ export interface CardEffect {
   raw?: string;
 }
 
+export interface CardSkillBinding {
+  id: string;
+  templateId: string;
+  templateName: string;
+  trigger: string;
+  targetMode: string;
+  effectKind: string;
+  supportsSecondTarget: boolean;
+  params: Record<string, unknown>;
+  summary: string;
+  descriptionPreview: string;
+}
+
 export interface CardAttributes {
   health?: number;
   attack?: number;
@@ -30,4 +43,10 @@ export interface Card {
   stressLimit?: number;
   /** 回合末整理时是否允许拖入弃牌区；未定义或 true 为可弃；false 为仅可打出 */
   canDiscard?: boolean;
+  illustrationPath?: string;
+  imageFitMode?: 'contain' | 'cover';
+  imageAnchorPreset?: string;
+  modelProfileId?: string;
+  derivedDescription?: string;
+  skills?: CardSkillBinding[];
 }

@@ -48,6 +48,11 @@ npm install
 npm run dev
 ```
 
+这会同时启动：
+- 游戏前端：`http://localhost:3000`
+- 本地 Admin API：`http://127.0.0.1:3001`
+- 管理后台入口：`http://localhost:3000/admin`
+
 ### 查看效果
 浏览器访问 `http://localhost:3000`
 
@@ -70,24 +75,22 @@ npm run preview
 
 ## 📊 配置卡牌数据
 
-### 方式一：使用 Excel 编辑（推荐）
+### CSV + Admin 工作流
 
-1. 打开 `excel/cards.xlsx`
-2. 按照表格格式填写卡牌数据
-3. 运行转换脚本：
-```bash
-npm run convert:cards
-```
+配置源已经切换为 `data/*.csv`：
+- `data/cards.csv` - 卡牌基础字段与资源字段
+- `data/card_skills.csv` - 卡牌技能绑定
+- `data/skill_templates.csv` - 技能模板
+- `data/model_profiles.csv` - 3D 模型配置
+- `data/global_config.csv` - 全局游戏参数
 
-详细说明请查看 [excel/README.md](./excel/README.md)
+推荐工作方式：
+1. 启动 `npm run dev`
+2. 访问 `http://localhost:3000/admin`
+3. 在后台编辑卡牌、技能、资源和全局参数
+4. 点击“保存 CSV”，系统会自动回写 CSV 并重新生成 `config/*.json` 与 `config/gameRules.ts`
 
-### 方式二：直接编辑 JSON
-
-直接修改 `config/` 目录下的 JSON 文件：
-- `pets.json` - 萌宠卡牌
-- `workers.json` - 牛马卡牌
-- `actions.json` - 指令卡牌
-- `synergies.json` - 羁绊配置
+生产构建和 Vercel 部署会自动执行 `npm run compile:data`，因此线上只消费 Git 中的 CSV 与生成产物。
 
 ## 🎨 添加图片资源
 

@@ -1,0 +1,12 @@
+module,key,value,valueType,description
+victory,VICTORY_DAYS,30,number,胜利判定天数
+victory,VICTORY_HEARTS,1000,number,胜利判定小红心
+player,PLAYER_HP_START,100,number,玩家初始生命
+grid,CELL_DURABILITY_MAX,3,number,工位最大耐久
+grid,RUINS_REBUILD_COST,2,number,重建废墟花费
+economy,HEARTS_ENTITY_INCOME_MULTIPLIER,2.5,number,实体收入转小红心倍率
+hand,HAND_SIZE_MAX,6,number,手牌上限
+stress,MELTDOWN_HP_LOSS,10,number,拆家导致的生命损失
+setup,STARTING_CANS,10,number,初始小罐头
+setup,SETUP_DRAW_COUNT,5,number,开局抽牌数
+setup,TURN_DRAW_COUNT,3,number,每日抽牌数

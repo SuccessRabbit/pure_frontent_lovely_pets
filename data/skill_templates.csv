@@ -1,0 +1,16 @@
+id,name,description,scope,trigger,targetMode,effectKind,paramSchemaJson,summaryTemplate,descriptionTemplate,supportsSecondTarget
+action_reset_pet_stress,清空目标压力,将目标萌宠压力重置为固定值,action_debuff,on_play,pet,set_stress_value,"[{""name"":""value"",""label"":""目标压力"",""type"":""number"",""defaultValue"":0}]",目标萌宠压力设为 {value},目标萌宠压力归零,false
+action_income_multiplier_turn,本回合收益倍率,按单位类型提高本回合收益,action_buff|action_utility,on_play,none,income_multiplier_turn,"[{""name"":""entityType"",""label"":""作用单位"",""type"":""select"",""options"":[""pet"",""worker""]},{""name"":""multiplier"",""label"":""倍率"",""type"":""number"",""defaultValue"":2}]",本回合 {entityType} 收益 x{multiplier},本回合所有 {entityType} 收益翻倍,false
+action_queue_card_next_turn,延迟塞入卡牌,在下回合开始时向弃牌堆注入卡牌,action_buff,on_play,none,queue_card_next_turn,"[{""name"":""cardId"",""label"":""目标卡牌 ID"",""type"":""text"",""defaultValue"":""""}]",下回合注入卡牌 {cardId},下回合开始时加入 {cardId},false
+action_swap_positions,交换单位位置,交换两个单位的位置,action_utility,on_play,swap,swap_positions,[],"交换两个单位的位置","交换场上两个单位的位置",true
+action_adjust_stress_all,群体调整压力,对指定单位类型整体增减压力,action_debuff|action_buff,on_play,none,adjust_stress_all,"[{""name"":""entityType"",""label"":""作用单位"",""type"":""select"",""options"":[""pet"",""worker""]},{""name"":""amount"",""label"":""压力变化"",""type"":""number"",""defaultValue"":-2}]",全场 {entityType} 压力 {amount},全场 {entityType} 压力 {amount},false
+action_sacrifice_worker_relief,献祭牛马减压,献祭一个牛马并降低相邻萌宠压力,action_utility,on_play,worker,sacrifice_worker_reduce_adjacent_pet_stress,"[{""name"":""amount"",""label"":""减压值"",""type"":""number"",""defaultValue"":2}]",献祭牛马后相邻萌宠压力 {amount},献祭一个牛马，降低相邻萌宠压力 {amount} 点,false
+action_draw_cards,抽牌,立即抽取指定数量的卡牌,action_utility,on_play,none,draw_cards,"[{""name"":""count"",""label"":""抽牌数"",""type"":""number"",""defaultValue"":2}]",抽 {count} 张牌,抽 {count} 张牌,false
+action_return_pet_to_hand,回收萌宠,将目标萌宠收回手牌,action_utility,on_play,pet,return_pet_to_hand,[],将目标萌宠收回手牌,将一个萌宠收回手牌,false
+pet_adjacent_worker_income_bonus,相邻牛马收益加成,提升相邻牛马收益/效率,entity_pet,passive,adjacent_workers,passive_summary,"[{""name"":""amount"",""label"":""加成百分比"",""type"":""number"",""defaultValue"":10}]",相邻牛马效率 +{amount}%,相邻牛马效率 +{amount}%,false
+pet_meltdown_radius_bonus,拆家范围扩大,提升拆家或爆发的影响范围,entity_pet,passive,self,passive_summary,"[{""name"":""radius"",""label"":""影响半径"",""type"":""number"",""defaultValue"":1}]",拆家范围扩大到 {radius},拆家范围扩大到 {radius}x{radius},false
+pet_never_meltdown,不会拆家,该宠物不会触发拆家,entity_pet,passive,self,passive_summary,[],永远不会拆家,永远不会拆家,false
+pet_adjacent_pet_stress_each_turn,相邻萌宠压力变化,每回合影响相邻萌宠压力,entity_pet,turn_end,adjacent_pets,passive_summary,"[{""name"":""amount"",""label"":""压力变化"",""type"":""number"",""defaultValue"":1}]",相邻萌宠每回合压力 {amount},相邻萌宠每回合压力 {amount},false
+pet_ignore_adjacent_stress,免疫相邻压力,不受相邻单位压力传染影响,entity_pet,passive,self,passive_summary,[],不受相邻单位压力传染影响,不受相邻单位压力传染影响,false
+pet_draw_on_turn_start,回合开始抽牌,回合开始自动抽牌,entity_pet,turn_start,self,passive_summary,"[{""name"":""count"",""label"":""抽牌数"",""type"":""number"",""defaultValue"":1}]",每回合自动抽 {count} 张牌,每回合自动抽 {count} 张牌,false
+worker_passive_summary,被动说明,用于记录暂未执行的被动效果,entity_worker,passive,self,passive_summary,"[{""name"":""text"",""label"":""说明"",""type"":""text"",""defaultValue"":""""}]",{text},{text},false

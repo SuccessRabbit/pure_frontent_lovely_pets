@@ -6,14 +6,29 @@
     "cost": 1,
     "rarity": "rare",
     "description": "瞬间安抚萌宠的神器",
-    "image": "/assets/cards/actions/action_001.svg",
     "tags": [
       "consumable"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_001.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_001.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "目标萌宠压力归零",
+    "skills": [
       {
-        "type": "raw",
-        "description": "目标萌宠压力归零"
+        "id": "skill_action_001_a",
+        "templateId": "action_reset_pet_stress",
+        "templateName": "清空目标压力",
+        "trigger": "on_play",
+        "targetMode": "pet",
+        "effectKind": "set_stress_value",
+        "supportsSecondTarget": false,
+        "params": {
+          "value": 0
+        },
+        "summary": "目标萌宠压力设为 0",
+        "descriptionPreview": "目标萌宠压力归零"
       }
     ]
   },
@@ -24,14 +39,44 @@
     "cost": 2,
     "rarity": "epic",
     "description": "短期激励，长期隐患",
-    "image": "/assets/cards/actions/action_002.svg",
     "tags": [
       "risky"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_002.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_002.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "本回合所有 worker 收益翻倍；下回合开始时加入 action_resentment",
+    "skills": [
       {
-        "type": "parsed",
-        "raw": "全场牛马本回合效率+100"
+        "id": "skill_action_002_a",
+        "templateId": "action_income_multiplier_turn",
+        "templateName": "本回合收益倍率",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "income_multiplier_turn",
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "worker",
+          "multiplier": 2
+        },
+        "summary": "本回合 worker 收益 x2",
+        "descriptionPreview": "本回合所有 worker 收益翻倍"
+      },
+      {
+        "id": "skill_action_002_b",
+        "templateId": "action_queue_card_next_turn",
+        "templateName": "延迟塞入卡牌",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "queue_card_next_turn",
+        "supportsSecondTarget": false,
+        "params": {
+          "cardId": "action_resentment"
+        },
+        "summary": "下回合注入卡牌 action_resentment",
+        "descriptionPreview": "下回合开始时加入 action_resentment"
       }
     ]
   },
@@ -42,14 +87,27 @@
     "cost": 1,
     "rarity": "common",
     "description": "调整阵型的基础操作",
-    "image": "/assets/cards/actions/action_003.svg",
     "tags": [
       "utility"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_003.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_003.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "交换场上两个单位的位置",
+    "skills": [
       {
-        "type": "raw",
-        "description": "交换场上两个单位的位置"
+        "id": "skill_action_003_a",
+        "templateId": "action_swap_positions",
+        "templateName": "交换单位位置",
+        "trigger": "on_play",
+        "targetMode": "swap",
+        "effectKind": "swap_positions",
+        "supportsSecondTarget": true,
+        "params": {},
+        "summary": "交换两个单位的位置",
+        "descriptionPreview": "交换场上两个单位的位置"
       }
     ]
   },
@@ -60,14 +118,30 @@
     "cost": 3,
     "rarity": "legendary",
     "description": "土豪刷火箭",
-    "image": "/assets/cards/actions/action_004.svg",
     "tags": [
       "powerful"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_004.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_004.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "本回合所有 pet 收益翻倍",
+    "skills": [
       {
-        "type": "raw",
-        "description": "本回合所有萌宠收益翻倍"
+        "id": "skill_action_004_a",
+        "templateId": "action_income_multiplier_turn",
+        "templateName": "本回合收益倍率",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "income_multiplier_turn",
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "pet",
+          "multiplier": 2
+        },
+        "summary": "本回合 pet 收益 x2",
+        "descriptionPreview": "本回合所有 pet 收益翻倍"
       }
     ]
   },
@@ -78,14 +152,30 @@
     "cost": 2,
     "rarity": "rare",
     "description": "团建活动",
-    "image": "/assets/cards/actions/action_005.svg",
     "tags": [
       "aoe"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_005.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_005.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "全场 pet 压力 -2",
+    "skills": [
       {
-        "type": "parsed",
-        "raw": "全场萌宠压力-2"
+        "id": "skill_action_005_a",
+        "templateId": "action_adjust_stress_all",
+        "templateName": "群体调整压力",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "adjust_stress_all",
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "pet",
+          "amount": -2
+        },
+        "summary": "全场 pet 压力 -2",
+        "descriptionPreview": "全场 pet 压力 -2"
       }
     ]
   },
@@ -96,14 +186,29 @@
     "cost": 0,
     "rarity": "common",
     "description": "资本家的冷酷决策",
-    "image": "/assets/cards/actions/action_006.svg",
     "tags": [
       "sacrifice"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_006.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_006.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "献祭一个牛马，降低相邻萌宠压力 2 点",
+    "skills": [
       {
-        "type": "raw",
-        "description": "献祭一个牛马，降低相邻萌宠压力2点"
+        "id": "skill_action_006_a",
+        "templateId": "action_sacrifice_worker_relief",
+        "templateName": "献祭牛马减压",
+        "trigger": "on_play",
+        "targetMode": "worker",
+        "effectKind": "sacrifice_worker_reduce_adjacent_pet_stress",
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 2
+        },
+        "summary": "献祭牛马后相邻萌宠压力 2",
+        "descriptionPreview": "献祭一个牛马，降低相邻萌宠压力 2 点"
       }
     ]
   },
@@ -114,14 +219,29 @@
     "cost": 1,
     "rarity": "common",
     "description": "赌一把",
-    "image": "/assets/cards/actions/action_007.svg",
     "tags": [
       "draw"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_007.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_007.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "抽 2 张牌",
+    "skills": [
       {
-        "type": "raw",
-        "description": "抽2张牌"
+        "id": "skill_action_007_a",
+        "templateId": "action_draw_cards",
+        "templateName": "抽牌",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "draw_cards",
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 2
+        },
+        "summary": "抽 2 张牌",
+        "descriptionPreview": "抽 2 张牌"
       }
     ]
   },
@@ -132,14 +252,27 @@
     "cost": 1,
     "rarity": "rare",
     "description": "临时撤退",
-    "image": "/assets/cards/actions/action_008.svg",
     "tags": [
       "utility"
     ],
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_008.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_008.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "将一个萌宠收回手牌",
+    "skills": [
       {
-        "type": "raw",
-        "description": "将一个萌宠收回手牌"
+        "id": "skill_action_008_a",
+        "templateId": "action_return_pet_to_hand",
+        "templateName": "回收萌宠",
+        "trigger": "on_play",
+        "targetMode": "pet",
+        "effectKind": "return_pet_to_hand",
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "将目标萌宠收回手牌",
+        "descriptionPreview": "将一个萌宠收回手牌"
       }
     ]
   },
@@ -150,16 +283,31 @@
     "cost": 0,
     "rarity": "common",
     "description": "打出不消耗罐头，不可弃置只能打出；打出时全场萌宠压力+2",
-    "image": "/assets/cards/actions/action_resentment.svg",
     "tags": [
       "curse"
     ],
-    "effects": [
+    "canDiscard": false,
+    "image": "/assets/cards/actions/action_resentment.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_resentment.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "全场 pet 压力 2",
+    "skills": [
       {
-        "type": "parsed",
-        "raw": "全场萌宠压力+2"
+        "id": "skill_action_resentment_a",
+        "templateId": "action_adjust_stress_all",
+        "templateName": "群体调整压力",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "adjust_stress_all",
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "pet",
+          "amount": 2
+        },
+        "summary": "全场 pet 压力 2",
+        "descriptionPreview": "全场 pet 压力 2"
       }
-    ],
-    "canDiscard": false
+    ]
   }
 ]

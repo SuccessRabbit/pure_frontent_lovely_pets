@@ -1,5 +1,6 @@
 import { Assets, Texture } from 'pixi.js';
 import { getCardAssetPaths } from '../../utils/assetLoader';
+import { getRuntimeCardDefinition } from '../../utils/runtimeConfig';
 const DEBUG_TEXTURE_LOAD = true;
 
 function logTextureLoad(message: string, payload?: unknown) {
@@ -33,13 +34,22 @@ function uniqueUrls(urls: string[]): string[] {
 /**
  * 手牌 Card：配置里的 image、同路径 svg、插画目录、cards 目录
  */
-export function candidateUrlsFromCard(card: { id: string; type: string; image?: string }): string[] {
+export function candidateUrlsFromCard(card: {
+  id: string;
+  type: string;
+  image?: string;
+  illustrationPath?: string;
+}): string[] {
   const folder = illustrationFolder(card.type);
   const ill = getCardAssetPaths(card.id, folder);
   const cardsPng = `/assets/cards/${folder}/${card.id}.png`;
   const cardsSvg = `/assets/cards/${folder}/${card.id}.svg`;
 
   const list: string[] = [];
+  if (card.illustrationPath) {
+    list.push(card.illustrationPath);
+    list.push(card.illustrationPath.replace(/\.png($|\?)/i, '.svg$1'));
+  }
   if (card.image) {
     list.push(card.image);
     list.push(card.image.replace(/\.png($|\?)/i, '.svg$1'));
@@ -52,7 +62,10 @@ export function candidateUrlsFromCard(card: { id: string; type: string; image?: 
 export function candidateUrlsFromEntity(cardId: string, kind: 'pet' | 'worker'): string[] {
   const folder = kind === 'pet' ? 'pets' : 'workers';
   const ill = getCardAssetPaths(cardId, folder);
+  const definition = getRuntimeCardDefinition(cardId);
   return uniqueUrls([
+    definition?.illustrationPath ?? '',
+    definition?.image ?? '',
     `/assets/cards/${folder}/${cardId}.png`,
     `/assets/cards/${folder}/${cardId}.svg`,
     ill.png,

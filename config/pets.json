@@ -6,7 +6,6 @@
     "cost": 2,
     "rarity": "common",
     "description": "可爱但容易焦虑的新人主播",
-    "image": "/assets/cards/pets/pet_001.svg",
     "tags": [
       "dog",
       "cute"
@@ -14,10 +13,27 @@
     "income": 2,
     "stress": 1,
     "stressLimit": 3,
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_001.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_001.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_corgi",
+    "derivedDescription": "相邻牛马效率 +10%",
+    "skills": [
       {
-        "type": "parsed",
-        "raw": "相邻牛马效率+10%"
+        "id": "skill_pet_001_a",
+        "templateId": "pet_adjacent_worker_income_bonus",
+        "templateName": "相邻牛马收益加成",
+        "trigger": "passive",
+        "targetMode": "adjacent_workers",
+        "effectKind": "passive_summary",
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 10
+        },
+        "summary": "相邻牛马效率 +10%",
+        "descriptionPreview": "相邻牛马效率 +10%"
       }
     ]
   },
@@ -28,7 +44,6 @@
     "cost": 3,
     "rarity": "rare",
     "description": "高收益高风险的流量担当",
-    "image": "/assets/cards/pets/pet_002.svg",
     "tags": [
       "dog",
       "chaos"
@@ -36,10 +51,27 @@
     "income": 5,
     "stress": 2,
     "stressLimit": 3,
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_002.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_002.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_husky",
+    "derivedDescription": "拆家范围扩大到 3x3",
+    "skills": [
       {
-        "type": "raw",
-        "description": "拆家范围扩大到3x3"
+        "id": "skill_pet_002_a",
+        "templateId": "pet_meltdown_radius_bonus",
+        "templateName": "拆家范围扩大",
+        "trigger": "passive",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "supportsSecondTarget": false,
+        "params": {
+          "radius": 3
+        },
+        "summary": "拆家范围扩大到 3",
+        "descriptionPreview": "拆家范围扩大到 3x3"
       }
     ]
   },
@@ -50,7 +82,6 @@
     "cost": 1,
     "rarity": "common",
     "description": "佛系主播，岁月静好",
-    "image": "/assets/cards/pets/pet_003.svg",
     "tags": [
       "chill",
       "cute"
@@ -58,10 +89,25 @@
     "income": 1,
     "stress": 0,
     "stressLimit": 5,
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_003.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_003.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_capybara",
+    "derivedDescription": "永远不会拆家",
+    "skills": [
       {
-        "type": "raw",
-        "description": "永远不会拆家"
+        "id": "skill_pet_003_a",
+        "templateId": "pet_never_meltdown",
+        "templateName": "不会拆家",
+        "trigger": "passive",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "永远不会拆家",
+        "descriptionPreview": "永远不会拆家"
       }
     ]
   },
@@ -72,7 +118,6 @@
     "cost": 2,
     "rarity": "common",
     "description": "吃播专家，但会传染焦虑",
-    "image": "/assets/cards/pets/pet_004.svg",
     "tags": [
       "cat",
       "cute"
@@ -80,10 +125,27 @@
     "income": 3,
     "stress": 1,
     "stressLimit": 3,
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_004.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_004.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_orange_cat",
+    "derivedDescription": "相邻萌宠每回合压力 1",
+    "skills": [
       {
-        "type": "parsed",
-        "raw": "相邻萌宠每回合压力+1"
+        "id": "skill_pet_004_a",
+        "templateId": "pet_adjacent_pet_stress_each_turn",
+        "templateName": "相邻萌宠压力变化",
+        "trigger": "turn_end",
+        "targetMode": "adjacent_pets",
+        "effectKind": "passive_summary",
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 1
+        },
+        "summary": "相邻萌宠每回合压力 1",
+        "descriptionPreview": "相邻萌宠每回合压力 1"
       }
     ]
   },
@@ -94,7 +156,6 @@
     "cost": 3,
     "rarity": "rare",
     "description": "优雅的贵族主播",
-    "image": "/assets/cards/pets/pet_005.svg",
     "tags": [
       "cat",
       "elegant"
@@ -102,10 +163,25 @@
     "income": 4,
     "stress": 1,
     "stressLimit": 3,
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_005.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_005.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_ragdoll",
+    "derivedDescription": "不受相邻单位压力传染影响",
+    "skills": [
       {
-        "type": "raw",
-        "description": "不受相邻单位压力传染影响"
+        "id": "skill_pet_005_a",
+        "templateId": "pet_ignore_adjacent_stress",
+        "templateName": "免疫相邻压力",
+        "trigger": "passive",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "不受相邻单位压力传染影响",
+        "descriptionPreview": "不受相邻单位压力传染影响"
       }
     ]
   },
@@ -116,7 +192,6 @@
     "cost": 4,
     "rarity": "epic",
     "description": "传说中的自律主播",
-    "image": "/assets/cards/pets/pet_006.svg",
     "tags": [
       "cat",
       "legendary"
@@ -124,10 +199,27 @@
     "income": 3,
     "stress": 0,
     "stressLimit": 4,
-    "effects": [
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_006.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_006.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_eternal_cat",
+    "derivedDescription": "每回合自动抽 1 张牌",
+    "skills": [
       {
-        "type": "raw",
-        "description": "每回合自动抽1张牌"
+        "id": "skill_pet_006_a",
+        "templateId": "pet_draw_on_turn_start",
+        "templateName": "回合开始抽牌",
+        "trigger": "turn_start",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 1
+        },
+        "summary": "每回合自动抽 1 张牌",
+        "descriptionPreview": "每回合自动抽 1 张牌"
       }
     ]
   }
