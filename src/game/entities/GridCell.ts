@@ -342,7 +342,8 @@ export class GridCell extends PIXI.Container {
       this.entityPortraitSuppressed = false;
     }
     const key = entity ? `${entity.id}|${entity.cardId}|${entity.type}` : null;
-    if (key && key === this.currentEntityKey && !this.entitySprite && this.onEntitySet === null) {
+    const isSameEntity = key === this.currentEntityKey;
+    if (isSameEntity) {
       logGridCell('setGridEntity:reuse', {
         cell: [this.row, this.col],
         key,

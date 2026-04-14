@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { Tween, Easing } from '../utils/Tween';
+import { VISUAL_THEME } from '../theme/visualTheme';
 
 interface ProjectedPoint {
   x: number;
@@ -20,21 +21,21 @@ export class DeckRenderer {
   private readonly cardGeom = new THREE.BoxGeometry(106, 4, 148);
   private readonly baseGeom = new THREE.BoxGeometry(134, 8, 176);
   private readonly baseMat = new THREE.MeshLambertMaterial({
-    color: 0x6d4c41,
+    color: VISUAL_THEME.colors.surfaceDarkSoft,
     flatShading: true,
     transparent: true,
-    opacity: 0.92,
+    opacity: 0.9,
   });
   private readonly sideMat = new THREE.MeshLambertMaterial({
-    color: 0xfdf7ef,
+    color: VISUAL_THEME.colors.cream,
     flatShading: true,
   });
   private readonly backMat = new THREE.MeshLambertMaterial({
-    color: 0xe07a9d,
+    color: VISUAL_THEME.colors.coral,
     flatShading: true,
   });
   private readonly edgeMat = new THREE.MeshLambertMaterial({
-    color: 0xbc4b74,
+    color: VISUAL_THEME.colors.coralStrong,
     flatShading: true,
   });
 

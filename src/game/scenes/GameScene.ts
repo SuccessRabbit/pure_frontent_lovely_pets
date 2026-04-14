@@ -16,6 +16,7 @@ import {
   strokeOnCool,
   strokeOnWarm,
 } from '../utils/fxTextStyles';
+import { VISUAL_THEME, type SceneMood } from '../theme/visualTheme';
 import { CardInteractionController } from './gameScene/CardInteractionController';
 import { GameOverController } from './gameScene/GameOverController';
 import { GridInteractionController } from './gameScene/GridInteractionController';
@@ -371,6 +372,7 @@ export class GameScene extends Scene {
 
     // 创建渲染器
     this.petRenderer = new IsometricPetRenderer(threeCanvas);
+    this.petRenderer.setQualityLevel(window.innerWidth >= 1440 ? 'high' : 'medium');
 
     // 创建 3D 网格格子
     this.petRenderer.createGridCells();
@@ -394,6 +396,7 @@ export class GameScene extends Scene {
         this.petRenderer?.syncCellState(r, c, ruins ? 'ruins' : entity ? 'occupied' : 'empty');
       });
     });
+    this.syncVisualMood();
     console.log('[3D] Initial pets spawned:', petCount);
     console.log('IsometricPetRenderer initialized');
 
@@ -512,23 +515,28 @@ export class GameScene extends Scene {
   private async showPhaseBanner(title: string, holdMs: number): Promise<void> {
     const wrap = new PIXI.Container();
     const bg = new PIXI.Graphics();
-    bg.beginFill(0x000000, 0.58);
-    bg.drawRoundedRect(-430, -46, 860, 92, 18);
+    bg.beginFill(0x000000, 0.16);
+    bg.drawRoundedRect(-446, -54, 892, 108, 28);
+    bg.endFill();
+    bg.beginFill(VISUAL_THEME.colors.cream, 0.94);
+    bg.lineStyle(3, VISUAL_THEME.colors.gold, 0.8);
+    bg.drawRoundedRect(-430, -46, 860, 92, 24);
     bg.endFill();
 
     const txt = new PIXI.Text({
       text: title,
       style: {
-        fontSize: 38,
-        fill: 0xffffff,
+        fontFamily: VISUAL_THEME.typography.display,
+        fontSize: 36,
+        fill: VISUAL_THEME.colors.ink,
         fontWeight: 'bold',
         stroke: strokeDarkBold,
         dropShadow: {
-          alpha: 0.92,
+          alpha: 0.18,
           angle: Math.PI / 6,
-          blur: 8,
-          color: 0x000000,
-          distance: 3,
+          blur: 6,
+          color: 0xffffff,
+          distance: 0,
         },
       },
     });
@@ -558,8 +566,9 @@ export class GameScene extends Scene {
     const t = new PIXI.Text({
       text: `+${amount} 🥫`,
       style: {
+        fontFamily: VISUAL_THEME.typography.display,
         fontSize: 28,
-        fill: 0xffeaa7,
+        fill: VISUAL_THEME.colors.goldSoft,
         fontWeight: 'bold',
         stroke: strokeOnWarm,
       },
@@ -583,7 +592,13 @@ export class GameScene extends Scene {
       color === 0xfff9c4 ? strokeOnWarm : color === 0xabebc6 ? strokeOnCool : strokeDark;
     const t = new PIXI.Text({
       text,
-      style: { fontSize: 26, fill: color, fontWeight: 'bold', stroke: outline },
+      style: {
+        fontFamily: VISUAL_THEME.typography.heading,
+        fontSize: 24,
+        fill: color,
+        fontWeight: 'bold',
+        stroke: outline,
+      },
     });
     t.anchor.set(0, 0.5);
     t.position.set(lp.x, lp.y);
@@ -622,15 +637,16 @@ export class GameScene extends Scene {
     wrap.scale.set(0.72);
 
     const plate = new PIXI.Graphics();
-    plate.beginFill(0x2d1f19, 0.86);
-    plate.lineStyle(2, color, 0.74);
-    plate.drawRoundedRect(-116, -44, 232, 82, 18);
+    plate.beginFill(VISUAL_THEME.colors.surfaceDark, 0.84);
+    plate.lineStyle(2, color, 0.78);
+    plate.drawRoundedRect(-126, -48, 252, 92, 22);
     plate.endFill();
     wrap.addChild(plate);
 
     const titleText = new PIXI.Text({
       text: title,
       style: {
+        fontFamily: VISUAL_THEME.typography.display,
         fontSize: 22,
         fill: color,
         fontWeight: 'bold',
@@ -645,8 +661,9 @@ export class GameScene extends Scene {
     const subText = new PIXI.Text({
       text: subtitle,
       style: {
-        fontSize: 15,
-        fill: 0xfdebd0,
+        fontFamily: VISUAL_THEME.typography.body,
+        fontSize: 14,
+        fill: VISUAL_THEME.colors.cream,
         fontWeight: 'bold',
         stroke: strokeDark,
         align: 'center',
@@ -700,6 +717,7 @@ export class GameScene extends Scene {
 
   private updateUI() {
     const state = useGameStore.getState();
+    this.syncVisualMood();
     const deckDisplayCount = this.deckDisplayOverrideCount ?? state.deck.length;
     this.uiController.updateHud(
       {
@@ -744,6 +762,38 @@ export class GameScene extends Scene {
         this.petRenderer.updatePetStress(cell.row, cell.col, entity.stress, entity.maxStress);
       }
     });
+    this.syncVisualMood();
+  }
+
+  private syncVisualMood() {
+    if (!this.petRenderer) return;
+
+    const state = useGameStore.getState();
+    let mood: SceneMood = 'idle';
+
+    if (state.gameStatus !== 'playing') {
+      mood = 'gameover';
+    } else if (state.phase === 'action') {
+      mood = 'action';
+    } else if (state.phase === 'income' || state.phase === 'end') {
+      mood = 'income';
+    }
+
+    if (state.awaitingHandTrim) {
+      mood = 'danger';
+    }
+
+    const highestStress = state.grid.reduce((maxRatio, row) => {
+      return Math.max(
+        maxRatio,
+        ...row.map(entity => (entity ? entity.stress / Math.max(1, entity.maxStress) : 0))
+      );
+    }, 0);
+    if (highestStress >= 0.72 && state.gameStatus === 'playing') {
+      mood = 'danger';
+    }
+
+    this.petRenderer.updateSceneMood(mood);
   }
 
   private onStoreUpdate() {

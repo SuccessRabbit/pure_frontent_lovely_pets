@@ -4,41 +4,56 @@ import { loadIllustrationForCard } from '../utils/illustrationTextures';
 import { layoutSpriteContain } from '../utils/spriteFit';
 import { Tween, Easing } from '../utils/Tween';
 import {
-  burstParticlesAtGlobal,
-  PET_BURST_COLORS,
   ACTION_BURST_COLORS,
+  PET_BURST_COLORS,
   SHARD_BURST_COLORS,
+  burstParticlesAtGlobal,
 } from '../utils/cardFx';
+import { CARD_RARITY_COLORS, VISUAL_THEME, getCardTypeLabel } from '../theme/visualTheme';
 
 const CARD_W = 200;
 const CARD_H = 280;
-const CARD_TEXT_PADDING_X = 14;
-const DESC_TEXT_Y = 184;
-const DESC_TEXT_BOTTOM_PADDING = 14;
+const CARD_TEXT_PADDING_X = 16;
+const DESC_TEXT_Y = 190;
+const DESC_TEXT_BOTTOM_PADDING = 18;
 const DESC_TEXT_WIDTH = CARD_W - CARD_TEXT_PADDING_X * 2;
 const DESC_TEXT_MAX_HEIGHT = CARD_H - DESC_TEXT_Y - DESC_TEXT_BOTTOM_PADDING;
 const DESC_FONT_MAX = 13;
 const DESC_FONT_MIN = 9;
-/** 手牌静止时随机倾斜幅度（弧度），约 ±6° */
 const HAND_TILT_MAX = (6 * Math.PI) / 180;
+
+function textStyle(
+  size: number,
+  fill: number,
+  options?: Partial<PIXI.TextStyle>
+): Partial<PIXI.TextStyle> {
+  return {
+    fontFamily: VISUAL_THEME.typography.heading,
+    fontSize: size,
+    fill,
+    fontWeight: '700',
+    ...options,
+  };
+}
 
 export class CardSprite extends PIXI.Container {
   private background!: PIXI.Graphics;
+  private illustrationFrame!: PIXI.Graphics;
+  private illustrationBorder!: PIXI.Graphics;
   private illustration: PIXI.Sprite | null = null;
   private costBadge!: PIXI.Graphics;
   private costText!: PIXI.Text;
+  private typePill!: PIXI.Graphics;
+  private typeText!: PIXI.Text;
   private nameText!: PIXI.Text;
   private descText!: PIXI.Text;
 
   public cardData: CardData;
   public isDragging = false;
-  /** 正在执行“打出并消失”的不可打断动效 */
   public isResolving = false;
   public originalX = 0;
   public originalY = 0;
-  /** 手牌区随机倾角，回弹/取消悬停时恢复 */
   public handTilt = 0;
-  /** 与手牌排序一致，用于悬停结束后 zIndex */
   public handZIndex = 0;
 
   constructor(cardData: CardData) {
@@ -49,7 +64,6 @@ export class CardSprite extends PIXI.Container {
     this.handTilt = (Math.random() - 0.5) * 2 * HAND_TILT_MAX;
     this.rotation = this.handTilt;
 
-    // 设置交互
     this.eventMode = 'static';
     this.cursor = 'pointer';
 
@@ -59,144 +73,207 @@ export class CardSprite extends PIXI.Container {
     this.createTexts();
   }
 
+  private getRarityTheme() {
+    return CARD_RARITY_COLORS[this.cardData.rarity] ?? CARD_RARITY_COLORS.common;
+  }
+
   private createBackground() {
+    const rarity = this.getRarityTheme();
     this.background = new PIXI.Graphics();
 
-    // 根据稀有度设置边框颜色
-    const rarityColors: Record<string, number> = {
-      common: 0xcccccc,
-      rare: 0x4a90e2,
-      epic: 0x9b59b6,
-      legendary: 0xf39c12,
-    };
-
-    const borderColor = rarityColors[this.cardData.rarity] || 0xcccccc;
-
-    // 绘制卡牌背景
-    this.background.beginFill(0xffffff);
-    this.background.lineStyle(4, borderColor, 1);
-    this.background.drawRoundedRect(0, 0, 200, 280, 12);
+    this.background.beginFill(0x000000, 0.12);
+    this.background.drawRoundedRect(8, 10, CARD_W - 4, CARD_H - 2, 22);
     this.background.endFill();
 
+    this.background.beginFill(0xfffbf4, 0.98);
+    this.background.lineStyle(3, rarity.edge, 0.95);
+    this.background.drawRoundedRect(0, 0, CARD_W, CARD_H, 22);
+    this.background.endFill();
+
+    this.background.beginFill(rarity.glow, 0.55);
+    this.background.drawRoundedRect(10, 10, CARD_W - 20, 32, 16);
+    this.background.endFill();
+
+    this.background.beginFill(0xf7efe6, 0.9);
+    this.background.drawRoundedRect(10, 166, CARD_W - 20, 100, 16);
+    this.background.endFill();
+
+    this.background.lineStyle(1, 0xffffff, 0.5);
+    this.background.drawRoundedRect(8, 8, CARD_W - 16, CARD_H - 16, 18);
     this.addChild(this.background);
   }
 
   private createIllustration() {
-    const illustrationBg = new PIXI.Graphics();
-    illustrationBg.beginFill(0xf0f0f0);
-    illustrationBg.drawRoundedRect(10, 10, 180, 135, 8);
-    illustrationBg.endFill();
-    this.addChild(illustrationBg);
+    const rarity = this.getRarityTheme();
+    this.illustrationFrame = new PIXI.Graphics();
+    this.illustrationFrame.beginFill(0x231a22, 0.18);
+    this.illustrationFrame.drawRoundedRect(14, 44, 172, 112, 18);
+    this.illustrationFrame.endFill();
+    this.illustrationFrame.beginFill(0xfff9f0, 0.96);
+    this.illustrationFrame.drawRoundedRect(10, 40, 180, 118, 18);
+    this.illustrationFrame.endFill();
+    this.addChild(this.illustrationFrame);
 
-    const iw = 180;
-    const ih = 135;
-    const ix = 10;
-    const iy = 10;
+    this.illustrationBorder = new PIXI.Graphics();
+    this.illustrationBorder.lineStyle(2, rarity.edge, 0.8);
+    this.illustrationBorder.drawRoundedRect(10, 40, 180, 118, 18);
+    this.addChild(this.illustrationBorder);
+
+    const iw = 164;
+    const ih = 102;
+    const ix = 18;
+    const iy = 48;
 
     void loadIllustrationForCard(this.cardData).then(tex => {
       if (this.destroyed) return;
       if (!this.illustration) {
         this.illustration = new PIXI.Sprite(tex);
-        this.addChild(this.illustration);
+        this.addChildAt(this.illustration, this.getChildIndex(this.illustrationBorder));
       }
       layoutSpriteContain(this.illustration, tex, ix, iy, iw, ih);
+      if (tex === PIXI.Texture.WHITE) {
+        this.illustration.tint = rarity.glow;
+        this.illustration.alpha = 0.36;
+      } else {
+        this.illustration.tint = 0xffffff;
+        this.illustration.alpha = 1;
+      }
     });
   }
 
   private createCostBadge() {
-    // 费用徽章
+    const rarity = this.getRarityTheme();
     this.costBadge = new PIXI.Graphics();
-    this.costBadge.beginFill(0xff6b9d);
+    this.costBadge.beginFill(rarity.badge, 1);
+    this.costBadge.lineStyle(2, 0xffffff, 0.85);
     this.costBadge.drawCircle(0, 0, 24);
     this.costBadge.endFill();
-    this.costBadge.x = 176;
-    this.costBadge.y = 24;
+    this.costBadge.x = 170;
+    this.costBadge.y = 28;
     this.addChild(this.costBadge);
 
-    this.costText = new PIXI.Text(this.cardData.cost.toString(), {
-      fontSize: 28,
-      fill: 0xffffff,
-      fontWeight: 'bold',
+    this.costText = new PIXI.Text({
+      text: this.cardData.cost.toString(),
+      style: textStyle(28, 0xffffff, {
+        fontFamily: VISUAL_THEME.typography.display,
+      }),
     });
     this.costText.anchor.set(0.5);
     this.costBadge.addChild(this.costText);
   }
 
   private createTexts() {
-    // 卡牌名称
-    this.nameText = new PIXI.Text(this.cardData.name, {
-      fontSize: 18,
-      fill: 0x333333,
-      fontWeight: 'bold',
-      wordWrap: true,
-      wordWrapWidth: 180,
+    const rarity = this.getRarityTheme();
+
+    this.typePill = new PIXI.Graphics();
+    this.typePill.beginFill(rarity.glow, 0.92);
+    this.typePill.lineStyle(1.5, rarity.edge, 0.85);
+    this.typePill.drawRoundedRect(14, 14, 78, 22, 11);
+    this.typePill.endFill();
+    this.addChild(this.typePill);
+
+    this.typeText = new PIXI.Text({
+      text: getCardTypeLabel(this.cardData.type),
+      style: textStyle(11, VISUAL_THEME.colors.inkSoft, {
+        fontFamily: VISUAL_THEME.typography.body,
+        letterSpacing: 1.2,
+      }),
     });
-    this.nameText.x = 10;
-    this.nameText.y = 155;
+    this.typeText.anchor.set(0.5);
+    this.typeText.position.set(53, 25);
+    this.addChild(this.typeText);
+
+    this.nameText = new PIXI.Text({
+      text: this.cardData.name,
+      style: textStyle(18, VISUAL_THEME.colors.ink, {
+        wordWrap: true,
+        wordWrapWidth: 172,
+        fontFamily: VISUAL_THEME.typography.display,
+      }),
+    });
+    this.nameText.position.set(14, 164);
     this.addChild(this.nameText);
 
-    // 卡牌描述：按卡牌内边距换行，并根据描述区域高度自适应字号。
-    this.descText = new PIXI.Text(this.cardData.description, this.createDescriptionStyle(DESC_FONT_MAX));
+    this.descText = new PIXI.Text(
+      this.cardData.description,
+      this.createDescriptionStyle(DESC_FONT_MAX)
+    );
     this.descText.x = CARD_TEXT_PADDING_X;
     this.descText.y = DESC_TEXT_Y;
     this.fitDescriptionText();
     this.addChild(this.descText);
 
-    // 属性显示（收益/压力）
+    const statWrap = new PIXI.Container();
+    statWrap.position.set(14, 128);
+    this.addChild(statWrap);
+
+    let nextX = 0;
     if (this.cardData.income !== undefined) {
-      const incomeText = new PIXI.Text(`💰 ${this.cardData.income}`, {
-        fontSize: 14,
-        fill: 0x27ae60,
-        fontWeight: 'bold',
-        stroke: { color: 0xffffff, width: 3 },
-      });
-      incomeText.x = 14;
-      incomeText.y = 122;
-      this.addChild(incomeText);
+      statWrap.addChild(this.createStatChip(nextX, 0xdff6ea, 0x2e8b66, `收益 ${this.cardData.income}`));
+      nextX += 84;
     }
 
     if (this.cardData.stress !== undefined) {
-      const stressText = new PIXI.Text(`⚡ ${this.cardData.stress}`, {
-        fontSize: 14,
-        fill: 0xe74c3c,
-        fontWeight: 'bold',
-        stroke: { color: 0xffffff, width: 3 },
-      });
-      stressText.x = 106;
-      stressText.y = 122;
-      this.addChild(stressText);
+      statWrap.addChild(this.createStatChip(nextX, 0xffe0de, 0xd56a5c, `压力 ${this.cardData.stress}`));
     }
   }
 
-  private createDescriptionStyle(fontSize: number) {
+  private createStatChip(x: number, fill: number, line: number, text: string): PIXI.Container {
+    const wrap = new PIXI.Container();
+    wrap.position.set(x, 0);
+
+    const bg = new PIXI.Graphics();
+    bg.beginFill(fill, 0.96);
+    bg.lineStyle(1.5, line, 0.8);
+    bg.drawRoundedRect(0, 0, 74, 24, 12);
+    bg.endFill();
+    wrap.addChild(bg);
+
+    const label = new PIXI.Text({
+      text,
+      style: textStyle(11, VISUAL_THEME.colors.ink, {
+        fontFamily: VISUAL_THEME.typography.body,
+      }),
+    });
+    label.anchor.set(0.5);
+    label.position.set(37, 12);
+    wrap.addChild(label);
+    return wrap;
+  }
+
+  private createDescriptionStyle(fontSize: number): Partial<PIXI.TextStyle> {
     return {
+      fontFamily: VISUAL_THEME.typography.body,
       fontSize,
-      lineHeight: Math.ceil(fontSize * 1.22),
-      fill: 0x666666,
+      lineHeight: Math.ceil(fontSize * 1.34),
+      fill: VISUAL_THEME.colors.inkSoft,
       wordWrap: true,
       wordWrapWidth: DESC_TEXT_WIDTH,
       breakWords: true,
       whiteSpace: 'normal' as const,
+      fontWeight: 'bold',
     };
   }
 
   private fitDescriptionText() {
     for (let fontSize = DESC_FONT_MAX; fontSize >= DESC_FONT_MIN; fontSize--) {
       this.descText.style = this.createDescriptionStyle(fontSize);
-      if (this.descText.height <= DESC_TEXT_MAX_HEIGHT && this.descText.width <= DESC_TEXT_WIDTH + 1) {
+      if (
+        this.descText.height <= DESC_TEXT_MAX_HEIGHT &&
+        this.descText.width <= DESC_TEXT_WIDTH + 1
+      ) {
         return;
       }
     }
   }
 
-  /** 由 GameScene 在悬停布局时调用：上浮、放大、扶正 */
   public playHandHoverLift() {
     if (this.isDragging) return;
     Tween.killTarget(this);
     Tween.killTarget(this.scale);
     this.zIndex = 1000;
-    Tween.to(this, { y: this.originalY - 94, rotation: 0 }, 260, Easing.easeOutCubic);
-    Tween.to(this.scale, { x: 1.14, y: 1.14 }, 260, Easing.easeOutCubic);
+    Tween.to(this, { y: this.originalY - 88, rotation: 0 }, 240, Easing.easeOutCubic);
+    Tween.to(this.scale, { x: 1.15, y: 1.15 }, 240, Easing.easeOutCubic);
   }
 
   public playDragStartAnimation() {
@@ -207,17 +284,14 @@ export class CardSprite extends PIXI.Container {
     this.alpha = 1;
     this.eventMode = 'static';
     this.cursor = 'pointer';
-    Tween.to(this.scale, { x: 1.07, y: 1.07 }, 180, Easing.easeOutCubic);
+    Tween.to(this.scale, { x: 1.08, y: 1.08 }, 180, Easing.easeOutCubic);
     Tween.to(this, { rotation: 0 }, 200, Easing.easeOutCubic);
     this.zIndex = 2000;
   }
 
-  /** 飞行动效期间保持最前时可传 keepFront */
   public playDragEndAnimation(opts?: { keepFront?: boolean }) {
     this.isDragging = false;
-    if (!opts?.keepFront) {
-      this.zIndex = this.handZIndex;
-    }
+    if (!opts?.keepFront) this.zIndex = this.handZIndex;
   }
 
   public playReturnAnimation(callback?: () => void) {
@@ -238,9 +312,6 @@ export class CardSprite extends PIXI.Container {
     Tween.to(this.scale, { x: 1, y: 1 }, 400, Easing.easeOutBack);
   }
 
-  /**
-   * 宠物/员工：飞向格子 → 格心粒子 → 卡牌处碎屑 → 溶解，最后回调（再 playCard）
-   */
   public playPlaceEntityFx(
     targetX: number,
     targetY: number,
@@ -280,12 +351,9 @@ export class CardSprite extends PIXI.Container {
         onComplete?.();
       });
     });
-    Tween.to(this.scale, { x: 0.88, y: 0.88 }, 440, Easing.easeOutCubic);
+    Tween.to(this.scale, { x: 0.9, y: 0.9 }, 440, Easing.easeOutCubic);
   }
 
-  /**
-   * 行动牌：吸向触发区中心 → 魔法粒子 + 溶解 → 回调（再 playCard）
-   */
   public playActionTriggerFx(
     targetX: number,
     targetY: number,
@@ -327,7 +395,6 @@ export class CardSprite extends PIXI.Container {
     });
   }
 
-  /** 旧路径保留（若外部仍调用） */
   public playPlaceAnimation(targetX: number, targetY: number, callback?: () => void) {
     Tween.killTarget(this);
     Tween.killTarget(this.scale);

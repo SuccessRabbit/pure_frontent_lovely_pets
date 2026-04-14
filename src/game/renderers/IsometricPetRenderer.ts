@@ -1,9 +1,16 @@
 import * as THREE from 'three';
 import { createLowPolyPet, type PetRig } from '../factories/LowPolyPetFactory';
-import { Tween, Easing } from '../utils/Tween';
-import type { GridEntity } from '../../store/gameStore';
 import { GridCell3D } from './GridCell3D';
 import { DeckRenderer } from './DeckRenderer';
+import { Tween, Easing } from '../utils/Tween';
+import type { GridEntity } from '../../store/gameStore';
+import {
+  MOOD_FACTORS,
+  QUALITY_POST_FX,
+  VISUAL_THEME,
+  type QualityLevel,
+  type SceneMood,
+} from '../theme/visualTheme';
 
 type PetAnimationState = 'idle' | 'angry';
 
@@ -32,12 +39,21 @@ interface PetMotionProfile {
   angryLegPunch: number;
 }
 
+interface PetMaterialState {
+  material: THREE.MeshLambertMaterial | THREE.MeshStandardMaterial;
+  baseColor: THREE.Color;
+}
+
 interface PetMesh {
   rig: PetRig;
+  entityId: string;
   cardId: string;
   state: PetAnimationState | null;
   animationToken: number;
   restPose: TransformSnapshot[];
+  stressRatio: number;
+  materials: PetMaterialState[];
+  shadow: THREE.Mesh;
 }
 
 interface ProjectedBounds {
@@ -47,21 +63,129 @@ interface ProjectedBounds {
   maxY: number;
 }
 
-/** 等轴视角 3D 宠物渲染器 */
+function createBackdropMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    side: THREE.BackSide,
+    depthWrite: false,
+    transparent: true,
+    uniforms: {
+      uTime: { value: 0 },
+      uWarmth: { value: MOOD_FACTORS.idle.warmth },
+      uDanger: { value: 0 },
+      uTopColor: { value: new THREE.Color(VISUAL_THEME.scene.ambientTop) },
+      uBottomColor: { value: new THREE.Color(VISUAL_THEME.scene.ambientBottom) },
+      uAccentColor: { value: new THREE.Color(VISUAL_THEME.scene.stageGlow) },
+    },
+    vertexShader: `
+      varying vec3 vWorld;
+      void main() {
+        vec4 world = modelMatrix * vec4(position, 1.0);
+        vWorld = world.xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uWarmth;
+      uniform float uDanger;
+      uniform vec3 uTopColor;
+      uniform vec3 uBottomColor;
+      uniform vec3 uAccentColor;
+      varying vec3 vWorld;
+
+      void main() {
+        float h = clamp((vWorld.y + 300.0) / 1800.0, 0.0, 1.0);
+        float curtain = 0.5 + 0.5 * sin(vWorld.x * 0.006 + uTime * 0.22);
+        float haze = smoothstep(0.0, 0.9, h);
+        vec3 base = mix(uBottomColor, uTopColor, h);
+        base += uAccentColor * curtain * (0.07 + uWarmth * 0.16);
+        base += vec3(0.2, 0.06, 0.05) * uDanger * (1.0 - h) * 0.32;
+        float alpha = mix(0.16, 0.44, haze) + uWarmth * 0.06 + uDanger * 0.04;
+        gl_FragColor = vec4(base, alpha);
+      }
+    `,
+  });
+}
+
+function createStageMaterial(): THREE.ShaderMaterial {
+  return new THREE.ShaderMaterial({
+    transparent: true,
+    depthWrite: false,
+    uniforms: {
+      uTime: { value: 0 },
+      uWarmth: { value: MOOD_FACTORS.idle.warmth },
+      uAccent: { value: MOOD_FACTORS.idle.accent },
+      uDanger: { value: 0 },
+      uGlowColor: { value: new THREE.Color(VISUAL_THEME.scene.stageGlow) },
+      uActionColor: { value: new THREE.Color(VISUAL_THEME.scene.actionGlow) },
+      uDangerColor: { value: new THREE.Color(VISUAL_THEME.scene.dangerGlow) },
+    },
+    vertexShader: `
+      varying vec2 vUv;
+      void main() {
+        vUv = uv;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      uniform float uTime;
+      uniform float uWarmth;
+      uniform float uAccent;
+      uniform float uDanger;
+      uniform vec3 uGlowColor;
+      uniform vec3 uActionColor;
+      uniform vec3 uDangerColor;
+      varying vec2 vUv;
+
+      void main() {
+        vec2 centered = vUv - 0.5;
+        float dist = length(centered * vec2(1.0, 0.72));
+        float halo = smoothstep(0.52, 0.04, dist);
+        float ring = smoothstep(0.25, 0.22, abs(dist - 0.32));
+        float sweep = 0.5 + 0.5 * sin(uTime * 0.9 + vUv.y * 7.0);
+        float stripe = smoothstep(0.48, 0.0, abs(fract(vUv.x * 6.0 + uTime * 0.05) - 0.5));
+        vec3 color = uGlowColor * (0.22 + uWarmth * 0.3) * halo;
+        color += uActionColor * ring * (0.08 + uAccent * 0.24) * sweep;
+        color += uDangerColor * halo * uDanger * (0.2 + 0.25 * sweep);
+        color += vec3(0.25, 0.18, 0.1) * stripe * halo * 0.08;
+        float alpha = halo * (0.16 + uWarmth * 0.14) + ring * 0.12 + uDanger * 0.1;
+        gl_FragColor = vec4(color, alpha);
+      }
+    `,
+  });
+}
+
+function createShadowMaterial(): THREE.MeshBasicMaterial {
+  return new THREE.MeshBasicMaterial({
+    color: 0x291b2a,
+    transparent: true,
+    opacity: 0.12,
+    depthWrite: false,
+  });
+}
+
 export class IsometricPetRenderer {
   private static readonly DESIGN_WIDTH = 1920;
   private static readonly DESIGN_HEIGHT = 1080;
   private static readonly PET_FACING_Y = Math.PI * 1.22;
 
-  private renderer: THREE.WebGLRenderer;
-  private scene: THREE.Scene;
-  private camera!: THREE.OrthographicCamera;
-  private petMeshes = new Map<string, PetMesh>();
-  private gridCellMeshes = new Map<string, GridCell3D>();
-  private raycaster = new THREE.Raycaster();
-  private deckRenderer: DeckRenderer;
+  private readonly renderer: THREE.WebGLRenderer;
+  private readonly scene: THREE.Scene;
+  private readonly camera: THREE.OrthographicCamera;
+  private readonly raycaster = new THREE.Raycaster();
+  private readonly petMeshes = new Map<string, PetMesh>();
+  private readonly gridCellMeshes = new Map<string, GridCell3D>();
+  private readonly deckRenderer: DeckRenderer;
+  private readonly clock = new THREE.Clock();
 
-  /** 网格参数（与 GameScene.createGrid 一致） */
+  private readonly backdropMaterial: THREE.ShaderMaterial;
+  private readonly stageMaterial: THREE.ShaderMaterial;
+  private readonly backdropMesh: THREE.Mesh;
+  private readonly stageMesh: THREE.Mesh;
+
+  private qualityLevel: QualityLevel = 'high';
+  private sceneMood: SceneMood = 'idle';
+
   private readonly GRID_START_X = 400;
   private readonly GRID_START_Y = 200;
   private readonly CELL_WIDTH = 180;
@@ -71,8 +195,9 @@ export class IsometricPetRenderer {
   private readonly PET_GROUND_Y = 0.5;
 
   constructor(canvas: HTMLCanvasElement) {
-    const w = canvas.width;
-    const h = canvas.height;
+    const initialWidth = Math.max(1, canvas.width || canvas.clientWidth || window.innerWidth);
+    const initialHeight = Math.max(1, canvas.height || canvas.clientHeight || window.innerHeight);
+
     this.renderer = new THREE.WebGLRenderer({
       canvas,
       alpha: true,
@@ -80,43 +205,62 @@ export class IsometricPetRenderer {
       premultipliedAlpha: false,
     });
     this.renderer.setClearColor(0x000000, 0);
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.setSize(w, h);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.08;
     this.renderer.sortObjects = false;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setSize(initialWidth, initialHeight, false);
+
+    const halfW = IsometricPetRenderer.DESIGN_WIDTH * 0.5;
+    const halfH = IsometricPetRenderer.DESIGN_HEIGHT * 0.5;
+    this.camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 6000);
+    this.camera.position.set(halfW, 590, halfH - 620);
+    this.camera.up.set(0, 1, 0);
+    this.camera.lookAt(halfW, -140, halfH);
+    this.camera.updateProjectionMatrix();
 
     this.scene = new THREE.Scene();
-    this.setupCamera();
     this.setupLights();
+
+    this.backdropMaterial = createBackdropMaterial();
+    this.backdropMesh = new THREE.Mesh(new THREE.SphereGeometry(2500, 32, 16), this.backdropMaterial);
+    this.backdropMesh.position.set(halfW, 520, halfH);
+    this.scene.add(this.backdropMesh);
+
+    this.stageMaterial = createStageMaterial();
+    this.stageMesh = new THREE.Mesh(new THREE.PlaneGeometry(1760, 1140), this.stageMaterial);
+    this.stageMesh.rotation.x = -Math.PI / 2;
+    this.stageMesh.position.set(halfW, -3, halfH + 70);
+    this.scene.add(this.stageMesh);
+
     this.deckRenderer = new DeckRenderer(
       this.scene,
       world => this.projectWorldToDesignPoint(world),
       1500,
       120
     );
+
+    this.setQualityLevel('high');
   }
 
-  private setupCamera() {
-    const halfW = IsometricPetRenderer.DESIGN_WIDTH * 0.5;
-    const halfH = IsometricPetRenderer.DESIGN_HEIGHT * 0.5;
-    this.camera = new THREE.OrthographicCamera(-halfW, halfW, halfH, -halfH, 0.1, 5000);
-
-    const centerX = halfW;
-    const centerZ = halfH;
-    this.camera.position.set(centerX, 590, centerZ - 620);
-    this.camera.up.set(0, 1, 0);
-    this.camera.lookAt(centerX, -140, centerZ);
-    this.camera.updateProjectionMatrix();
-  }
-
-  private setupLights() {
-    const ambient = new THREE.AmbientLight(0xffffff, 0.8);
+  private setupLights(): void {
+    const ambient = new THREE.AmbientLight(0xfff4e7, 1.1);
     this.scene.add(ambient);
 
-    const mainLight = new THREE.DirectionalLight(0xffffff, 1.0);
-    mainLight.position.set(0, 100, 0);
-    this.scene.add(mainLight);
+    const keyLight = new THREE.DirectionalLight(0xfff1d9, 1.7);
+    keyLight.position.set(660, 820, 80);
+    this.scene.add(keyLight);
 
-    const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444, 0.5);
+    const fillLight = new THREE.DirectionalLight(0xf4c7ff, 0.6);
+    fillLight.position.set(1400, 320, 920);
+    this.scene.add(fillLight);
+
+    const rimLight = new THREE.DirectionalLight(0x9fd4ff, 0.44);
+    rimLight.position.set(-340, 240, -180);
+    this.scene.add(rimLight);
+
+    const hemiLight = new THREE.HemisphereLight(0xffefd8, 0x9278a8, 0.75);
     this.scene.add(hemiLight);
   }
 
@@ -131,6 +275,20 @@ export class IsometricPetRenderer {
     }
 
     return new THREE.Vector2((localX / rect.width) * 2 - 1, -(localY / rect.height) * 2 + 1);
+  }
+
+  public setQualityLevel(level: QualityLevel): void {
+    this.qualityLevel = level;
+    const ratioCap = level === 'high' ? 2 : level === 'medium' ? 1.5 : 1.15;
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, ratioCap));
+    const fx = QUALITY_POST_FX[level];
+    this.renderer.toneMappingExposure = 1.02 + fx.bloomStrength * 0.28;
+  }
+
+  public updateSceneMood(mood: SceneMood): void {
+    if (this.sceneMood === mood) return;
+    this.sceneMood = mood;
+    this.gridCellMeshes.forEach(cell => cell.setSceneMood(mood));
   }
 
   public gridToWorld(row: number, col: number): THREE.Vector3 {
@@ -228,7 +386,7 @@ export class IsometricPetRenderer {
     return snapshot;
   }
 
-  private restoreRestPose(petMesh: PetMesh) {
+  private restoreRestPose(petMesh: PetMesh): void {
     petMesh.restPose.forEach(entry => {
       entry.target.position.copy(entry.position);
       entry.target.rotation.copy(entry.rotation);
@@ -236,7 +394,7 @@ export class IsometricPetRenderer {
     });
   }
 
-  private stopAnimations(petMesh: PetMesh) {
+  private stopAnimations(petMesh: PetMesh): void {
     petMesh.animationToken += 1;
     petMesh.restPose.forEach(entry => {
       Tween.killTarget(entry.target.position);
@@ -259,7 +417,7 @@ export class IsometricPetRenderer {
     durationMs: number,
     easing: (t: number) => number,
     startForward = true
-  ) {
+  ): void {
     const run = (forward: boolean) => {
       if (!this.isAnimationActive(key, token)) return;
       Tween.to(target, forward ? b : a, durationMs, easing, () => {
@@ -267,6 +425,37 @@ export class IsometricPetRenderer {
       });
     };
     run(startForward);
+  }
+
+  private enhancePetMaterials(root: THREE.Object3D): PetMaterialState[] {
+    const materials: PetMaterialState[] = [];
+    root.traverse(object => {
+      if (!(object instanceof THREE.Mesh)) return;
+      if (Array.isArray(object.material)) return;
+
+      const material = object.material;
+      if (!(material instanceof THREE.MeshLambertMaterial || material instanceof THREE.MeshStandardMaterial)) {
+        return;
+      }
+
+      material.emissive = material.emissive ?? new THREE.Color(0x000000);
+      material.emissiveIntensity = 0.12;
+      material.needsUpdate = true;
+      materials.push({
+        material,
+        baseColor: material.color.clone(),
+      });
+    });
+    return materials;
+  }
+
+  private createShadow(worldPos: THREE.Vector3): THREE.Mesh {
+    const shadow = new THREE.Mesh(new THREE.CircleGeometry(78, 28), createShadowMaterial());
+    shadow.rotation.x = -Math.PI / 2;
+    shadow.position.set(worldPos.x, -0.9, worldPos.z + 6);
+    shadow.renderOrder = 1;
+    this.scene.add(shadow);
+    return shadow;
   }
 
   private getMotionProfile(cardId: string): PetMotionProfile {
@@ -415,8 +604,10 @@ export class IsometricPetRenderer {
           this.CELL_WIDTH,
           this.CELL_HEIGHT
         );
+        cell3d.setSceneMood(this.sceneMood);
         this.scene.add(cell3d.mesh);
         this.scene.add(cell3d.borderMesh);
+        this.scene.add(cell3d.glowMesh);
         this.gridCellMeshes.set(`${row}|${col}`, cell3d);
       }
     }
@@ -474,8 +665,7 @@ export class IsometricPetRenderer {
   }
 
   public setCellHighlight(row: number, col: number, highlighted: boolean): void {
-    const cell = this.gridCellMeshes.get(`${row}|${col}`);
-    cell?.setHighlighted(highlighted);
+    this.gridCellMeshes.get(`${row}|${col}`)?.setHighlighted(highlighted);
   }
 
   public setCellHoverMode(
@@ -483,13 +673,11 @@ export class IsometricPetRenderer {
     col: number,
     mode: 'none' | 'placement' | 'targeting'
   ): void {
-    const cell = this.gridCellMeshes.get(`${row}|${col}`);
-    cell?.setHoverMode(mode);
+    this.gridCellMeshes.get(`${row}|${col}`)?.setHoverMode(mode);
   }
 
   public setCellActionPick(row: number, col: number, eligible: boolean, selected: boolean): void {
-    const cell = this.gridCellMeshes.get(`${row}|${col}`);
-    cell?.setActionPick(eligible, selected);
+    this.gridCellMeshes.get(`${row}|${col}`)?.setActionPick(eligible, selected);
   }
 
   public getGridCellCenterAnchor(row: number, col: number): { x: number; y: number } | null {
@@ -536,9 +724,12 @@ export class IsometricPetRenderer {
 
   public spawnPet(row: number, col: number, entity: GridEntity): void {
     const key = this.gridKey(row, col);
-    if (this.petMeshes.has(key)) {
-      this.removePet(row, col);
+    const existing = this.petMeshes.get(key);
+    if (existing && existing.entityId === entity.id && existing.cardId === entity.cardId) {
+      this.updatePetStress(row, col, entity.stress, entity.maxStress);
+      return;
     }
+    if (existing) this.removePet(row, col);
 
     const rig = createLowPolyPet(entity.cardId);
     const root = rig.root;
@@ -552,20 +743,27 @@ export class IsometricPetRenderer {
       worldPos.z
     );
     root.traverse(obj => {
-      obj.renderOrder = row * 100 + col;
+      obj.renderOrder = 20 + row * 100 + col;
     });
 
+    const shadow = this.createShadow(worldPos);
+    const materials = this.enhancePetMaterials(root);
     this.scene.add(root);
 
     const petMesh: PetMesh = {
       rig,
+      entityId: entity.id,
       cardId: entity.cardId,
       state: null,
       animationToken: 0,
       restPose: this.captureRestPose(rig),
+      stressRatio: 0,
+      materials,
+      shadow,
     };
     this.petMeshes.set(key, petMesh);
     this.playIdle(row, col);
+    this.updatePetStress(row, col, entity.stress, entity.maxStress);
   }
 
   public removePet(row: number, col: number): void {
@@ -575,15 +773,18 @@ export class IsometricPetRenderer {
 
     this.stopAnimations(petMesh);
     this.scene.remove(petMesh.rig.root);
+    this.scene.remove(petMesh.shadow);
+
+    petMesh.shadow.geometry.dispose();
+    (petMesh.shadow.material as THREE.Material).dispose();
 
     petMesh.rig.root.traverse(child => {
-      if (child instanceof THREE.Mesh) {
-        child.geometry.dispose();
-        if (Array.isArray(child.material)) {
-          child.material.forEach(material => material.dispose());
-        } else {
-          child.material.dispose();
-        }
+      if (!(child instanceof THREE.Mesh)) return;
+      child.geometry.dispose();
+      if (Array.isArray(child.material)) {
+        child.material.forEach(material => material.dispose());
+      } else {
+        child.material.dispose();
       }
     });
 
@@ -829,22 +1030,61 @@ export class IsometricPetRenderer {
 
   public updatePetStress(row: number, col: number, stress: number, maxStress: number): void {
     const key = this.gridKey(row, col);
-    if (!this.petMeshes.has(key)) return;
+    const petMesh = this.petMeshes.get(key);
+    if (!petMesh) return;
 
-    const ratio = stress / maxStress;
-    if (ratio < 0.5) {
-      this.playIdle(row, col);
-    } else {
-      this.playAngry(row, col);
-    }
+    const ratio = Math.max(0, Math.min(1, stress / Math.max(1, maxStress)));
+    petMesh.stressRatio = ratio;
+    if (ratio < 0.5) this.playIdle(row, col);
+    else this.playAngry(row, col);
+  }
+
+  private updateSceneShaders(elapsed: number): void {
+    const mood = MOOD_FACTORS[this.sceneMood];
+    this.backdropMaterial.uniforms.uTime.value = elapsed;
+    this.backdropMaterial.uniforms.uWarmth.value = mood.warmth;
+    this.backdropMaterial.uniforms.uDanger.value = mood.danger;
+
+    this.stageMaterial.uniforms.uTime.value = elapsed;
+    this.stageMaterial.uniforms.uWarmth.value = mood.warmth;
+    this.stageMaterial.uniforms.uAccent.value = mood.accent;
+    this.stageMaterial.uniforms.uDanger.value = mood.danger;
+  }
+
+  private updatePetMaterials(elapsed: number): void {
+    const mood = MOOD_FACTORS[this.sceneMood];
+    this.petMeshes.forEach(petMesh => {
+      petMesh.materials.forEach(({ material, baseColor }) => {
+        const pulse = 0.5 + 0.5 * Math.sin(elapsed * (1.4 + petMesh.stressRatio * 4));
+        const tintTarget =
+          petMesh.stressRatio > 0.72
+            ? new THREE.Color(VISUAL_THEME.scene.dangerGlow)
+            : new THREE.Color(VISUAL_THEME.scene.rim);
+        material.color.copy(baseColor);
+        material.emissive.copy(baseColor).lerp(tintTarget, 0.28 + petMesh.stressRatio * 0.34);
+        material.emissiveIntensity =
+          0.08 + mood.accent * 0.06 + petMesh.stressRatio * 0.22 + pulse * 0.03;
+      });
+
+      const pulse = 0.5 + 0.5 * Math.sin(elapsed * (1.4 + petMesh.stressRatio * 4));
+      const scale = 1 + petMesh.stressRatio * 0.18;
+      petMesh.shadow.scale.setScalar(scale);
+      (petMesh.shadow.material as THREE.MeshBasicMaterial).opacity =
+        0.08 + petMesh.stressRatio * 0.08 + pulse * 0.02;
+    });
   }
 
   public render(): void {
+    const elapsed = this.clock.getElapsedTime();
     this.camera.updateMatrixWorld(true);
+    this.updateSceneShaders(elapsed);
+    this.gridCellMeshes.forEach(cell => cell.update(elapsed));
+    this.updatePetMaterials(elapsed);
     this.renderer.render(this.scene, this.camera);
   }
 
   public resize(width: number, height: number): void {
+    this.setQualityLevel(this.qualityLevel);
     this.renderer.setSize(width, height);
     this.camera.updateProjectionMatrix();
     this.camera.updateMatrixWorld(true);
@@ -856,10 +1096,16 @@ export class IsometricPetRenderer {
       this.removePet(row, col);
     }
 
-    for (const [, cell3d] of this.gridCellMeshes) {
-      cell3d.dispose();
-    }
+    this.gridCellMeshes.forEach(cell3d => cell3d.dispose());
     this.gridCellMeshes.clear();
+
+    this.scene.remove(this.stageMesh);
+    this.scene.remove(this.backdropMesh);
+    this.stageMesh.geometry.dispose();
+    this.stageMaterial.dispose();
+    this.backdropMesh.geometry.dispose();
+    this.backdropMaterial.dispose();
+
     this.deckRenderer.dispose();
     this.renderer.dispose();
   }
