@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { loadAdminDatasets, saveAdminDatasets, subscribeToAdminEvents } from './api';
 import { ModelPreviewCanvas } from './ModelPreviewCanvas';
 import type {
@@ -11,6 +11,7 @@ import type {
 } from './types';
 
 type AdminTab = 'cards' | 'global';
+type CardViewMode = 'detail' | 'table';
 
 interface ParamSchemaField {
   name: string;
@@ -18,6 +19,32 @@ interface ParamSchemaField {
   type: 'number' | 'text' | 'select';
   defaultValue?: number | string;
   options?: string[];
+}
+
+interface AssetOptions {
+  allAssets: string[];
+  cardImages: string[];
+  illustrations: string[];
+  thumbnails: string[];
+  modelPresetSources: string[];
+}
+
+interface CardEditorPanelProps {
+  selectedCard: CardRow | null;
+  canEdit: boolean;
+  draft: RawAdminDatasets;
+  currentBindings: CardSkillRow[];
+  availableTemplates: SkillTemplateRow[];
+  selectedModelProfile: ModelProfileRow | null;
+  assetOptions: AssetOptions;
+  cardImageOptions: string[];
+  illustrationOptions: string[];
+  updateCard: (patch: Partial<CardRow>) => void;
+  updateBinding: (bindingId: string, patch: Partial<CardSkillRow>) => void;
+  removeBinding: (bindingId: string) => void;
+  addBinding: () => void;
+  updateModelProfile: (profileId: string, patch: Partial<ModelProfileRow>) => void;
+  emptyState?: ReactNode;
 }
 
 const shellStyle: CSSProperties = {
@@ -119,11 +146,463 @@ function sectionTitle(label: string) {
   return <div style={{ fontSize: 12, letterSpacing: 1.4, textTransform: 'uppercase', opacity: 0.64 }}>{label}</div>;
 }
 
+function isEntityCard(card: CardRow) {
+  return card.type.startsWith('entity_');
+}
+
+function sortCardsForComparison(cards: CardRow[]) {
+  return [...cards].sort((a, b) => {
+    const typeDiff = a.type.localeCompare(b.type);
+    if (typeDiff !== 0) return typeDiff;
+
+    const aCost = Number(a.cost);
+    const bCost = Number(b.cost);
+    const normalizedACost = Number.isFinite(aCost) ? aCost : Number.MAX_SAFE_INTEGER;
+    const normalizedBCost = Number.isFinite(bCost) ? bCost : Number.MAX_SAFE_INTEGER;
+    if (normalizedACost !== normalizedBCost) return normalizedACost - normalizedBCost;
+
+    return a.id.localeCompare(b.id);
+  });
+}
+
+function buildCardTypeSummary(cards: CardRow[]) {
+  return cards.reduce<Record<string, number>>((summary, card) => {
+    summary[card.type] = (summary[card.type] ?? 0) + 1;
+    return summary;
+  }, {});
+}
+
+function cardSummaryLabel(card: CardRow) {
+  if (isEntityCard(card)) {
+    return `费用 ${card.cost} / 收益 ${card.income || '-'} / 压力 ${card.stress || '-'} / 上限 ${card.stressLimit || '-'}`;
+  }
+
+  return `费用 ${card.cost} / ${card.rarity}`;
+}
+
+function tableInputStyle(disabled = false): CSSProperties {
+  return {
+    width: '100%',
+    borderRadius: 10,
+    border: '1px solid rgba(255,255,255,0.14)',
+    background: disabled ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.05)',
+    color: '#fff8ef',
+    padding: '8px 10px',
+    boxSizing: 'border-box',
+    opacity: disabled ? 0.5 : 1,
+  };
+}
+
+const compactNumericColumnStyle: CSSProperties = {
+  minWidth: 72,
+  maxWidth: 92,
+  width: '1%',
+};
+
+const compactLimitColumnStyle: CSSProperties = {
+  minWidth: 84,
+  maxWidth: 108,
+  width: '1%',
+};
+
+const compactBooleanColumnStyle: CSSProperties = {
+  minWidth: 96,
+  maxWidth: 118,
+  width: '1%',
+};
+
+const compactHeaderTextStyle: CSSProperties = {
+  whiteSpace: 'normal',
+  overflowWrap: 'anywhere',
+  lineHeight: 1.3,
+};
+
+function CardEditorPanel({
+  selectedCard,
+  canEdit,
+  draft,
+  currentBindings,
+  availableTemplates,
+  selectedModelProfile,
+  assetOptions,
+  cardImageOptions,
+  illustrationOptions,
+  updateCard,
+  updateBinding,
+  removeBinding,
+  addBinding,
+  updateModelProfile,
+  emptyState,
+}: CardEditorPanelProps) {
+  if (!selectedCard) {
+    return emptyState ?? <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%' }}>选择卡牌开始编辑</div>;
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 22 }}>
+      {sectionTitle('Card Basics')}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+        <label>
+          <div style={{ marginBottom: 6 }}>卡牌 ID</div>
+          <input value={selectedCard.id} disabled style={inputStyle(true)} />
+        </label>
+        <label>
+          <div style={{ marginBottom: 6 }}>名称</div>
+          <input
+            value={selectedCard.name}
+            disabled={!canEdit}
+            onChange={event => updateCard({ name: event.target.value })}
+            style={inputStyle(true)}
+          />
+        </label>
+        <label>
+          <div style={{ marginBottom: 6 }}>类型</div>
+          <input value={selectedCard.type} disabled style={inputStyle(true)} />
+        </label>
+        <label>
+          <div style={{ marginBottom: 6 }}>稀有度</div>
+          <select
+            value={selectedCard.rarity}
+            disabled={!canEdit}
+            onChange={event => updateCard({ rarity: event.target.value })}
+            style={inputStyle(true)}
+          >
+            {['common', 'rare', 'epic', 'legendary'].map(option => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <div style={{ marginBottom: 6 }}>费用</div>
+          <input
+            value={selectedCard.cost}
+            disabled={!canEdit}
+            onChange={event => updateCard({ cost: event.target.value })}
+            style={inputStyle(true)}
+          />
+        </label>
+        <label>
+          <div style={{ marginBottom: 6 }}>标签</div>
+          <input
+            value={selectedCard.tags}
+            disabled={!canEdit}
+            onChange={event => updateCard({ tags: event.target.value })}
+            style={inputStyle(true)}
+          />
+        </label>
+      </div>
+
+      <label>
+        <div style={{ marginBottom: 6 }}>描述</div>
+        <textarea
+          value={selectedCard.description}
+          disabled={!canEdit}
+          onChange={event => updateCard({ description: event.target.value })}
+          rows={3}
+          style={inputStyle(true)}
+        />
+      </label>
+
+      {isEntityCard(selectedCard) ? (
+        <>
+          {sectionTitle('Entity Stats')}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <label>
+              <div style={{ marginBottom: 6 }}>收益</div>
+              <input
+                value={selectedCard.income}
+                disabled={!canEdit}
+                onChange={event => updateCard({ income: event.target.value })}
+                style={inputStyle(true)}
+              />
+            </label>
+            <label>
+              <div style={{ marginBottom: 6 }}>初始压力</div>
+              <input
+                value={selectedCard.stress}
+                disabled={!canEdit}
+                onChange={event => updateCard({ stress: event.target.value })}
+                style={inputStyle(true)}
+              />
+            </label>
+            <label>
+              <div style={{ marginBottom: 6 }}>压力上限</div>
+              <input
+                value={selectedCard.stressLimit}
+                disabled={!canEdit}
+                onChange={event => updateCard({ stressLimit: event.target.value })}
+                style={inputStyle(true)}
+              />
+            </label>
+          </div>
+        </>
+      ) : null}
+
+      {sectionTitle('Resources')}
+      <div style={{ display: 'grid', gap: 12 }}>
+        <label>
+          <div style={{ marginBottom: 6 }}>卡面图片资源</div>
+          <select
+            value={selectedCard.cardImagePath}
+            disabled={!canEdit}
+            onChange={event => updateCard({ cardImagePath: event.target.value })}
+            style={inputStyle(true)}
+          >
+            <option value="">未绑定</option>
+            {cardImageOptions.map(option => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          <div style={{ marginBottom: 6 }}>插画资源</div>
+          <select
+            value={selectedCard.illustrationPath}
+            disabled={!canEdit}
+            onChange={event => updateCard({ illustrationPath: event.target.value })}
+            style={inputStyle(true)}
+          >
+            <option value="">未绑定</option>
+            {illustrationOptions.map(option => (
+              <option key={option} value={option}>
+                {option}
+              </option>
+            ))}
+          </select>
+        </label>
+        {selectedCard.type === 'entity_pet' ? (
+          <>
+            <label>
+              <div style={{ marginBottom: 6 }}>3D 模型配置</div>
+              <select
+                value={selectedCard.modelProfileId}
+                disabled={!canEdit}
+                onChange={event => updateCard({ modelProfileId: event.target.value })}
+                style={inputStyle(true)}
+              >
+                <option value="">未绑定</option>
+                {draft.modelProfiles.map(profile => (
+                  <option key={profile.id} value={profile.id}>
+                    {profile.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {selectedModelProfile ? (
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 12,
+                  padding: 14,
+                  borderRadius: 16,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <label>
+                  <div style={{ marginBottom: 6 }}>模型预设 source</div>
+                  <select
+                    value={selectedModelProfile.source}
+                    disabled={!canEdit}
+                    onChange={event => updateModelProfile(selectedModelProfile.id, { source: event.target.value })}
+                    style={inputStyle(true)}
+                  >
+                    {assetOptions.modelPresetSources.map(option => (
+                      <option key={option} value={option}>
+                        {option}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <div style={{ marginBottom: 6 }}>缩放</div>
+                  <input
+                    value={selectedModelProfile.scale}
+                    disabled={!canEdit}
+                    onChange={event => updateModelProfile(selectedModelProfile.id, { scale: event.target.value })}
+                    style={inputStyle(true)}
+                  />
+                </label>
+                <label>
+                  <div style={{ marginBottom: 6 }}>旋转 Y</div>
+                  <input
+                    value={selectedModelProfile.rotationY}
+                    disabled={!canEdit}
+                    onChange={event => updateModelProfile(selectedModelProfile.id, { rotationY: event.target.value })}
+                    style={inputStyle(true)}
+                  />
+                </label>
+                <label>
+                  <div style={{ marginBottom: 6 }}>阴影倍率</div>
+                  <input
+                    value={selectedModelProfile.shadowSize}
+                    disabled={!canEdit}
+                    onChange={event => updateModelProfile(selectedModelProfile.id, { shadowSize: event.target.value })}
+                    style={inputStyle(true)}
+                  />
+                </label>
+              </div>
+            ) : null}
+          </>
+        ) : null}
+      </div>
+
+      {sectionTitle('Skills')}
+      <div style={{ display: 'grid', gap: 12 }}>
+        {currentBindings.map(binding => {
+          const template = draft.skillTemplates.find(item => item.id === binding.templateId);
+          const schema = readParamSchema(template);
+          const params = parseJsonSafe<Record<string, string | number>>(binding.paramsJson, {});
+
+          return (
+            <div
+              key={binding.id}
+              style={{
+                borderRadius: 16,
+                padding: 14,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <div style={{ fontWeight: 700 }}>{template?.name ?? binding.templateId}</div>
+                  <div style={{ fontSize: 12, opacity: 0.66 }}>
+                    {template?.trigger ?? 'unknown'} / {template?.targetMode ?? 'unknown'} /{' '}
+                    {template?.effectKind ?? 'unknown'}
+                  </div>
+                </div>
+                <button
+                  disabled={!canEdit}
+                  onClick={() => removeBinding(binding.id)}
+                  style={{
+                    border: 0,
+                    borderRadius: 999,
+                    background: 'rgba(255,130,130,0.18)',
+                    color: '#ffdede',
+                    padding: '8px 12px',
+                    cursor: canEdit ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  删除
+                </button>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 10, marginBottom: 12 }}>
+                <select
+                  value={binding.templateId}
+                  disabled={!canEdit}
+                  onChange={event => updateBinding(binding.id, { templateId: event.target.value })}
+                  style={inputStyle(true)}
+                >
+                  {availableTemplates.map(option => (
+                    <option key={option.id} value={option.id}>
+                      {option.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  value={binding.sortOrder}
+                  disabled={!canEdit}
+                  onChange={event => updateBinding(binding.id, { sortOrder: event.target.value })}
+                  style={inputStyle(true)}
+                />
+                <select
+                  value={binding.enabled}
+                  disabled={!canEdit}
+                  onChange={event => updateBinding(binding.id, { enabled: event.target.value })}
+                  style={inputStyle(true)}
+                >
+                  <option value="true">启用</option>
+                  <option value="false">停用</option>
+                </select>
+              </div>
+
+              {schema.length > 0 ? (
+                <div style={{ display: 'grid', gap: 10 }}>
+                  {schema.map(field => (
+                    <label key={field.name}>
+                      <div style={{ marginBottom: 6 }}>{field.label}</div>
+                      {field.type === 'select' ? (
+                        <select
+                          value={String(params[field.name] ?? field.defaultValue ?? '')}
+                          disabled={!canEdit}
+                          onChange={event => {
+                            const nextParams = { ...params, [field.name]: event.target.value };
+                            updateBinding(binding.id, { paramsJson: JSON.stringify(nextParams) });
+                          }}
+                          style={inputStyle(true)}
+                        >
+                          {(field.options ?? []).map(option => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          value={String(params[field.name] ?? field.defaultValue ?? '')}
+                          disabled={!canEdit}
+                          onChange={event => {
+                            const value = field.type === 'number' ? Number(event.target.value) : event.target.value;
+                            const nextParams = { ...params, [field.name]: value };
+                            updateBinding(binding.id, { paramsJson: JSON.stringify(nextParams) });
+                          }}
+                          style={inputStyle(true)}
+                        />
+                      )}
+                    </label>
+                  ))}
+                </div>
+              ) : null}
+
+              <div
+                style={{
+                  marginTop: 12,
+                  borderRadius: 12,
+                  padding: 12,
+                  background: 'rgba(255,226,175,0.08)',
+                  border: '1px solid rgba(255,226,175,0.12)',
+                }}
+              >
+                <div style={{ fontSize: 12, opacity: 0.66, marginBottom: 4 }}>规则摘要</div>
+                <div>{renderBindingSummary(template, binding)}</div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      <button
+        onClick={addBinding}
+        disabled={!canEdit || availableTemplates.length === 0}
+        style={{
+          borderRadius: 14,
+          border: '1px dashed rgba(255,255,255,0.16)',
+          background: 'transparent',
+          color: '#fff8ef',
+          padding: '12px 14px',
+          cursor: canEdit ? 'pointer' : 'not-allowed',
+        }}
+      >
+        添加技能绑定
+      </button>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const [response, setResponse] = useState<AdminDatasetResponse | null>(null);
   const [draft, setDraft] = useState<RawAdminDatasets | null>(null);
   const [tab, setTab] = useState<AdminTab>('cards');
+  const [viewMode, setViewMode] = useState<CardViewMode>('detail');
   const [selectedCardId, setSelectedCardId] = useState<string>('');
+  const [tableEditorOpen, setTableEditorOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -145,10 +624,22 @@ export function AdminPage() {
     });
   }, []);
 
+  useEffect(() => {
+    if (tab !== 'cards' || viewMode !== 'table') {
+      setTableEditorOpen(false);
+    }
+  }, [tab, viewMode]);
+
   const selectedCard = useMemo(
     () => draft?.cards.find(card => card.id === selectedCardId) ?? null,
     [draft, selectedCardId]
   );
+
+  useEffect(() => {
+    if (!selectedCard) {
+      setTableEditorOpen(false);
+    }
+  }, [selectedCard]);
 
   const selectedModelProfile = useMemo(() => {
     if (!selectedCard || !draft) return null;
@@ -158,10 +649,10 @@ export function AdminPage() {
   const visibleCards = useMemo(() => {
     if (!draft) return [];
     const query = search.trim().toLowerCase();
-    if (!query) return draft.cards;
-    return draft.cards.filter(card =>
-      `${card.id} ${card.name} ${card.type}`.toLowerCase().includes(query)
-    );
+    const filtered = !query
+      ? draft.cards
+      : draft.cards.filter(card => `${card.id} ${card.name} ${card.type}`.toLowerCase().includes(query));
+    return sortCardsForComparison(filtered);
   }, [draft, search]);
 
   const currentBindings = useMemo(() => {
@@ -174,6 +665,8 @@ export function AdminPage() {
     return draft.skillTemplates.filter(template => templateSupportsCard(template, selectedCard.type));
   }, [draft, selectedCard]);
 
+  const cardTypeSummary = useMemo(() => buildCardTypeSummary(visibleCards), [visibleCards]);
+
   if (!response || !draft) {
     return (
       <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', color: '#fff8ef' }}>
@@ -182,13 +675,17 @@ export function AdminPage() {
     );
   }
 
-  const assetOptions = response.compiled.assetOptions ?? {
+  const assetOptions: AssetOptions = response.compiled.assetOptions ?? {
     allAssets: [],
     cardImages: [],
     illustrations: [],
     thumbnails: [],
     modelPresetSources: [],
   };
+  const activeShellStyle: CSSProperties =
+    tab === 'cards' && viewMode === 'table'
+      ? { ...shellStyle, gridTemplateColumns: '320px minmax(760px, 1fr) 420px' }
+      : shellStyle;
   const cardImageOptions = selectedCard
     ? filterAssetOptions(assetOptions.cardImages, selectedCard.type)
     : assetOptions.cardImages;
@@ -196,15 +693,19 @@ export function AdminPage() {
     ? filterAssetOptions(assetOptions.illustrations, selectedCard.type)
     : assetOptions.illustrations;
 
-  function updateCard(patch: Partial<CardRow>) {
-    if (!selectedCard) return;
+  function updateCardById(cardId: string, patch: Partial<CardRow>) {
     setDraft(current => {
       if (!current) return current;
       return {
         ...current,
-        cards: current.cards.map(card => (card.id === selectedCard.id ? { ...card, ...patch } : card)),
+        cards: current.cards.map(card => (card.id === cardId ? { ...card, ...patch } : card)),
       };
     });
+  }
+
+  function updateCard(patch: Partial<CardRow>) {
+    if (!selectedCard) return;
+    updateCardById(selectedCard.id, patch);
   }
 
   function updateBinding(bindingId: string, patch: Partial<CardSkillRow>) {
@@ -304,6 +805,7 @@ export function AdminPage() {
       cards: remainingCards,
       cardSkills: remainingBindings,
     });
+    setTableEditorOpen(false);
     setSelectedCardId(remainingCards[0]?.id ?? '');
   }
 
@@ -325,7 +827,7 @@ export function AdminPage() {
   }
 
   return (
-    <div style={shellStyle}>
+    <div style={activeShellStyle}>
       <aside style={{ ...panelStyle, padding: 20 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
           <div>
@@ -408,34 +910,132 @@ export function AdminPage() {
                 删除
               </button>
             </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 12 }}>
+              {([
+                ['detail', '原有布局'],
+                ['table', '列表布局'],
+              ] as const).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  style={{
+                    ...inputStyle(true),
+                    cursor: 'pointer',
+                    borderColor: viewMode === mode ? 'rgba(255,210,133,0.38)' : 'rgba(255,255,255,0.14)',
+                    background: viewMode === mode ? 'rgba(255,210,133,0.12)' : 'rgba(255,255,255,0.04)',
+                    fontWeight: viewMode === mode ? 700 : 500,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
             <input
               value={search}
               onChange={event => setSearch(event.target.value)}
               placeholder="搜索卡牌 ID / 名称"
               style={{ ...inputStyle(true), marginBottom: 14 }}
             />
-            <div style={{ display: 'grid', gap: 8 }}>
-              {visibleCards.map(card => (
-                <button
-                  key={card.id}
-                  onClick={() => setSelectedCardId(card.id)}
+            {viewMode === 'detail' ? (
+              <div style={{ display: 'grid', gap: 8 }}>
+                {visibleCards.map(card => (
+                  <button
+                    key={card.id}
+                    onClick={() => setSelectedCardId(card.id)}
+                    style={{
+                      textAlign: 'left',
+                      borderRadius: 14,
+                      border: '1px solid rgba(255,255,255,0.08)',
+                      background:
+                        selectedCardId === card.id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
+                      color: '#fff8ef',
+                      padding: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+                      <div style={{ fontWeight: 700 }}>{card.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.7 }}>{card.rarity}</div>
+                    </div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>{card.id}</div>
+                    <div style={{ fontSize: 12, opacity: 0.7 }}>{card.type}</div>
+                    <div style={{ fontSize: 12, opacity: 0.72, marginTop: 6 }}>{cardSummaryLabel(card)}</div>
+                  </button>
+                ))}
+                {visibleCards.length === 0 ? (
+                  <div style={{ opacity: 0.7, padding: '10px 2px' }}>没有匹配的卡牌。</div>
+                ) : null}
+              </div>
+            ) : (
+              <div style={{ display: 'grid', gap: 12 }}>
+                <div
                   style={{
-                    textAlign: 'left',
-                    borderRadius: 14,
+                    borderRadius: 16,
+                    padding: 14,
+                    background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.08)',
-                    background:
-                      selectedCardId === card.id ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
-                    color: '#fff8ef',
-                    padding: 12,
-                    cursor: 'pointer',
                   }}
                 >
-                  <div style={{ fontWeight: 700 }}>{card.name}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>{card.id}</div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>{card.type}</div>
-                </button>
-              ))}
-            </div>
+                  <div style={{ fontWeight: 700, marginBottom: 6 }}>列表布局说明</div>
+                  <div style={{ fontSize: 13, opacity: 0.76, lineHeight: 1.6 }}>
+                    中间区域用于横向对比关键数值。数值列可直接编辑，描述、资源、技能等复杂配置通过右侧“深度编辑”进入。
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    borderRadius: 16,
+                    padding: 14,
+                    background: 'rgba(255,255,255,0.04)',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                  }}
+                >
+                  <div style={{ fontWeight: 700, marginBottom: 10 }}>当前筛选</div>
+                  <div style={{ fontSize: 13, opacity: 0.76, marginBottom: 12 }}>
+                    共 {visibleCards.length} 张卡牌
+                    {selectedCard ? `，当前选中 ${selectedCard.name}` : ''}
+                  </div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                    {Object.entries(cardTypeSummary).map(([type, count]) => (
+                      <div
+                        key={type}
+                        style={{
+                          borderRadius: 999,
+                          padding: '6px 10px',
+                          background: 'rgba(255,255,255,0.05)',
+                          border: '1px solid rgba(255,255,255,0.08)',
+                          fontSize: 12,
+                        }}
+                      >
+                        {type} · {count}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {selectedCard ? (
+                  <button
+                    onClick={() => setTableEditorOpen(true)}
+                    style={{
+                      textAlign: 'left',
+                      borderRadius: 16,
+                      border: '1px solid rgba(255,210,133,0.18)',
+                      background: 'rgba(255,210,133,0.08)',
+                      color: '#fff8ef',
+                      padding: 14,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    <div style={{ fontWeight: 700, marginBottom: 6 }}>{selectedCard.name}</div>
+                    <div style={{ fontSize: 12, opacity: 0.72, marginBottom: 4 }}>{selectedCard.id}</div>
+                    <div style={{ fontSize: 12, opacity: 0.72 }}>{cardSummaryLabel(selectedCard)}</div>
+                    <div style={{ fontSize: 12, opacity: 0.84, marginTop: 10 }}>点击进入深度编辑</div>
+                  </button>
+                ) : (
+                  <div style={{ opacity: 0.7, padding: '10px 2px' }}>请在中间表格中选择一张卡牌。</div>
+                )}
+              </div>
+            )}
           </>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
@@ -471,371 +1071,325 @@ export function AdminPage() {
         )}
       </aside>
 
-      <main style={{ ...panelStyle, padding: 24 }}>
-        {tab === 'cards' && selectedCard ? (
-          <div style={{ display: 'grid', gap: 22 }}>
-            {sectionTitle('Card Basics')}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <label>
-                <div style={{ marginBottom: 6 }}>卡牌 ID</div>
-                <input value={selectedCard.id} disabled style={inputStyle(true)} />
-              </label>
-              <label>
-                <div style={{ marginBottom: 6 }}>名称</div>
-                <input
-                  value={selectedCard.name}
-                  disabled={!response.canEdit}
-                  onChange={event => updateCard({ name: event.target.value })}
-                  style={inputStyle(true)}
-                />
-              </label>
-              <label>
-                <div style={{ marginBottom: 6 }}>类型</div>
-                <input value={selectedCard.type} disabled style={inputStyle(true)} />
-              </label>
-              <label>
-                <div style={{ marginBottom: 6 }}>稀有度</div>
-                <select
-                  value={selectedCard.rarity}
-                  disabled={!response.canEdit}
-                  onChange={event => updateCard({ rarity: event.target.value })}
-                  style={inputStyle(true)}
-                >
-                  {['common', 'rare', 'epic', 'legendary'].map(option => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <div style={{ marginBottom: 6 }}>费用</div>
-                <input
-                  value={selectedCard.cost}
-                  disabled={!response.canEdit}
-                  onChange={event => updateCard({ cost: event.target.value })}
-                  style={inputStyle(true)}
-                />
-              </label>
-              <label>
-                <div style={{ marginBottom: 6 }}>标签</div>
-                <input
-                  value={selectedCard.tags}
-                  disabled={!response.canEdit}
-                  onChange={event => updateCard({ tags: event.target.value })}
-                  style={inputStyle(true)}
-                />
-              </label>
-            </div>
-
-            <label>
-              <div style={{ marginBottom: 6 }}>描述</div>
-              <textarea
-                value={selectedCard.description}
-                disabled={!response.canEdit}
-                onChange={event => updateCard({ description: event.target.value })}
-                rows={3}
-                style={inputStyle(true)}
-              />
-            </label>
-
-            {selectedCard.type.startsWith('entity_') ? (
-              <>
-                {sectionTitle('Entity Stats')}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-                  <label>
-                    <div style={{ marginBottom: 6 }}>收益</div>
-                    <input
-                      value={selectedCard.income}
-                      disabled={!response.canEdit}
-                      onChange={event => updateCard({ income: event.target.value })}
-                      style={inputStyle(true)}
-                    />
-                  </label>
-                  <label>
-                    <div style={{ marginBottom: 6 }}>初始压力</div>
-                    <input
-                      value={selectedCard.stress}
-                      disabled={!response.canEdit}
-                      onChange={event => updateCard({ stress: event.target.value })}
-                      style={inputStyle(true)}
-                    />
-                  </label>
-                  <label>
-                    <div style={{ marginBottom: 6 }}>压力上限</div>
-                    <input
-                      value={selectedCard.stressLimit}
-                      disabled={!response.canEdit}
-                      onChange={event => updateCard({ stressLimit: event.target.value })}
-                      style={inputStyle(true)}
-                    />
-                  </label>
-                </div>
-              </>
-            ) : null}
-
-            {sectionTitle('Resources')}
-            <div style={{ display: 'grid', gap: 12 }}>
-              <label>
-                <div style={{ marginBottom: 6 }}>卡面图片资源</div>
-                <select
-                  value={selectedCard.cardImagePath}
-                  disabled={!response.canEdit}
-                  onChange={event => updateCard({ cardImagePath: event.target.value })}
-                  style={inputStyle(true)}
-                >
-                  <option value="">未绑定</option>
-                  {cardImageOptions.map(option => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <div style={{ marginBottom: 6 }}>插画资源</div>
-                <select
-                  value={selectedCard.illustrationPath}
-                  disabled={!response.canEdit}
-                  onChange={event => updateCard({ illustrationPath: event.target.value })}
-                  style={inputStyle(true)}
-                >
-                  <option value="">未绑定</option>
-                  {illustrationOptions.map(option => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              {selectedCard.type === 'entity_pet' ? (
-                <>
-                  <label>
-                    <div style={{ marginBottom: 6 }}>3D 模型配置</div>
-                    <select
-                      value={selectedCard.modelProfileId}
-                      disabled={!response.canEdit}
-                      onChange={event => updateCard({ modelProfileId: event.target.value })}
-                      style={inputStyle(true)}
-                    >
-                      <option value="">未绑定</option>
-                      {draft.modelProfiles.map(profile => (
-                        <option key={profile.id} value={profile.id}>
-                          {profile.name}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  {selectedModelProfile ? (
-                    <div
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '1fr 1fr',
-                        gap: 12,
-                        padding: 14,
-                        borderRadius: 16,
-                        background: 'rgba(255,255,255,0.04)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                      }}
-                    >
-                      <label>
-                        <div style={{ marginBottom: 6 }}>模型预设 source</div>
-                        <select
-                          value={selectedModelProfile.source}
-                          disabled={!response.canEdit}
-                          onChange={event =>
-                            updateModelProfile(selectedModelProfile.id, { source: event.target.value })
-                          }
-                          style={inputStyle(true)}
-                        >
-                          {assetOptions.modelPresetSources.map(option => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
-                      </label>
-                      <label>
-                        <div style={{ marginBottom: 6 }}>缩放</div>
-                        <input
-                          value={selectedModelProfile.scale}
-                          disabled={!response.canEdit}
-                          onChange={event =>
-                            updateModelProfile(selectedModelProfile.id, { scale: event.target.value })
-                          }
-                          style={inputStyle(true)}
-                        />
-                      </label>
-                      <label>
-                        <div style={{ marginBottom: 6 }}>旋转 Y</div>
-                        <input
-                          value={selectedModelProfile.rotationY}
-                          disabled={!response.canEdit}
-                          onChange={event =>
-                            updateModelProfile(selectedModelProfile.id, { rotationY: event.target.value })
-                          }
-                          style={inputStyle(true)}
-                        />
-                      </label>
-                      <label>
-                        <div style={{ marginBottom: 6 }}>阴影倍率</div>
-                        <input
-                          value={selectedModelProfile.shadowSize}
-                          disabled={!response.canEdit}
-                          onChange={event =>
-                            updateModelProfile(selectedModelProfile.id, { shadowSize: event.target.value })
-                          }
-                          style={inputStyle(true)}
-                        />
-                      </label>
-                    </div>
-                  ) : null}
-                </>
-              ) : null}
-            </div>
-
-            {sectionTitle('Skills')}
-            <div style={{ display: 'grid', gap: 12 }}>
-              {currentBindings.map(binding => {
-                const template = draft.skillTemplates.find(item => item.id === binding.templateId);
-                const schema = readParamSchema(template);
-                const params = parseJsonSafe<Record<string, string | number>>(binding.paramsJson, {});
-
-                return (
-                  <div
-                    key={binding.id}
-                    style={{
-                      borderRadius: 16,
-                      padding: 14,
-                      background: 'rgba(255,255,255,0.04)',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 12 }}>
-                      <div>
-                        <div style={{ fontWeight: 700 }}>{template?.name ?? binding.templateId}</div>
-                        <div style={{ fontSize: 12, opacity: 0.66 }}>
-                          {template?.trigger ?? 'unknown'} / {template?.targetMode ?? 'unknown'} /{' '}
-                          {template?.effectKind ?? 'unknown'}
-                        </div>
-                      </div>
-                      <button
-                        disabled={!response.canEdit}
-                        onClick={() => removeBinding(binding.id)}
-                        style={{
-                          border: 0,
-                          borderRadius: 999,
-                          background: 'rgba(255,130,130,0.18)',
-                          color: '#ffdede',
-                          padding: '8px 12px',
-                          cursor: response.canEdit ? 'pointer' : 'not-allowed',
-                        }}
-                      >
-                        删除
-                      </button>
-                    </div>
-
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 10, marginBottom: 12 }}>
-                      <select
-                        value={binding.templateId}
-                        disabled={!response.canEdit}
-                        onChange={event => updateBinding(binding.id, { templateId: event.target.value })}
-                        style={inputStyle(true)}
-                      >
-                        {availableTemplates.map(option => (
-                          <option key={option.id} value={option.id}>
-                            {option.name}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        value={binding.sortOrder}
-                        disabled={!response.canEdit}
-                        onChange={event => updateBinding(binding.id, { sortOrder: event.target.value })}
-                        style={inputStyle(true)}
-                      />
-                      <select
-                        value={binding.enabled}
-                        disabled={!response.canEdit}
-                        onChange={event => updateBinding(binding.id, { enabled: event.target.value })}
-                        style={inputStyle(true)}
-                      >
-                        <option value="true">启用</option>
-                        <option value="false">停用</option>
-                      </select>
-                    </div>
-
-                    {schema.length > 0 ? (
-                      <div style={{ display: 'grid', gap: 10 }}>
-                        {schema.map(field => (
-                          <label key={field.name}>
-                            <div style={{ marginBottom: 6 }}>{field.label}</div>
-                            {field.type === 'select' ? (
-                              <select
-                                value={String(params[field.name] ?? field.defaultValue ?? '')}
-                                disabled={!response.canEdit}
-                                onChange={event => {
-                                  const nextParams = { ...params, [field.name]: event.target.value };
-                                  updateBinding(binding.id, { paramsJson: JSON.stringify(nextParams) });
-                                }}
-                                style={inputStyle(true)}
-                              >
-                                {(field.options ?? []).map(option => (
-                                  <option key={option} value={option}>
-                                    {option}
-                                  </option>
-                                ))}
-                              </select>
-                            ) : (
-                              <input
-                                value={String(params[field.name] ?? field.defaultValue ?? '')}
-                                disabled={!response.canEdit}
-                                onChange={event => {
-                                  const value =
-                                    field.type === 'number' ? Number(event.target.value) : event.target.value;
-                                  const nextParams = { ...params, [field.name]: value };
-                                  updateBinding(binding.id, { paramsJson: JSON.stringify(nextParams) });
-                                }}
-                                style={inputStyle(true)}
-                              />
-                            )}
-                          </label>
-                        ))}
-                      </div>
-                    ) : null}
-
-                    <div
-                      style={{
-                        marginTop: 12,
-                        borderRadius: 12,
-                        padding: 12,
-                        background: 'rgba(255,226,175,0.08)',
-                        border: '1px solid rgba(255,226,175,0.12)',
-                      }}
-                    >
-                      <div style={{ fontSize: 12, opacity: 0.66, marginBottom: 4 }}>规则摘要</div>
-                      <div>{renderBindingSummary(template, binding)}</div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            <button
-              onClick={addBinding}
-              disabled={!response.canEdit || availableTemplates.length === 0}
+      <main
+        style={{
+          ...panelStyle,
+          padding: tab === 'cards' && viewMode === 'table' ? 16 : 24,
+          overflow: tab === 'cards' && viewMode === 'table' ? 'hidden' : panelStyle.overflow,
+          display: tab === 'cards' && viewMode === 'table' ? 'flex' : undefined,
+          flexDirection: tab === 'cards' && viewMode === 'table' ? 'column' : undefined,
+          minHeight: 0,
+          boxSizing: 'border-box',
+        }}
+      >
+        {tab === 'cards' ? (
+          viewMode === 'detail' ? (
+            <CardEditorPanel
+              selectedCard={selectedCard}
+              canEdit={response.canEdit}
+              draft={draft}
+              currentBindings={currentBindings}
+              availableTemplates={availableTemplates}
+              selectedModelProfile={selectedModelProfile}
+              assetOptions={assetOptions}
+              cardImageOptions={cardImageOptions}
+              illustrationOptions={illustrationOptions}
+              updateCard={updateCard}
+              updateBinding={updateBinding}
+              removeBinding={removeBinding}
+              addBinding={addBinding}
+              updateModelProfile={updateModelProfile}
+              emptyState={<div style={{ display: 'grid', placeItems: 'center', minHeight: '100%' }}>选择左侧卡牌开始编辑</div>}
+            />
+          ) : (
+            <div
               style={{
-                borderRadius: 14,
-                border: '1px dashed rgba(255,255,255,0.16)',
-                background: 'transparent',
-                color: '#fff8ef',
-                padding: '12px 14px',
-                cursor: response.canEdit ? 'pointer' : 'not-allowed',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 16,
+                flex: 1,
+                minHeight: 0,
+                height: '100%',
               }}
             >
-              添加技能绑定
-            </button>
-          </div>
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'flex-start',
+                  gap: 16,
+                  padding: 4,
+                }}
+              >
+                <div>
+                  <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>卡牌数值对比</div>
+                  <div style={{ fontSize: 13, opacity: 0.72, lineHeight: 1.6 }}>
+                    列表按类型、费用、ID 排序。实体卡的收益、初始压力、压力上限可直接内联调整，复杂字段通过“深度编辑”处理。
+                  </div>
+                </div>
+                {selectedCard ? (
+                  <button
+                    onClick={() => setTableEditorOpen(true)}
+                    style={{
+                      border: 0,
+                      borderRadius: 999,
+                      padding: '10px 16px',
+                      background: 'rgba(255,210,133,0.18)',
+                      color: '#fff8ef',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    深度编辑当前卡牌
+                  </button>
+                ) : null}
+              </div>
+
+              <div
+                style={{
+                  borderRadius: 18,
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  background: 'rgba(255,255,255,0.03)',
+                  overflowX: 'auto',
+                  overflowY: 'auto',
+                  minHeight: 0,
+                  flex: 1,
+                }}
+              >
+                <table
+                  style={{
+                    width: 'max-content',
+                    minWidth: '100%',
+                    borderCollapse: 'separate',
+                    borderSpacing: 0,
+                    tableLayout: 'auto',
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      {['卡牌', '类型', '费用', '稀有度', '收益', '压力', '压力上限', '可弃置', '标签', '操作'].map(label => (
+                        <th
+                          key={label}
+                          style={{
+                            position: 'sticky',
+                            top: 0,
+                            zIndex: 1,
+                            textAlign: 'left',
+                            padding: '14px 12px',
+                            background: '#1b171c',
+                            borderBottom: '1px solid rgba(255,255,255,0.08)',
+                            boxShadow: '0 1px 0 rgba(255,255,255,0.06)',
+                            fontSize: 12,
+                            letterSpacing: 0.8,
+                            textTransform: 'uppercase',
+                            opacity: 0.74,
+                            ...(label === '费用' || label === '收益' || label === '压力'
+                              ? compactNumericColumnStyle
+                              : label === '压力上限'
+                                ? compactLimitColumnStyle
+                                : label === '可弃置'
+                                  ? compactBooleanColumnStyle
+                                  : null),
+                            ...(label === '卡牌' ? { minWidth: 220, maxWidth: 320 } : null),
+                            ...(label === '标签' ? { minWidth: 120, maxWidth: 180 } : null),
+                            ...(label === '操作' ? { minWidth: 116, maxWidth: 132, width: '1%' } : null),
+                            ...compactHeaderTextStyle,
+                          }}
+                        >
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {visibleCards.map(card => {
+                      const entityCard = isEntityCard(card);
+                      const selected = selectedCardId === card.id;
+
+                      return (
+                        <tr
+                          key={card.id}
+                          onClick={() => setSelectedCardId(card.id)}
+                          style={{
+                            background: selected ? 'rgba(255,210,133,0.09)' : 'transparent',
+                            cursor: 'pointer',
+                          }}
+                        >
+                          <td
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                              minWidth: 220,
+                              maxWidth: 320,
+                            }}
+                          >
+                            <div style={{ fontWeight: 700, marginBottom: 4 }}>{card.name}</div>
+                            <div style={{ fontSize: 12, opacity: 0.7 }}>{card.id}</div>
+                            <div style={{ fontSize: 12, opacity: 0.58, marginTop: 6, lineHeight: 1.5 }}>
+                              {card.description || '未填写描述'}
+                            </div>
+                          </td>
+                          <td style={{ padding: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
+                            <div style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{card.type}</div>
+                          </td>
+                          <td
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                              ...compactNumericColumnStyle,
+                            }}
+                          >
+                            <input
+                              value={card.cost}
+                              disabled={!response.canEdit}
+                              onChange={event => updateCardById(card.id, { cost: event.target.value })}
+                              style={tableInputStyle(!response.canEdit)}
+                            />
+                          </td>
+                          <td style={{ padding: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 126 }}>
+                            <select
+                              value={card.rarity}
+                              disabled={!response.canEdit}
+                              onChange={event => updateCardById(card.id, { rarity: event.target.value })}
+                              style={tableInputStyle(!response.canEdit)}
+                            >
+                              {['common', 'rare', 'epic', 'legendary'].map(option => (
+                                <option key={option} value={option}>
+                                  {option}
+                                </option>
+                              ))}
+                            </select>
+                          </td>
+                          <td
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                              ...compactNumericColumnStyle,
+                            }}
+                          >
+                            {entityCard ? (
+                              <input
+                                value={card.income}
+                                disabled={!response.canEdit}
+                                onChange={event => updateCardById(card.id, { income: event.target.value })}
+                                style={tableInputStyle(!response.canEdit)}
+                              />
+                            ) : (
+                              <div style={{ opacity: 0.34, textAlign: 'center', ...compactHeaderTextStyle }}>-</div>
+                            )}
+                          </td>
+                          <td
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                              ...compactNumericColumnStyle,
+                            }}
+                          >
+                            {entityCard ? (
+                              <input
+                                value={card.stress}
+                                disabled={!response.canEdit}
+                                onChange={event => updateCardById(card.id, { stress: event.target.value })}
+                                style={tableInputStyle(!response.canEdit)}
+                              />
+                            ) : (
+                              <div style={{ opacity: 0.34, textAlign: 'center', ...compactHeaderTextStyle }}>-</div>
+                            )}
+                          </td>
+                          <td
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                              ...compactLimitColumnStyle,
+                            }}
+                          >
+                            {entityCard ? (
+                              <input
+                                value={card.stressLimit}
+                                disabled={!response.canEdit}
+                                onChange={event => updateCardById(card.id, { stressLimit: event.target.value })}
+                                style={tableInputStyle(!response.canEdit)}
+                              />
+                            ) : (
+                              <div style={{ opacity: 0.34, textAlign: 'center', ...compactHeaderTextStyle }}>-</div>
+                            )}
+                          </td>
+                          <td
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                              ...compactBooleanColumnStyle,
+                            }}
+                          >
+                            <select
+                              value={card.canDiscard}
+                              disabled={!response.canEdit}
+                              onChange={event => updateCardById(card.id, { canDiscard: event.target.value })}
+                              style={tableInputStyle(!response.canEdit)}
+                            >
+                              <option value="true">可弃置</option>
+                              <option value="false">不可弃置</option>
+                            </select>
+                          </td>
+                          <td
+                            style={{
+                              padding: 12,
+                              borderBottom: '1px solid rgba(255,255,255,0.06)',
+                              minWidth: 140,
+                              maxWidth: 220,
+                            }}
+                          >
+                            <div
+                              style={{
+                                fontSize: 13,
+                                opacity: card.tags ? 0.92 : 0.48,
+                                whiteSpace: 'normal',
+                                overflowWrap: 'anywhere',
+                              }}
+                            >
+                              {card.tags || '—'}
+                            </div>
+                          </td>
+                          <td style={{ padding: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 132 }}>
+                            <button
+                              onClick={event => {
+                                event.stopPropagation();
+                                setSelectedCardId(card.id);
+                                setTableEditorOpen(true);
+                              }}
+                              style={{
+                                ...tableInputStyle(false),
+                                cursor: 'pointer',
+                                background: 'rgba(255,210,133,0.12)',
+                                borderColor: 'rgba(255,210,133,0.24)',
+                                fontWeight: 700,
+                              }}
+                            >
+                              深度编辑
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {visibleCards.length === 0 ? (
+                      <tr>
+                        <td
+                          colSpan={10}
+                          style={{
+                            padding: 28,
+                            textAlign: 'center',
+                            opacity: 0.7,
+                          }}
+                        >
+                          当前筛选下没有匹配的卡牌。
+                        </td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
         ) : (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%' }}>选择左侧卡牌开始编辑</div>
         )}
@@ -851,7 +1405,25 @@ export function AdminPage() {
               border: '1px solid rgba(255,255,255,0.08)',
             }}
           >
-            {sectionTitle('Card Preview')}
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center' }}>
+              {sectionTitle(viewMode === 'table' ? 'Selected Card' : 'Card Preview')}
+              {tab === 'cards' && viewMode === 'table' && selectedCard ? (
+                <button
+                  onClick={() => setTableEditorOpen(true)}
+                  style={{
+                    border: 0,
+                    borderRadius: 999,
+                    padding: '8px 12px',
+                    background: 'rgba(255,210,133,0.18)',
+                    color: '#fff8ef',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                  }}
+                >
+                  深度编辑
+                </button>
+              ) : null}
+            </div>
             {selectedCard ? (
               <>
                 <div
@@ -924,7 +1496,9 @@ export function AdminPage() {
                   ) : null}
                 </div>
               </>
-            ) : null}
+            ) : (
+              <div style={{ marginTop: 12, opacity: 0.7 }}>选择一张卡牌以查看预览。</div>
+            )}
           </div>
 
           {selectedCard?.type === 'entity_pet' ? (
@@ -987,6 +1561,84 @@ export function AdminPage() {
           </div>
         </div>
       </aside>
+
+      {tab === 'cards' && viewMode === 'table' && tableEditorOpen && selectedCard ? (
+        <div
+          onClick={() => setTableEditorOpen(false)}
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(10, 8, 11, 0.58)',
+            backdropFilter: 'blur(4px)',
+            display: 'flex',
+            justifyContent: 'flex-end',
+            zIndex: 20,
+          }}
+        >
+          <div
+            onClick={event => event.stopPropagation()}
+            style={{
+              width: 'min(680px, 100vw)',
+              height: '100%',
+              background: 'linear-gradient(180deg, #171218 0%, #120f14 100%)',
+              borderLeft: '1px solid rgba(255,255,255,0.08)',
+              boxShadow: '-24px 0 48px rgba(0,0,0,0.32)',
+              display: 'grid',
+              gridTemplateRows: 'auto 1fr',
+            }}
+          >
+            <div
+              style={{
+                padding: '20px 24px',
+                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                gap: 16,
+              }}
+            >
+              <div>
+                <div style={{ fontSize: 12, letterSpacing: 1.2, textTransform: 'uppercase', opacity: 0.62 }}>
+                  Detail Drawer
+                </div>
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{selectedCard.name}</div>
+              </div>
+              <button
+                onClick={() => setTableEditorOpen(false)}
+                style={{
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: 999,
+                  padding: '10px 14px',
+                  background: 'rgba(255,255,255,0.04)',
+                  color: '#fff8ef',
+                  cursor: 'pointer',
+                }}
+              >
+                关闭
+              </button>
+            </div>
+
+            <div style={{ overflow: 'auto', padding: 24 }}>
+              <CardEditorPanel
+                selectedCard={selectedCard}
+                canEdit={response.canEdit}
+                draft={draft}
+                currentBindings={currentBindings}
+                availableTemplates={availableTemplates}
+                selectedModelProfile={selectedModelProfile}
+                assetOptions={assetOptions}
+                cardImageOptions={cardImageOptions}
+                illustrationOptions={illustrationOptions}
+                updateCard={updateCard}
+                updateBinding={updateBinding}
+                removeBinding={removeBinding}
+                addBinding={addBinding}
+                updateModelProfile={updateModelProfile}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
