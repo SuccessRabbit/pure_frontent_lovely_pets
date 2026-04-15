@@ -1,0 +1,23 @@
+<!-- 夜班猫头鹰 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#EEF2FF" rx="0"/>
+  <circle cx="80" cy="84" r="12" fill="#F3E5D0" opacity="0.45"/><circle cx="320" cy="104" r="10" fill="#FFD166" opacity="0.34"/><circle cx="338.00" cy="78.00" r="8.96" fill="#FFD166" opacity="0.72"/><circle cx="326.94" cy="93.22" r="8.96" fill="#FFD166" opacity="0.72"/><circle cx="309.06" cy="87.40" r="8.96" fill="#FFD166" opacity="0.72"/><circle cx="309.06" cy="68.60" r="8.96" fill="#FFD166" opacity="0.72"/><circle cx="326.94" cy="62.78" r="8.96" fill="#FFD166" opacity="0.72"/>
+  <path d="M 264 352 Q 310 312 336 360 Q 310 380 272 396 Z" fill="#7C6A5C"/><path d="M 276 362 Q 300 344 320 178" stroke="#F3E5D0" stroke-width="6" fill="none"/>
+  <ellipse cx="200" cy="212" rx="82" ry="72" fill="#7C6A5C"/>
+  <ellipse cx="200" cy="140" rx="64" ry="60" fill="#7C6A5C"/>
+  <path d="M 40 188 Q 10 132 64 108 Q 80 144 80 184 Z" fill="#7C6A5C"/><path d="M 64 126 Q 48 150 70 184" stroke="#F3E5D0" stroke-width="6" fill="none" opacity="0.82"/>
+  <path d="M 160 188 Q 190 132 136 108 Q 120 144 120 184 Z" fill="#7C6A5C"/><path d="M 136 126 Q 152 150 130 184" stroke="#F3E5D0" stroke-width="6" fill="none" opacity="0.82"/>
+  <ellipse cx="200" cy="195" rx="48" ry="42" fill="#F3E5D0" opacity="0.94"/>
+  <ellipse cx="168" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <ellipse cx="232" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <circle cx="174" cy="132" r="4.8" fill="#ffffff"/>
+  <circle cx="238" cy="132" r="4.8" fill="#ffffff"/>
+  <ellipse cx="200" cy="156" rx="8" ry="6" fill="#3b2f2f"/>
+  <path d="M 176 166 Q 200 176 224 166" stroke="#3b2f2f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse cx="136" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  <ellipse cx="264" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  
+  <rect x="140" y="420" width="24" height="48" rx="12" fill="#7C6A5C"/><rect x="236" y="420" width="24" height="48" rx="12" fill="#7C6A5C"/><ellipse cx="152" cy="468" rx="16" ry="10" fill="#F3E5D0"/><ellipse cx="248" cy="468" rx="16" ry="10" fill="#F3E5D0"/>
+  <path d="M 144 220 Q 200 144 256 220" stroke="#FFD166" stroke-width="10" fill="none"/><rect x="124" y="216" width="24" height="36" rx="8" fill="#FFD166"/><rect x="252" y="216" width="24" height="36" rx="8" fill="#FFD166"/><circle cx="276" cy="184" r="12" fill="#F3E5D0" opacity="0.9"/>
+  
+</svg>

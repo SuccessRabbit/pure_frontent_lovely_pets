@@ -1,0 +1,23 @@
+<!-- 奶茶熊猫 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#F7F2E9" rx="0"/>
+  <circle cx="80" cy="84" r="12" fill="#FFF7E8" opacity="0.45"/><circle cx="320" cy="104" r="10" fill="#C08A5B" opacity="0.34"/><circle cx="338.00" cy="78.00" r="8.96" fill="#C08A5B" opacity="0.72"/><circle cx="326.94" cy="93.22" r="8.96" fill="#C08A5B" opacity="0.72"/><circle cx="309.06" cy="87.40" r="8.96" fill="#C08A5B" opacity="0.72"/><circle cx="309.06" cy="68.60" r="8.96" fill="#C08A5B" opacity="0.72"/><circle cx="326.94" cy="62.78" r="8.96" fill="#C08A5B" opacity="0.72"/>
+  <circle cx="284" cy="384" r="28" fill="#2F2E41"/><circle cx="306" cy="370" r="20" fill="#FFF7E8" opacity="0.82"/>
+  <ellipse cx="200" cy="212" rx="82" ry="72" fill="#2F2E41"/>
+  <ellipse cx="200" cy="140" rx="64" ry="60" fill="#2F2E41"/>
+  <circle cx="40" cy="180" r="22" fill="#2F2E41"/><circle cx="44" cy="180" r="12" fill="#FFF7E8" opacity="0.82"/>
+  <circle cx="160" cy="180" r="22" fill="#2F2E41"/><circle cx="156" cy="180" r="12" fill="#FFF7E8" opacity="0.82"/>
+  <ellipse cx="200" cy="195" rx="48" ry="42" fill="#FFF7E8" opacity="0.94"/>
+  <ellipse cx="168" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <ellipse cx="232" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <circle cx="174" cy="132" r="4.8" fill="#ffffff"/>
+  <circle cx="238" cy="132" r="4.8" fill="#ffffff"/>
+  <ellipse cx="200" cy="156" rx="8" ry="6" fill="#3b2f2f"/>
+  <path d="M 176 166 Q 200 176 224 166" stroke="#3b2f2f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse cx="136" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  <ellipse cx="264" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  
+  <rect x="140" y="420" width="24" height="48" rx="12" fill="#2F2E41"/><rect x="236" y="420" width="24" height="48" rx="12" fill="#2F2E41"/><ellipse cx="152" cy="468" rx="16" ry="10" fill="#FFF7E8"/><ellipse cx="248" cy="468" rx="16" ry="10" fill="#FFF7E8"/>
+  <path d="M 260 300 L 308 300 L 296 364 L 272 364 Z" fill="#C08A5B"/><line x1="284" y1="272" x2="292" y2="300" stroke="#FFF7E8" stroke-width="6"/><circle cx="278" cy="346" r="6" fill="#2f2e41"/><circle cx="290" cy="334" r="6" fill="#2f2e41"/>
+  
+</svg>

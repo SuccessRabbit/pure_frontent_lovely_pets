@@ -1,0 +1,10 @@
+<!-- 人事补招 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#F4F1FF" rx="0"/>
+  <circle cx="84" cy="84" r="16" fill="#C4B5FD" opacity="0.38"/>
+  <circle cx="320" cy="108" r="12" fill="#34D399" opacity="0.34"/>
+  <circle cx="338.00" cy="84.00" r="10.08" fill="#7C3AED" opacity="0.72"/><circle cx="325.56" cy="101.12" r="10.08" fill="#7C3AED" opacity="0.72"/><circle cx="305.44" cy="94.58" r="10.08" fill="#7C3AED" opacity="0.72"/><circle cx="305.44" cy="73.42" r="10.08" fill="#7C3AED" opacity="0.72"/><circle cx="325.56" cy="66.88" r="10.08" fill="#7C3AED" opacity="0.72"/>
+  <ellipse cx="200" cy="176" rx="70" ry="62" fill="#ffffff" opacity="0.82"/>
+  <rect x="136" y="240" width="112" height="152" rx="12" fill="#ffffff" stroke="#7C3AED" stroke-width="6"/><rect x="172" y="216" width="112" height="152" rx="12" fill="#ffffff" stroke="#C4B5FD" stroke-width="6"/><line x1="192" y1="264" x2="264" y2="264" stroke="#7C3AED" stroke-width="6"/><line x1="192" y1="292" x2="272" y2="292" stroke="#C4B5FD" stroke-width="6"/><circle cx="224" cy="328" r="20" fill="#34D399" opacity="0.86"/>
+  
+</svg>

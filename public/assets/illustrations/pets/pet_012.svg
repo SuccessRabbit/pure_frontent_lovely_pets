@@ -1,0 +1,23 @@
+<!-- 热搜兔 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#FFF0F7" rx="0"/>
+  <circle cx="80" cy="84" r="12" fill="#FFD6E7" opacity="0.45"/><circle cx="320" cy="104" r="10" fill="#FF4D8D" opacity="0.34"/><circle cx="338.00" cy="78.00" r="8.96" fill="#FF4D8D" opacity="0.72"/><circle cx="326.94" cy="93.22" r="8.96" fill="#FF4D8D" opacity="0.72"/><circle cx="309.06" cy="87.40" r="8.96" fill="#FF4D8D" opacity="0.72"/><circle cx="309.06" cy="68.60" r="8.96" fill="#FF4D8D" opacity="0.72"/><circle cx="326.94" cy="62.78" r="8.96" fill="#FF4D8D" opacity="0.72"/>
+  <circle cx="284" cy="384" r="28" fill="#F6F1F8"/><circle cx="306" cy="370" r="20" fill="#FFD6E7" opacity="0.82"/>
+  <ellipse cx="200" cy="212" rx="82" ry="72" fill="#F6F1F8"/>
+  <ellipse cx="200" cy="140" rx="64" ry="60" fill="#F6F1F8"/>
+  <ellipse cx="40" cy="188" rx="18" ry="48" fill="#F6F1F8" transform="rotate(-10 40 188)"/><ellipse cx="40" cy="196" rx="10" ry="36" fill="#FFD6E7" opacity="0.82" transform="rotate(-10 40 196)"/>
+  <ellipse cx="160" cy="188" rx="18" ry="48" fill="#F6F1F8" transform="rotate(10 160 188)"/><ellipse cx="160" cy="196" rx="10" ry="36" fill="#FFD6E7" opacity="0.82" transform="rotate(10 160 196)"/>
+  <ellipse cx="200" cy="195" rx="48" ry="42" fill="#FFD6E7" opacity="0.94"/>
+  <ellipse cx="168" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <ellipse cx="232" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <circle cx="174" cy="132" r="4.8" fill="#ffffff"/>
+  <circle cx="238" cy="132" r="4.8" fill="#ffffff"/>
+  <ellipse cx="200" cy="156" rx="8" ry="6" fill="#3b2f2f"/>
+  <path d="M 176 166 Q 200 176 224 166" stroke="#3b2f2f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse cx="136" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  <ellipse cx="264" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  
+  <rect x="140" y="420" width="24" height="48" rx="12" fill="#F6F1F8"/><rect x="236" y="420" width="24" height="48" rx="12" fill="#F6F1F8"/><ellipse cx="152" cy="468" rx="16" ry="10" fill="#FFD6E7"/><ellipse cx="248" cy="468" rx="16" ry="10" fill="#FFD6E7"/>
+  <path d="M 264 300 L 312 284 L 312 332 Z" fill="#FF4D8D"/><rect x="248" y="304" width="20" height="20" rx="6" fill="#FFD6E7"/><path d="M 320 292 Q 340 308 320 324" stroke="#FF4D8D" stroke-width="6" fill="none"/>
+  
+</svg>

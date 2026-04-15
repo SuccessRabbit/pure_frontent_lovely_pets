@@ -1,0 +1,10 @@
+<!-- 集体摸鱼 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <rect width="200" height="280" fill="#EAF8F4" rx="14"/>
+  <circle cx="42" cy="42" r="8" fill="#7DD3C7" opacity="0.38"/>
+  <circle cx="160" cy="54" r="6" fill="#FFE08A" opacity="0.34"/>
+  <circle cx="171.00" cy="68.00" r="5.04" fill="#14B8A6" opacity="0.72"/><circle cx="164.78" cy="76.56" r="5.04" fill="#14B8A6" opacity="0.72"/><circle cx="154.72" cy="73.29" r="5.04" fill="#14B8A6" opacity="0.72"/><circle cx="154.72" cy="62.71" r="5.04" fill="#14B8A6" opacity="0.72"/><circle cx="164.78" cy="59.44" r="5.04" fill="#14B8A6" opacity="0.72"/>
+  <ellipse cx="100" cy="168" rx="44" ry="42" fill="#ffffff" opacity="0.82"/>
+  <path d="M 58 172 Q 100 210 142 172" stroke="#14B8A6" stroke-width="6" fill="none"/><line x1="58" y1="172" x2="58" y2="120" stroke="#7DD3C7" stroke-width="4"/><line x1="142" y1="172" x2="142" y2="120" stroke="#7DD3C7" stroke-width="4"/><ellipse cx="100" cy="160" rx="22" ry="12" fill="#FFE08A" opacity="0.9"/>
+  <rect x="54" y="228" width="92" height="18" rx="6" fill="#ffffff" opacity="0.92"/><text x="100" y="240" font-family="Arial" font-size="9" fill="#425466" text-anchor="middle" font-weight="bold">集体摸鱼</text>
+</svg>

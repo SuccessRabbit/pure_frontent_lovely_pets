@@ -382,6 +382,202 @@
     ]
   },
   {
+    "id": "action_009",
+    "name": "集体摸鱼",
+    "type": "action_buff",
+    "cost": 1,
+    "rarity": "rare",
+    "description": "短暂休整，先把工位气压降下来",
+    "tags": [
+      "utility",
+      "relief"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_009.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_009.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "全场 worker 压力 -1",
+    "skills": [
+      {
+        "id": "skill_action_009_a",
+        "templateId": "action_adjust_stress_all",
+        "templateName": "群体调整压力",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "adjust_stress_all",
+        "operations": [
+          {
+            "kind": "adjust_stress_by_selector",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "amount": "$amount",
+              "reason": "action"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "worker",
+          "amount": -1
+        },
+        "summary": "全场 worker 压力 -1",
+        "descriptionPreview": "全场 worker 压力 -1"
+      }
+    ]
+  },
+  {
+    "id": "action_010",
+    "name": "热搜投放",
+    "type": "action_buff",
+    "cost": 3,
+    "rarity": "legendary",
+    "description": "把预算全砸给当日热点",
+    "tags": [
+      "media",
+      "powerful"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_010.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_010.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "本回合所有 pet 收益翻倍",
+    "skills": [
+      {
+        "id": "skill_action_010_a",
+        "templateId": "action_income_multiplier_turn",
+        "templateName": "本回合收益倍率",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "income_multiplier_turn",
+        "operations": [
+          {
+            "kind": "multiply_income_turn",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "multiplier": "$multiplier"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "pet",
+          "multiplier": 3
+        },
+        "summary": "本回合 pet 收益 x3",
+        "descriptionPreview": "本回合所有 pet 收益翻倍"
+      }
+    ]
+  },
+  {
+    "id": "action_011",
+    "name": "人事补招",
+    "type": "action_utility",
+    "cost": 1,
+    "rarity": "common",
+    "description": "临时扩编，先把人手补起来",
+    "tags": [
+      "draw",
+      "utility"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_011.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_011.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "抽 3 张牌",
+    "skills": [
+      {
+        "id": "skill_action_011_a",
+        "templateId": "action_draw_cards",
+        "templateName": "抽牌",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "draw_cards",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 3
+        },
+        "summary": "抽 3 张牌",
+        "descriptionPreview": "抽 3 张牌"
+      }
+    ]
+  },
+  {
+    "id": "action_012",
+    "name": "外包止损",
+    "type": "action_utility",
+    "cost": 1,
+    "rarity": "rare",
+    "description": "把锅甩出去，顺便给主播减压",
+    "tags": [
+      "sacrifice",
+      "utility"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_012.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_012.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "献祭一个牛马，降低相邻萌宠压力 3 点",
+    "skills": [
+      {
+        "id": "skill_action_012_a",
+        "templateId": "action_sacrifice_worker_relief",
+        "templateName": "献祭牛马减压",
+        "trigger": "on_play",
+        "targetMode": "worker",
+        "effectKind": "sacrifice_worker_reduce_adjacent_pet_stress",
+        "operations": [
+          {
+            "kind": "remove_entity",
+            "selector": "target",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "reason": "action"
+            }
+          },
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "target",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "-$amount",
+              "pattern": "orthogonal",
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 3
+        },
+        "summary": "献祭牛马后相邻萌宠压力 3",
+        "descriptionPreview": "献祭一个牛马，降低相邻萌宠压力 3 点"
+      }
+    ]
+  },
+  {
     "id": "action_resentment",
     "name": "怨气卡",
     "type": "action_debuff",

@@ -95,6 +95,16 @@ function createSphere(
   return new THREE.Mesh(new THREE.SphereGeometry(r, widthSegments, heightSegments), mat);
 }
 
+function createCylinder(
+  rTop: number,
+  rBottom: number,
+  h: number,
+  mat: THREE.MeshLambertMaterial,
+  segments = 6
+): THREE.Mesh {
+  return new THREE.Mesh(new THREE.CylinderGeometry(rTop, rBottom, h, segments, 1), mat);
+}
+
 function createPetRig(): PetRig {
   const root = new THREE.Group();
   root.name = 'pet-root';
@@ -571,6 +581,642 @@ function createEternalCat(): PetRig {
   return rig;
 }
 
+type HeadStyle = 'octa' | 'sphere' | 'box';
+type EarStyle = 'pointy' | 'floppy' | 'round' | 'long' | 'crest' | 'feather' | 'none';
+type TailStyle = 'stub' | 'plume' | 'curl' | 'paddle' | 'fan' | 'ring' | 'puff' | 'none';
+type SnoutStyle = 'muzzle' | 'short' | 'beak' | 'none';
+type AccessoryStyle =
+  | 'none'
+  | 'glasses'
+  | 'laptop'
+  | 'briefcase'
+  | 'calculator'
+  | 'guitar'
+  | 'headset'
+  | 'clipboard'
+  | 'leaf'
+  | 'badge'
+  | 'megaphone'
+  | 'mic'
+  | 'bubble_tea'
+  | 'chart'
+  | 'gavel'
+  | 'crate';
+
+interface ChibiAnimalOptions {
+  bodyColor: number;
+  accentColor: number;
+  detailColor?: number;
+  bellyColor?: number;
+  extraColor?: number;
+  cheekColor?: number;
+  headStyle?: HeadStyle;
+  earStyle?: EarStyle;
+  tailStyle?: TailStyle;
+  snoutStyle?: SnoutStyle;
+  accessory?: AccessoryStyle;
+  bodyScale?: Vec3;
+  headScale?: Vec3;
+  bodyOffset?: Vec3;
+  headOffset?: Vec3;
+  eyeScale?: Vec3;
+  addWhiskers?: boolean;
+}
+
+function createHeadMesh(style: HeadStyle, mat: THREE.MeshLambertMaterial): THREE.Mesh {
+  switch (style) {
+    case 'sphere':
+      return createSphere(0.22, mat, 5, 4);
+    case 'box':
+      return createBox(0.36, 0.26, 0.28, mat);
+    default:
+      return createOctahedron(0.23, mat);
+  }
+}
+
+function addSnout(
+  rig: PetRig,
+  style: SnoutStyle,
+  accentMat: THREE.MeshLambertMaterial,
+  darkMat: THREE.MeshLambertMaterial
+) {
+  if (style === 'none') return;
+  if (style === 'beak') {
+    addMesh(rig.head, createCone(0.045, 0.16, accentMat, 4), [0, 0, 0.3], [Math.PI / 2, 0, 0]);
+    addMesh(rig.head, createSphere(0.022, darkMat, 4, 3), [0, 0.02, 0.38], undefined, [1.1, 0.8, 1]);
+    return;
+  }
+
+  const scale: Vec3 = style === 'short' ? [1, 0.75, 0.8] : [1.2, 0.9, 0.95];
+  addMesh(rig.head, createBox(0.2, 0.12, 0.18, accentMat), [0, -0.02, 0.24], [0.06, 0, 0], scale);
+  addMesh(rig.head, createSphere(0.028, darkMat, 4, 3), [0, style === 'short' ? 0 : -0.01, 0.34], undefined, [1.2, 0.85, 0.75]);
+  if (style === 'muzzle') {
+    addMesh(rig.head, createSphere(0.055, accentMat, 4, 3), [-0.06, -0.01, 0.27], undefined, [1, 0.8, 0.65]);
+    addMesh(rig.head, createSphere(0.055, accentMat, 4, 3), [0.06, -0.01, 0.27], undefined, [1, 0.8, 0.65]);
+  }
+  addMesh(rig.head, createBox(0.08, 0.012, 0.015, darkMat), [0, -0.055, 0.31], [0, 0, 0.02]);
+  addMesh(rig.head, createBox(0.08, 0.012, 0.015, darkMat), [0, -0.055, 0.31], [0, 0, -0.02]);
+  addMesh(rig.head, createBox(0.014, 0.05, 0.015, darkMat), [0, -0.035, 0.31]);
+}
+
+function addChibiEars(
+  rig: PetRig,
+  style: EarStyle,
+  bodyMat: THREE.MeshLambertMaterial,
+  accentMat: THREE.MeshLambertMaterial
+) {
+  if (style === 'none') return;
+  if (style === 'crest') {
+    [-0.08, 0, 0.08].forEach((offset, index) => {
+      const crest = createAccessory(
+        rig,
+        rig.head,
+        `crest-${index}`,
+        [offset, 0.19 + Math.abs(offset) * 0.15, 0.08]
+      );
+      addMesh(crest, createTetrahedron(0.07 - Math.abs(offset) * 0.08, accentMat), [0, 0.04, 0], [0.1, 0, 0]);
+    });
+    return;
+  }
+  if (style === 'feather') {
+    createEar(
+      rig,
+      [-0.16, 0.2, 0.02],
+      [0.15, 0, -0.5],
+      () => createCone(0.06, 0.2, bodyMat, 5)
+    );
+    createEar(
+      rig,
+      [0.16, 0.2, 0.02],
+      [0.15, 0, 0.5],
+      () => createCone(0.06, 0.2, bodyMat, 5)
+    );
+    return;
+  }
+  if (style === 'round') {
+    createEar(rig, [-0.16, 0.14, 0.05], [0, 0, 0], () => createSphere(0.09, bodyMat, 4, 3), undefined);
+    createEar(rig, [0.16, 0.14, 0.05], [0, 0, 0], () => createSphere(0.09, bodyMat, 4, 3), undefined);
+    return;
+  }
+  if (style === 'long') {
+    createEar(
+      rig,
+      [-0.17, 0.16, 0.03],
+      [0.08, 0, -0.2],
+      () => createBox(0.07, 0.24, 0.06, bodyMat),
+      undefined
+    );
+    createEar(
+      rig,
+      [0.17, 0.16, 0.03],
+      [0.08, 0, 0.2],
+      () => createBox(0.07, 0.24, 0.06, bodyMat),
+      undefined
+    );
+    return;
+  }
+  if (style === 'floppy') {
+    createEar(
+      rig,
+      [-0.15, 0.17, 0.02],
+      [0.24, 0, -0.55],
+      () => createBox(0.06, 0.2, 0.07, bodyMat),
+      undefined
+    );
+    createEar(
+      rig,
+      [0.15, 0.17, 0.02],
+      [0.24, 0, 0.55],
+      () => createBox(0.06, 0.2, 0.07, bodyMat),
+      undefined
+    );
+    return;
+  }
+  createEar(
+    rig,
+    [-0.18, 0.2, 0.02],
+    [0.05, 0, -0.28],
+    () => createTetrahedron(0.11, bodyMat),
+    accentMat.color.getHex()
+  );
+  createEar(
+    rig,
+    [0.18, 0.2, 0.02],
+    [0.05, 0, 0.28],
+    () => createTetrahedron(0.11, bodyMat),
+    accentMat.color.getHex()
+  );
+}
+
+function addChibiTail(
+  rig: PetRig,
+  style: TailStyle,
+  bodyMat: THREE.MeshLambertMaterial,
+  accentMat: THREE.MeshLambertMaterial
+) {
+  if (style === 'none') return;
+  if (style === 'puff') {
+    createTail(rig, [0.08, 0.34, -0.28], [0.3, 0, 0], pivot => {
+      addMesh(pivot, createSphere(0.08, bodyMat, 4, 3), [0.02, 0.04, -0.08]);
+      addMesh(pivot, createSphere(0.05, accentMat, 4, 3), [0.08, 0.07, -0.1]);
+    });
+    return;
+  }
+  if (style === 'curl') {
+    createTail(rig, [0.02, 0.35, -0.3], [Math.PI / 2, 0, 0], pivot => {
+      const curl = new THREE.Mesh(new THREE.TorusGeometry(0.11, 0.022, 4, 10), bodyMat);
+      setTransform(curl, [0.02, 0.08, 0.01], [0, 0.4, 0]);
+      pivot.add(curl);
+    });
+    return;
+  }
+  if (style === 'paddle') {
+    createTail(rig, [0.06, 0.28, -0.3], [0.18, 0, 0], pivot => {
+      addMesh(pivot, createBox(0.08, 0.03, 0.16, bodyMat), [0, 0.02, -0.06], [0.12, 0, 0]);
+      addMesh(pivot, createBox(0.18, 0.03, 0.22, accentMat), [0.02, 0.02, -0.19], [0.02, 0, 0]);
+    });
+    return;
+  }
+  if (style === 'fan') {
+    createTail(rig, [0.06, 0.32, -0.32], [0.4, 0, 0], pivot => {
+      addMesh(pivot, createCone(0.14, 0.2, bodyMat, 5), [0, 0.06, -0.04], [Math.PI, 0, 0]);
+      addMesh(pivot, createCone(0.08, 0.16, accentMat, 5), [0, 0.06, -0.03], [Math.PI, 0, 0]);
+    });
+    return;
+  }
+  if (style === 'ring') {
+    createTail(rig, [0.05, 0.34, -0.3], [Math.PI / 2, 0, 0], pivot => {
+      const ring = new THREE.Mesh(new THREE.TorusGeometry(0.09, 0.018, 4, 8), bodyMat);
+      setTransform(ring, [0.04, 0.1, 0], [0, 0.5, 0]);
+      pivot.add(ring);
+      addMesh(pivot, createBox(0.04, 0.04, 0.11, accentMat), [0.09, 0.1, -0.02], [0.1, 0, 0]);
+    });
+    return;
+  }
+  if (style === 'plume') {
+    createTail(rig, [0.04, 0.34, -0.3], [0.4, -0.1, 0], pivot => {
+      addMesh(pivot, createBox(0.05, 0.05, 0.18, bodyMat), [0, 0.05, -0.08], [0.1, 0, 0]);
+      addMesh(pivot, createBox(0.05, 0.05, 0.12, accentMat), [0.01, 0.1, -0.18], [0.18, 0, 0]);
+    });
+    return;
+  }
+  createTail(rig, [0, 0.32, -0.28], [0.32, 0, 0], pivot => {
+    addMesh(pivot, createBox(0.05, 0.05, 0.12, bodyMat), [0, 0.04, -0.05], [0.1, 0, 0]);
+  });
+}
+
+function addAccessoryDetails(
+  rig: PetRig,
+  style: AccessoryStyle,
+  accentMat: THREE.MeshLambertMaterial,
+  extraMat: THREE.MeshLambertMaterial,
+  detailMat: THREE.MeshLambertMaterial
+) {
+  if (style === 'none') return;
+  if (style === 'glasses') {
+    const frame = createAccessory(rig, rig.head, 'glasses', [0, 0.08, 0.18]);
+    addMesh(frame, new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.009, 4, 8), detailMat), [-0.08, 0, 0]);
+    addMesh(frame, new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.009, 4, 8), detailMat), [0.08, 0, 0]);
+    addMesh(frame, createBox(0.06, 0.012, 0.012, detailMat), [0, 0, 0]);
+    return;
+  }
+  if (style === 'headset') {
+    const headset = createAccessory(rig, rig.head, 'headset', [0, 0.12, 0.08]);
+    addMesh(headset, new THREE.Mesh(new THREE.TorusGeometry(0.18, 0.012, 4, 10), detailMat), [0, 0.02, 0], [Math.PI / 2, 0, 0]);
+    addMesh(headset, createBox(0.04, 0.08, 0.04, extraMat), [-0.18, 0, 0.02]);
+    addMesh(headset, createBox(0.04, 0.08, 0.04, extraMat), [0.18, 0, 0.02]);
+    return;
+  }
+  if (style === 'guitar') {
+    const guitar = createAccessory(rig, rig.body, 'guitar', [0.16, 0.18, 0.18], [0.2, 0.2, -0.7]);
+    addMesh(guitar, createSphere(0.08, extraMat, 4, 3), [0, -0.04, 0], undefined, [1.1, 0.8, 0.55]);
+    addMesh(guitar, createBox(0.04, 0.22, 0.04, accentMat), [0, 0.12, 0]);
+    return;
+  }
+  if (style === 'clipboard') {
+    const board = createAccessory(rig, rig.body, 'clipboard', [0.18, 0.22, 0.18], [0.15, 0.2, -0.35]);
+    addMesh(board, createBox(0.14, 0.2, 0.03, extraMat), [0, 0, 0]);
+    addMesh(board, createBox(0.05, 0.03, 0.04, accentMat), [0, 0.11, 0]);
+    return;
+  }
+  if (style === 'leaf') {
+    const leaf = createAccessory(rig, rig.body, 'leaf', [-0.18, 0.16, 0.04], [0.1, 0, -0.6]);
+    addMesh(leaf, createSphere(0.07, accentMat, 4, 3), [0, 0, 0], undefined, [1.4, 0.35, 0.8]);
+    addMesh(leaf, createBox(0.01, 0.12, 0.01, detailMat), [-0.02, -0.04, 0]);
+    return;
+  }
+  if (style === 'badge') {
+    const badge = createAccessory(rig, rig.body, 'badge', [0, 0.22, 0.26]);
+    addMesh(badge, createBox(0.16, 0.1, 0.02, extraMat), [0, 0, 0]);
+    addMesh(badge, createSphere(0.02, detailMat, 4, 3), [-0.04, 0, 0.02]);
+    addMesh(badge, createBox(0.04, 0.01, 0.02, detailMat), [0.03, 0.01, 0.02], [0, 0, 0.55]);
+    addMesh(badge, createBox(0.06, 0.01, 0.02, detailMat), [0.04, -0.01, 0.02], [0, 0, -0.55]);
+    return;
+  }
+  if (style === 'megaphone') {
+    const horn = createAccessory(rig, rig.body, 'megaphone', [0.18, 0.2, 0.16], [0.1, 0.2, -0.9]);
+    addMesh(horn, createCone(0.09, 0.18, extraMat, 4), [0, 0, 0], [0, 0, Math.PI / 2]);
+    addMesh(horn, createBox(0.04, 0.1, 0.04, accentMat), [-0.06, -0.06, 0]);
+    return;
+  }
+  if (style === 'mic') {
+    const mic = createAccessory(rig, rig.body, 'mic', [0.18, 0.2, 0.18], [0.1, 0.18, -0.4]);
+    addMesh(mic, createSphere(0.05, extraMat, 4, 3), [0, 0.1, 0]);
+    addMesh(mic, createCylinder(0.012, 0.012, 0.2, detailMat), [0, 0, 0]);
+    return;
+  }
+  if (style === 'bubble_tea') {
+    const cup = createAccessory(rig, rig.body, 'bubble-tea', [0.18, 0.18, 0.2], [0.1, 0.2, -0.25]);
+    addMesh(cup, createBox(0.1, 0.14, 0.08, extraMat), [0, 0, 0]);
+    addMesh(cup, createCylinder(0.008, 0.008, 0.16, detailMat), [0.02, 0.14, 0]);
+    addMesh(cup, createSphere(0.015, detailMat, 4, 3), [-0.02, -0.04, 0.02]);
+    addMesh(cup, createSphere(0.015, detailMat, 4, 3), [0.02, -0.01, -0.02]);
+    return;
+  }
+  if (style === 'laptop') {
+    const laptop = createAccessory(rig, rig.body, 'laptop', [0, 0.2, 0.24], [0.32, 0, 0]);
+    addMesh(laptop, createBox(0.22, 0.14, 0.02, detailMat), [0, 0.02, -0.05], [0.9, 0, 0]);
+    addMesh(laptop, createBox(0.24, 0.02, 0.16, extraMat), [0, -0.04, 0.04]);
+    return;
+  }
+  if (style === 'briefcase') {
+    const bag = createAccessory(rig, rig.body, 'briefcase', [0.2, 0.18, 0.12], [0.12, 0.1, -0.3]);
+    addMesh(bag, createBox(0.18, 0.12, 0.08, extraMat), [0, 0, 0]);
+    addMesh(bag, createBox(0.07, 0.025, 0.02, accentMat), [0, 0.07, 0]);
+    return;
+  }
+  if (style === 'calculator') {
+    const calc = createAccessory(rig, rig.body, 'calculator', [0.17, 0.18, 0.2], [0.15, 0.18, -0.25]);
+    addMesh(calc, createBox(0.16, 0.2, 0.06, detailMat), [0, 0, 0]);
+    addMesh(calc, createBox(0.1, 0.05, 0.05, extraMat), [0, 0.06, 0.04]);
+    [-0.04, 0, 0.04].forEach(x => addMesh(calc, createSphere(0.012, accentMat, 4, 3), [x, -0.02, 0.04]));
+    return;
+  }
+  if (style === 'chart') {
+    const chart = createAccessory(rig, rig.body, 'chart', [0.18, 0.18, 0.18], [0.1, 0.2, -0.25]);
+    addMesh(chart, createBox(0.16, 0.18, 0.03, extraMat), [0, 0, 0]);
+    addMesh(chart, createBox(0.02, 0.08, 0.02, accentMat), [-0.04, -0.02, 0.03]);
+    addMesh(chart, createBox(0.02, 0.12, 0.02, accentMat), [0, -0.01, 0.03]);
+    addMesh(chart, createBox(0.02, 0.15, 0.02, detailMat), [0.04, 0, 0.03]);
+    return;
+  }
+  if (style === 'gavel') {
+    const gavel = createAccessory(rig, rig.body, 'gavel', [0.18, 0.18, 0.18], [0.18, 0.2, -0.55]);
+    addMesh(gavel, createBox(0.12, 0.05, 0.05, extraMat), [0, 0.08, 0]);
+    addMesh(gavel, createCylinder(0.01, 0.01, 0.18, accentMat), [-0.02, -0.02, 0], [0, 0, 0.55]);
+    return;
+  }
+  if (style === 'crate') {
+    const crate = createAccessory(rig, rig.body, 'crate', [0.18, 0.18, 0.18], [0.08, 0.16, -0.15]);
+    addMesh(crate, createBox(0.16, 0.12, 0.12, extraMat), [0, 0, 0]);
+    addMesh(crate, createBox(0.16, 0.01, 0.01, accentMat), [0, 0.03, 0.06]);
+    addMesh(crate, createBox(0.01, 0.12, 0.01, accentMat), [-0.05, 0, 0.06]);
+  }
+}
+
+function createChibiAnimal(options: ChibiAnimalOptions): PetRig {
+  const rig = createPetRig();
+  const bodyMat = createFlatMaterial(options.bodyColor);
+  const accentMat = createFlatMaterial(options.accentColor);
+  const detailMat = createFlatMaterial(options.detailColor ?? 0x2c1810);
+  const bellyMat = createFlatMaterial(options.bellyColor ?? options.accentColor);
+  const extraMat = createFlatMaterial(options.extraColor ?? options.accentColor);
+
+  addMesh(rig.body, createBox(0.78, 0.3, 0.56, bodyMat), options.bodyOffset ?? [0, 0.28, 0], undefined, options.bodyScale);
+  addMesh(rig.body, createBox(0.34, 0.18, 0.26, bellyMat), [0, 0.22, 0.22]);
+  addMesh(rig.body, createBox(0.5, 0.18, 0.3, bodyMat), [0, 0.28, -0.16]);
+
+  const head = createHeadMesh(options.headStyle ?? 'octa', bodyMat);
+  rig.head.position.set(
+    options.headOffset?.[0] ?? 0,
+    options.headOffset?.[1] ?? 0.43,
+    options.headOffset?.[2] ?? 0.18
+  );
+  addMesh(rig.head, head, [0, 0.08, 0.1], [0.1, 0, 0], options.headScale ?? [1.05, 1, 1]);
+  createEyePair(rig.head, detailMat.color.getHex(), 0.03, [-0.085, 0.08, 0.28], [0.085, 0.08, 0.28], options.eyeScale ?? [1, 1, 0.6]);
+
+  if (options.cheekColor) {
+    const cheekMat = createFlatMaterial(options.cheekColor);
+    addMesh(rig.head, createSphere(0.035, cheekMat, 4, 3), [-0.13, 0.01, 0.24], undefined, [1, 0.5, 0.35]);
+    addMesh(rig.head, createSphere(0.035, cheekMat, 4, 3), [0.13, 0.01, 0.24], undefined, [1, 0.5, 0.35]);
+  }
+
+  addSnout(rig, options.snoutStyle ?? 'muzzle', accentMat, detailMat);
+  addChibiEars(rig, options.earStyle ?? 'pointy', bodyMat, accentMat);
+
+  createLeg(rig, [-0.26, 0.18, 0.18], [0.11, 0.18, 0.12], [0.14, 0.07, 0.15], bodyMat, accentMat);
+  createLeg(rig, [0.26, 0.18, 0.18], [0.11, 0.18, 0.12], [0.14, 0.07, 0.15], bodyMat, accentMat);
+  createLeg(rig, [-0.26, 0.18, -0.16], [0.11, 0.18, 0.12], [0.14, 0.07, 0.15], bodyMat, accentMat);
+  createLeg(rig, [0.26, 0.18, -0.16], [0.11, 0.18, 0.12], [0.14, 0.07, 0.15], bodyMat, accentMat);
+
+  if (options.addWhiskers) {
+    const whisker = createAccessory(rig, rig.head, 'whiskers', [0, 0.02, 0.22]);
+    addMesh(whisker, createBox(0.22, 0.01, 0.01, detailMat), [-0.14, 0.03, 0.02], [0, 0, -0.18]);
+    addMesh(whisker, createBox(0.22, 0.01, 0.01, detailMat), [-0.14, -0.01, 0.02], [0, 0, 0.08]);
+    addMesh(whisker, createBox(0.22, 0.01, 0.01, detailMat), [0.14, 0.03, 0.02], [0, 0, 0.18]);
+    addMesh(whisker, createBox(0.22, 0.01, 0.01, detailMat), [0.14, -0.01, 0.02], [0, 0, -0.08]);
+  }
+
+  createBrowPair(rig.head, detailMat.color.getHex(), [-0.1, 0.14, 0.24], [0.1, 0.14, 0.24], 0.12);
+  addChibiTail(rig, options.tailStyle ?? 'stub', bodyMat, accentMat);
+  addAccessoryDetails(rig, options.accessory ?? 'none', accentMat, extraMat, detailMat);
+
+  return rig;
+}
+
+function createNightOwl(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0x7a6658,
+    accentColor: 0xf4e8d3,
+    extraColor: 0xffd166,
+    detailColor: 0x2f2f3a,
+    cheekColor: 0xffd7a8,
+    headStyle: 'sphere',
+    earStyle: 'feather',
+    tailStyle: 'fan',
+    snoutStyle: 'beak',
+    accessory: 'headset',
+    eyeScale: [1.2, 1.1, 0.7],
+  });
+}
+
+function createRockParrot(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0x25a18e,
+    accentColor: 0xffe066,
+    extraColor: 0xff6b6b,
+    detailColor: 0x17323a,
+    headStyle: 'sphere',
+    earStyle: 'crest',
+    tailStyle: 'plume',
+    snoutStyle: 'beak',
+    accessory: 'guitar',
+  });
+}
+
+function createKpiBeaver(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xa47148,
+    accentColor: 0xf3dfc1,
+    extraColor: 0x5da271,
+    detailColor: 0x3d2a20,
+    headStyle: 'box',
+    earStyle: 'round',
+    tailStyle: 'paddle',
+    snoutStyle: 'short',
+    accessory: 'clipboard',
+  });
+}
+
+function createSlackerSloth(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xb08d74,
+    accentColor: 0xead7c3,
+    extraColor: 0x8bc6a2,
+    detailColor: 0x46352b,
+    headStyle: 'sphere',
+    earStyle: 'round',
+    tailStyle: 'stub',
+    snoutStyle: 'short',
+    accessory: 'leaf',
+    eyeScale: [1.4, 0.7, 0.4],
+  });
+}
+
+function createClockinShiba(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xe58a3a,
+    accentColor: 0xfff5ec,
+    extraColor: 0x3f88c5,
+    detailColor: 0x3f2517,
+    headStyle: 'octa',
+    earStyle: 'pointy',
+    tailStyle: 'curl',
+    snoutStyle: 'muzzle',
+    accessory: 'badge',
+    cheekColor: 0xffd1bd,
+  });
+}
+
+function createTrendingRabbit(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xf0ecf7,
+    accentColor: 0xffd7e7,
+    extraColor: 0xff4d8d,
+    detailColor: 0x493243,
+    headStyle: 'sphere',
+    earStyle: 'long',
+    tailStyle: 'puff',
+    snoutStyle: 'short',
+    accessory: 'megaphone',
+  });
+}
+
+function createPrMeerkat(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xc89b6a,
+    accentColor: 0xf7e2c8,
+    extraColor: 0x5b7cfa,
+    detailColor: 0x4a3424,
+    headStyle: 'box',
+    earStyle: 'pointy',
+    tailStyle: 'ring',
+    snoutStyle: 'short',
+    accessory: 'mic',
+  });
+}
+
+function createMilkTeaPanda(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0x2f2e41,
+    accentColor: 0xfff7e8,
+    extraColor: 0xc08a5b,
+    detailColor: 0x16161d,
+    bellyColor: 0xfff7e8,
+    headStyle: 'sphere',
+    earStyle: 'round',
+    tailStyle: 'puff',
+    snoutStyle: 'short',
+    accessory: 'bubble_tea',
+  });
+}
+
+function createInternPony(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xa9a9a9,
+    accentColor: 0xe8e8e8,
+    extraColor: 0x7aaed6,
+    detailColor: 0x505050,
+    headStyle: 'box',
+    earStyle: 'pointy',
+    tailStyle: 'plume',
+    snoutStyle: 'muzzle',
+    accessory: 'badge',
+  });
+}
+
+function createVeteranHorse(): PetRig {
+  const rig = createChibiAnimal({
+    bodyColor: 0x696969,
+    accentColor: 0xd3d3d3,
+    extraColor: 0xd4af37,
+    detailColor: 0x2c1810,
+    headStyle: 'box',
+    earStyle: 'pointy',
+    tailStyle: 'plume',
+    snoutStyle: 'muzzle',
+    accessory: 'glasses',
+  });
+  const medal = createAccessory(rig, rig.body, 'medal', [0.18, 0.3, 0.08]);
+  const goldMat = createFlatMaterial(0xd4af37);
+  addMesh(medal, createSphere(0.05, goldMat, 4, 3), [0, 0, 0]);
+  return rig;
+}
+
+function createHustleHorse(): PetRig {
+  const rig = createChibiAnimal({
+    bodyColor: 0x8b4513,
+    accentColor: 0xf5deb3,
+    extraColor: 0xff4500,
+    detailColor: 0x2c1810,
+    headStyle: 'box',
+    earStyle: 'pointy',
+    tailStyle: 'plume',
+    snoutStyle: 'muzzle',
+    accessory: 'laptop',
+  });
+  const bolt = createAccessory(rig, rig.head, 'bolt', [0.18, 0.16, 0.12]);
+  addMesh(bolt, createCone(0.04, 0.12, createFlatMaterial(0xffd700), 4), [0, 0.06, 0], [0, 0, 0.5]);
+  return rig;
+}
+
+function createFinanceHamster(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xf4a460,
+    accentColor: 0xfff8dc,
+    extraColor: 0xffd700,
+    detailColor: 0x6d4c41,
+    headStyle: 'sphere',
+    earStyle: 'round',
+    tailStyle: 'puff',
+    snoutStyle: 'short',
+    accessory: 'calculator',
+    cheekColor: 0xffb6c1,
+  });
+}
+
+function createInvestorFox(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0xff8c00,
+    accentColor: 0xffffff,
+    extraColor: 0x8b4513,
+    detailColor: 0x2c1810,
+    headStyle: 'octa',
+    earStyle: 'pointy',
+    tailStyle: 'plume',
+    snoutStyle: 'muzzle',
+    accessory: 'briefcase',
+    addWhiskers: true,
+  });
+}
+
+function createOvertimePenguin(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0x2b2d42,
+    accentColor: 0xf8fafc,
+    extraColor: 0x5b8def,
+    detailColor: 0x161a24,
+    bellyColor: 0xf8fafc,
+    headStyle: 'sphere',
+    earStyle: 'none',
+    tailStyle: 'none',
+    snoutStyle: 'beak',
+    accessory: 'laptop',
+  });
+}
+
+function createDataOtter(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0x8b6b4f,
+    accentColor: 0xefdcc5,
+    extraColor: 0x14b8a6,
+    detailColor: 0x3c2a1f,
+    headStyle: 'sphere',
+    earStyle: 'round',
+    tailStyle: 'plume',
+    snoutStyle: 'short',
+    accessory: 'chart',
+  });
+}
+
+function createLegalMastiff(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0x8a5b3d,
+    accentColor: 0xf5e6d3,
+    extraColor: 0x7c3aed,
+    detailColor: 0x3d2618,
+    headStyle: 'box',
+    earStyle: 'floppy',
+    tailStyle: 'stub',
+    snoutStyle: 'muzzle',
+    accessory: 'gavel',
+  });
+}
+
+function createLogisticsBeaver(): PetRig {
+  return createChibiAnimal({
+    bodyColor: 0x8b6b4a,
+    accentColor: 0xeed9bf,
+    extraColor: 0x6c9f4a,
+    detailColor: 0x412d20,
+    headStyle: 'box',
+    earStyle: 'round',
+    tailStyle: 'paddle',
+    snoutStyle: 'short',
+    accessory: 'crate',
+  });
+}
+
 function createDefaultPet(): PetRig {
   const rig = createPetRig();
   const bodyMat = createFlatMaterial(0x888888);
@@ -598,6 +1244,23 @@ export type LowPolyPetPreset =
   | 'orange_cat'
   | 'ragdoll'
   | 'eternal_cat'
+  | 'intern_pony'
+  | 'veteran_horse'
+  | 'hustle_horse'
+  | 'finance_hamster'
+  | 'investor_fox'
+  | 'overtime_penguin'
+  | 'data_otter'
+  | 'legal_mastiff'
+  | 'logistics_beaver'
+  | 'night_owl'
+  | 'rock_parrot'
+  | 'kpi_beaver'
+  | 'slacker_sloth'
+  | 'clockin_shiba'
+  | 'trending_rabbit'
+  | 'pr_meerkat'
+  | 'milk_tea_panda'
   | 'default';
 
 const PRESET_FACTORIES: Record<LowPolyPetPreset, () => PetRig> = {
@@ -607,6 +1270,23 @@ const PRESET_FACTORIES: Record<LowPolyPetPreset, () => PetRig> = {
   orange_cat: createOrangeCat,
   ragdoll: createRagdoll,
   eternal_cat: createEternalCat,
+  intern_pony: createInternPony,
+  veteran_horse: createVeteranHorse,
+  hustle_horse: createHustleHorse,
+  finance_hamster: createFinanceHamster,
+  investor_fox: createInvestorFox,
+  overtime_penguin: createOvertimePenguin,
+  data_otter: createDataOtter,
+  legal_mastiff: createLegalMastiff,
+  logistics_beaver: createLogisticsBeaver,
+  night_owl: createNightOwl,
+  rock_parrot: createRockParrot,
+  kpi_beaver: createKpiBeaver,
+  slacker_sloth: createSlackerSloth,
+  clockin_shiba: createClockinShiba,
+  trending_rabbit: createTrendingRabbit,
+  pr_meerkat: createPrMeerkat,
+  milk_tea_panda: createMilkTeaPanda,
   default: createDefaultPet,
 };
 
@@ -617,6 +1297,23 @@ const CARD_ID_TO_PRESET: Record<string, LowPolyPetPreset> = {
   pet_004: 'orange_cat',
   pet_005: 'ragdoll',
   pet_006: 'eternal_cat',
+  pet_007: 'night_owl',
+  pet_008: 'rock_parrot',
+  pet_009: 'kpi_beaver',
+  pet_010: 'slacker_sloth',
+  pet_011: 'clockin_shiba',
+  pet_012: 'trending_rabbit',
+  pet_013: 'pr_meerkat',
+  pet_014: 'milk_tea_panda',
+  worker_001: 'intern_pony',
+  worker_002: 'veteran_horse',
+  worker_003: 'hustle_horse',
+  worker_004: 'finance_hamster',
+  worker_005: 'investor_fox',
+  worker_006: 'overtime_penguin',
+  worker_007: 'data_otter',
+  worker_008: 'legal_mastiff',
+  worker_009: 'logistics_beaver',
 };
 
 export function getAvailableLowPolyPetPresets(): LowPolyPetPreset[] {

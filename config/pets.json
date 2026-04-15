@@ -282,5 +282,393 @@
         "descriptionPreview": "每回合自动抽 1 张牌"
       }
     ]
+  },
+  {
+    "id": "pet_007",
+    "name": "夜班猫头鹰",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "common",
+    "description": "深夜档数据稳定的守夜主播",
+    "tags": [
+      "bird",
+      "night"
+    ],
+    "income": 2,
+    "stress": 1,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_007.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_007.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_night_owl",
+    "derivedDescription": "每回合自动抽 1 张牌",
+    "skills": [
+      {
+        "id": "skill_pet_007_a",
+        "templateId": "pet_draw_on_turn_start",
+        "templateName": "回合开始抽牌",
+        "trigger": "turn_start",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 1
+        },
+        "summary": "每回合自动抽 1 张牌",
+        "descriptionPreview": "每回合自动抽 1 张牌"
+      }
+    ]
+  },
+  {
+    "id": "pet_008",
+    "name": "摇滚鹦鹉",
+    "type": "entity_pet",
+    "cost": 3,
+    "rarity": "rare",
+    "description": "开麦就能带动气氛的热场王",
+    "tags": [
+      "bird",
+      "music"
+    ],
+    "income": 4,
+    "stress": 1,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_008.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_008.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_rock_parrot",
+    "derivedDescription": "相邻牛马效率 +15%",
+    "skills": [
+      {
+        "id": "skill_pet_008_a",
+        "templateId": "pet_adjacent_worker_income_bonus",
+        "templateName": "相邻牛马收益加成",
+        "trigger": "income_calc",
+        "targetMode": "adjacent_workers",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "income_modifier_aura",
+            "selector": "adjacent_orthogonal",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "percent": "$amount",
+              "statusKind": "worker_income_boost"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 15
+        },
+        "summary": "相邻牛马效率 +15%",
+        "descriptionPreview": "相邻牛马效率 +15%"
+      }
+    ]
+  },
+  {
+    "id": "pet_009",
+    "name": "KPI海狸",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "rare",
+    "description": "搭木头做看板的目标管理大师",
+    "tags": [
+      "beaver",
+      "builder"
+    ],
+    "income": 3,
+    "stress": 1,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_009.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_009.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_kpi_beaver",
+    "derivedDescription": "相邻萌宠每回合压力 -1",
+    "skills": [
+      {
+        "id": "skill_pet_009_a",
+        "templateId": "pet_adjacent_pet_stress_each_turn",
+        "templateName": "相邻萌宠压力变化",
+        "trigger": "turn_end",
+        "targetMode": "adjacent_pets",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "self",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "$amount",
+              "pattern": "orthogonal",
+              "excludeSelf": true,
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": -1
+        },
+        "summary": "相邻萌宠每回合压力 -1",
+        "descriptionPreview": "相邻萌宠每回合压力 -1"
+      }
+    ]
+  },
+  {
+    "id": "pet_010",
+    "name": "摆烂树懒",
+    "type": "entity_pet",
+    "cost": 1,
+    "rarity": "common",
+    "description": "不争不抢但从不爆炸",
+    "tags": [
+      "sloth",
+      "chill"
+    ],
+    "income": 1,
+    "stress": 0,
+    "stressLimit": 6,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_010.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_010.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_slacker_sloth",
+    "derivedDescription": "永远不会拆家",
+    "skills": [
+      {
+        "id": "skill_pet_010_a",
+        "templateId": "pet_never_meltdown",
+        "templateName": "不会拆家",
+        "trigger": "before_meltdown",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_meltdown",
+            "selector": "self",
+            "params": {}
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "永远不会拆家",
+        "descriptionPreview": "永远不会拆家"
+      }
+    ]
+  },
+  {
+    "id": "pet_011",
+    "name": "打卡柴犬",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "common",
+    "description": "准点开播且情绪管理极稳",
+    "tags": [
+      "dog",
+      "discipline"
+    ],
+    "income": 2,
+    "stress": 0,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_011.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_011.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_clockin_shiba",
+    "derivedDescription": "不受相邻单位压力传染影响",
+    "skills": [
+      {
+        "id": "skill_pet_011_a",
+        "templateId": "pet_ignore_adjacent_stress",
+        "templateName": "免疫相邻压力",
+        "trigger": "before_stress_apply",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_adjacent_stress",
+            "selector": "self",
+            "params": {}
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "不受相邻单位压力传染影响",
+        "descriptionPreview": "不受相邻单位压力传染影响"
+      }
+    ]
+  },
+  {
+    "id": "pet_012",
+    "name": "热搜兔",
+    "type": "entity_pet",
+    "cost": 4,
+    "rarity": "epic",
+    "description": "追热点的速度比弹幕还快",
+    "tags": [
+      "rabbit",
+      "trend"
+    ],
+    "income": 3,
+    "stress": 1,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_012.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_012.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_trending_rabbit",
+    "derivedDescription": "每回合自动抽 2 张牌",
+    "skills": [
+      {
+        "id": "skill_pet_012_a",
+        "templateId": "pet_draw_on_turn_start",
+        "templateName": "回合开始抽牌",
+        "trigger": "turn_start",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 2
+        },
+        "summary": "每回合自动抽 2 张牌",
+        "descriptionPreview": "每回合自动抽 2 张牌"
+      }
+    ]
+  },
+  {
+    "id": "pet_013",
+    "name": "危机公关狐獴",
+    "type": "entity_pet",
+    "cost": 3,
+    "rarity": "rare",
+    "description": "越到高压时刻越会安抚团队",
+    "tags": [
+      "meerkat",
+      "support"
+    ],
+    "income": 3,
+    "stress": 1,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_013.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_013.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_pr_meerkat",
+    "derivedDescription": "相邻牛马效率 +20%",
+    "skills": [
+      {
+        "id": "skill_pet_013_a",
+        "templateId": "pet_adjacent_worker_income_bonus",
+        "templateName": "相邻牛马收益加成",
+        "trigger": "income_calc",
+        "targetMode": "adjacent_workers",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "income_modifier_aura",
+            "selector": "adjacent_orthogonal",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "percent": "$amount",
+              "statusKind": "worker_income_boost"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 20
+        },
+        "summary": "相邻牛马效率 +20%",
+        "descriptionPreview": "相邻牛马效率 +20%"
+      }
+    ]
+  },
+  {
+    "id": "pet_014",
+    "name": "奶茶熊猫",
+    "type": "entity_pet",
+    "cost": 4,
+    "rarity": "epic",
+    "description": "直播间常驻福袋担当，治愈感拉满",
+    "tags": [
+      "panda",
+      "cute"
+    ],
+    "income": 2,
+    "stress": 0,
+    "stressLimit": 5,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_014.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_014.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_milk_tea_panda",
+    "derivedDescription": "相邻萌宠每回合压力 -1",
+    "skills": [
+      {
+        "id": "skill_pet_014_a",
+        "templateId": "pet_adjacent_pet_stress_each_turn",
+        "templateName": "相邻萌宠压力变化",
+        "trigger": "turn_end",
+        "targetMode": "adjacent_pets",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "self",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "$amount",
+              "pattern": "orthogonal",
+              "excludeSelf": true,
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": -1
+        },
+        "summary": "相邻萌宠每回合压力 -1",
+        "descriptionPreview": "相邻萌宠每回合压力 -1"
+      }
+    ]
   }
 ]

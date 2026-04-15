@@ -297,6 +297,10 @@ const cardTypeLabels: Record<string, string> = {
   status_negative: '负面',
 };
 
+function isStageEntityCardType(type: string | null | undefined): boolean {
+  return type === 'entity_pet' || type === 'entity_worker';
+}
+
 const tableSortFieldLabels: Record<CardSortField, string> = {
   type: '类型',
   name: '名称',
@@ -515,7 +519,7 @@ function CardEditorPanel({
           />
         </label>
         <ResourcePreview label="插画预览" src={selectedCard.illustrationPath} fit="contain" scaleMode="fit" />
-        {selectedCard.type === 'entity_pet' ? (
+        {isStageEntityCardType(selectedCard.type) ? (
           <>
             <label>
               <div style={{ marginBottom: 6 }}>3D 模型配置</div>
@@ -1994,7 +1998,7 @@ export function AdminPage() {
             )}
           </div>
 
-          {selectedCard?.type === 'entity_pet' ? (
+          {isStageEntityCardType(selectedCard?.type) ? (
             <div
               style={{
                 borderRadius: 20,

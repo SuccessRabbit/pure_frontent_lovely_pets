@@ -1,0 +1,10 @@
+<!-- 人事补招 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <rect width="200" height="280" fill="#F4F1FF" rx="14"/>
+  <circle cx="42" cy="42" r="8" fill="#C4B5FD" opacity="0.38"/>
+  <circle cx="160" cy="54" r="6" fill="#34D399" opacity="0.34"/>
+  <circle cx="171.00" cy="68.00" r="5.04" fill="#7C3AED" opacity="0.72"/><circle cx="164.78" cy="76.56" r="5.04" fill="#7C3AED" opacity="0.72"/><circle cx="154.72" cy="73.29" r="5.04" fill="#7C3AED" opacity="0.72"/><circle cx="154.72" cy="62.71" r="5.04" fill="#7C3AED" opacity="0.72"/><circle cx="164.78" cy="59.44" r="5.04" fill="#7C3AED" opacity="0.72"/>
+  <ellipse cx="100" cy="168" rx="44" ry="42" fill="#ffffff" opacity="0.82"/>
+  <rect x="68" y="120" width="56" height="76" rx="6" fill="#ffffff" stroke="#7C3AED" stroke-width="3"/><rect x="86" y="108" width="56" height="76" rx="6" fill="#ffffff" stroke="#C4B5FD" stroke-width="3"/><line x1="96" y1="132" x2="132" y2="132" stroke="#7C3AED" stroke-width="3"/><line x1="96" y1="146" x2="136" y2="146" stroke="#C4B5FD" stroke-width="3"/><circle cx="112" cy="164" r="10" fill="#34D399" opacity="0.86"/>
+  <rect x="54" y="228" width="92" height="18" rx="6" fill="#ffffff" opacity="0.92"/><text x="100" y="240" font-family="Arial" font-size="9" fill="#425466" text-anchor="middle" font-weight="bold">人事补招</text>
+</svg>

@@ -1,0 +1,10 @@
+<!-- 外包止损 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#FFF6E8" rx="0"/>
+  <circle cx="84" cy="84" r="16" fill="#E9B872" opacity="0.38"/>
+  <circle cx="320" cy="108" r="12" fill="#334155" opacity="0.34"/>
+  <circle cx="338.00" cy="84.00" r="10.08" fill="#C67C2E" opacity="0.72"/><circle cx="325.56" cy="101.12" r="10.08" fill="#C67C2E" opacity="0.72"/><circle cx="305.44" cy="94.58" r="10.08" fill="#C67C2E" opacity="0.72"/><circle cx="305.44" cy="73.42" r="10.08" fill="#C67C2E" opacity="0.72"/><circle cx="325.56" cy="66.88" r="10.08" fill="#C67C2E" opacity="0.72"/>
+  <ellipse cx="200" cy="176" rx="70" ry="62" fill="#ffffff" opacity="0.82"/>
+  <rect x="140" y="264" width="144" height="104" rx="16" fill="#C67C2E"/><path d="M 212 216 L 280 252 L 252 376 L 184 340 Z" fill="#334155" opacity="0.9"/><path d="M 200 272 Q 232 296 200 164 Q 168 296 200 272" fill="#ffffff"/><rect x="164" y="284" width="72" height="12" rx="6" fill="#E9B872"/>
+  
+</svg>

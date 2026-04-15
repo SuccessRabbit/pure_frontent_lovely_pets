@@ -1,0 +1,23 @@
+<!-- 摆烂树懒 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <rect width="200" height="280" fill="#F4F1EA" rx="14"/>
+  <circle cx="40" cy="42" r="6" fill="#EAD7C3" opacity="0.45"/><circle cx="160" cy="52" r="5" fill="#8BC6A2" opacity="0.34"/><circle cx="172.00" cy="64.00" r="4.48" fill="#8BC6A2" opacity="0.72"/><circle cx="166.47" cy="71.61" r="4.48" fill="#8BC6A2" opacity="0.72"/><circle cx="157.53" cy="68.70" r="4.48" fill="#8BC6A2" opacity="0.72"/><circle cx="157.53" cy="59.30" r="4.48" fill="#8BC6A2" opacity="0.72"/><circle cx="166.47" cy="56.39" r="4.48" fill="#8BC6A2" opacity="0.72"/>
+  <circle cx="138" cy="188" r="8" fill="#B08D74"/>
+  <ellipse cx="100" cy="176" rx="54" ry="48" fill="#B08D74"/>
+  <ellipse cx="100" cy="120" rx="42" ry="38" fill="#B08D74"/>
+  <circle cx="70" cy="90" r="11" fill="#B08D74"/><circle cx="72" cy="90" r="6" fill="#EAD7C3" opacity="0.82"/>
+  <circle cx="130" cy="90" r="11" fill="#B08D74"/><circle cx="128" cy="90" r="6" fill="#EAD7C3" opacity="0.82"/>
+  <ellipse cx="100" cy="168" rx="30" ry="28" fill="#EAD7C3" opacity="0.94"/>
+  <ellipse cx="84" cy="116" rx="8.5" ry="10" fill="#2c1810"/>
+  <ellipse cx="116" cy="116" rx="8.5" ry="10" fill="#2c1810"/>
+  <circle cx="87" cy="113" r="3" fill="#ffffff"/>
+  <circle cx="119" cy="113" r="3" fill="#ffffff"/>
+  <ellipse cx="100" cy="130" rx="5" ry="4" fill="#3b2f2f"/>
+  <path d="M 88 138 Q 100 144 112 138" stroke="#3b2f2f" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <ellipse cx="68" cy="126" rx="10" ry="6" fill="#FFB3C7" opacity="0.48"/>
+  <ellipse cx="132" cy="126" rx="10" ry="6" fill="#FFB3C7" opacity="0.48"/>
+  
+  <rect x="70" y="210" width="12" height="24" rx="6" fill="#B08D74"/><rect x="118" y="210" width="12" height="24" rx="6" fill="#B08D74"/><ellipse cx="76" cy="234" rx="8" ry="5" fill="#EAD7C3"/><ellipse cx="124" cy="234" rx="8" ry="5" fill="#EAD7C3"/>
+  <ellipse cx="62" cy="178" rx="18" ry="10" fill="#8BC6A2" opacity="0.72"/><path d="M 54 176 Q 62 160 72 176 Q 64 190 54 176" fill="#EAD7C3" opacity="0.9"/>
+  <rect x="54" y="230" width="92" height="18" rx="6" fill="#ffffff" opacity="0.92"/><text x="100" y="242" font-family="Arial" font-size="9" fill="#425466" text-anchor="middle" font-weight="bold">摆烂树懒</text>
+</svg>

@@ -1,0 +1,23 @@
+<!-- 打卡柴犬 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#FFF3E4" rx="0"/>
+  <circle cx="80" cy="84" r="12" fill="#FFF8F2" opacity="0.45"/><circle cx="320" cy="104" r="10" fill="#3F88C5" opacity="0.34"/><circle cx="338.00" cy="78.00" r="8.96" fill="#3F88C5" opacity="0.72"/><circle cx="326.94" cy="93.22" r="8.96" fill="#3F88C5" opacity="0.72"/><circle cx="309.06" cy="87.40" r="8.96" fill="#3F88C5" opacity="0.72"/><circle cx="309.06" cy="68.60" r="8.96" fill="#3F88C5" opacity="0.72"/><circle cx="326.94" cy="62.78" r="8.96" fill="#3F88C5" opacity="0.72"/>
+  <path d="M 272 344 Q 316 336 308 380 Q 296 410 264 392" stroke="#E58A3A" stroke-width="12" fill="none" stroke-linecap="round"/><circle cx="300" cy="380" r="14" fill="#FFF8F2" opacity="0.9"/>
+  <ellipse cx="200" cy="212" rx="82" ry="72" fill="#E58A3A"/>
+  <ellipse cx="200" cy="140" rx="64" ry="60" fill="#E58A3A"/>
+  <path d="M 40 172 L 16 124 L 64 188 Z" fill="#E58A3A"/><path d="M 40 180 L 32 144 L 68 192 Z" fill="#FFF8F2" opacity="0.82"/>
+  <path d="M 160 172 L 184 124 L 136 188 Z" fill="#E58A3A"/><path d="M 160 180 L 168 144 L 132 192 Z" fill="#FFF8F2" opacity="0.82"/>
+  <ellipse cx="200" cy="195" rx="48" ry="42" fill="#FFF8F2" opacity="0.94"/>
+  <ellipse cx="168" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <ellipse cx="232" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <circle cx="174" cy="132" r="4.8" fill="#ffffff"/>
+  <circle cx="238" cy="132" r="4.8" fill="#ffffff"/>
+  <ellipse cx="200" cy="156" rx="8" ry="6" fill="#3b2f2f"/>
+  <path d="M 176 166 Q 200 176 224 166" stroke="#3b2f2f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse cx="136" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  <ellipse cx="264" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  
+  <rect x="140" y="420" width="24" height="48" rx="12" fill="#E58A3A"/><rect x="236" y="420" width="24" height="48" rx="12" fill="#E58A3A"/><ellipse cx="152" cy="468" rx="16" ry="10" fill="#FFF8F2"/><ellipse cx="248" cy="468" rx="16" ry="10" fill="#FFF8F2"/>
+  <rect x="172" y="304" width="56" height="36" rx="8" fill="#ffffff" stroke="#3F88C5" stroke-width="4"/><circle cx="188" cy="322" r="8" fill="#3F88C5"/><path d="M 208 314 L 220 322 L 236 306" stroke="#3F88C5" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+</svg>

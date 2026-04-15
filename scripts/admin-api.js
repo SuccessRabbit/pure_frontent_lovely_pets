@@ -70,6 +70,7 @@ function writeRawDatasets(raw) {
 }
 
 function getDatasetsPayload() {
+  current = compileAllData();
   return {
     canEdit: true,
     headers: getDatasetHeaders(),

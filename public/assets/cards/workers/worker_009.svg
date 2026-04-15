@@ -1,0 +1,23 @@
+<!-- 后勤河狸 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <rect width="200" height="280" fill="#F6F1E8" rx="14"/>
+  <circle cx="40" cy="42" r="6" fill="#EED9BF" opacity="0.45"/><circle cx="160" cy="52" r="5" fill="#6C9F4A" opacity="0.34"/><circle cx="172.00" cy="64.00" r="4.48" fill="#6C9F4A" opacity="0.72"/><circle cx="166.47" cy="71.61" r="4.48" fill="#6C9F4A" opacity="0.72"/><circle cx="157.53" cy="68.70" r="4.48" fill="#6C9F4A" opacity="0.72"/><circle cx="157.53" cy="59.30" r="4.48" fill="#6C9F4A" opacity="0.72"/><circle cx="166.47" cy="56.39" r="4.48" fill="#6C9F4A" opacity="0.72"/>
+  <ellipse cx="140" cy="188" rx="15" ry="28" fill="#8B6B4A" transform="rotate(24 140 188)"/><line x1="127" y1="177" x2="118" y2="164" stroke="#8B6B4A" stroke-width="5" stroke-linecap="round"/>
+  <ellipse cx="100" cy="176" rx="54" ry="48" fill="#8B6B4A"/>
+  <ellipse cx="100" cy="120" rx="42" ry="38" fill="#8B6B4A"/>
+  <circle cx="70" cy="90" r="11" fill="#8B6B4A"/><circle cx="72" cy="90" r="6" fill="#EED9BF" opacity="0.82"/>
+  <circle cx="130" cy="90" r="11" fill="#8B6B4A"/><circle cx="128" cy="90" r="6" fill="#EED9BF" opacity="0.82"/>
+  <ellipse cx="100" cy="168" rx="30" ry="28" fill="#EED9BF" opacity="0.94"/>
+  <ellipse cx="84" cy="116" rx="8.5" ry="10" fill="#2c1810"/>
+  <ellipse cx="116" cy="116" rx="8.5" ry="10" fill="#2c1810"/>
+  <circle cx="87" cy="113" r="3" fill="#ffffff"/>
+  <circle cx="119" cy="113" r="3" fill="#ffffff"/>
+  <ellipse cx="100" cy="130" rx="5" ry="4" fill="#3b2f2f"/>
+  <path d="M 88 138 Q 100 144 112 138" stroke="#3b2f2f" stroke-width="2" fill="none" stroke-linecap="round"/>
+  <ellipse cx="68" cy="126" rx="10" ry="6" fill="#FFB3C7" opacity="0.48"/>
+  <ellipse cx="132" cy="126" rx="10" ry="6" fill="#FFB3C7" opacity="0.48"/>
+  <rect x="90" y="150" width="20" height="14" rx="4" fill="#ffffff" opacity="0.86"/><circle cx="100" cy="157" r="3" fill="#6C9F4A"/>
+  <rect x="72" y="210" width="14" height="26" rx="7" fill="#8B6B4A"/><rect x="114" y="210" width="14" height="26" rx="7" fill="#8B6B4A"/><ellipse cx="79" cy="236" rx="8" ry="5" fill="#EED9BF"/><ellipse cx="121" cy="236" rx="8" ry="5" fill="#EED9BF"/>
+  <rect x="128" y="154" width="28" height="24" rx="4" fill="#6C9F4A"/><line x1="134" y1="160" x2="150" y2="172" stroke="#EED9BF" stroke-width="2"/><line x1="150" y1="160" x2="134" y2="172" stroke="#EED9BF" stroke-width="2"/>
+  <rect x="54" y="230" width="92" height="18" rx="6" fill="#ffffff" opacity="0.92"/><text x="100" y="242" font-family="Arial" font-size="9" fill="#425466" text-anchor="middle" font-weight="bold">后勤河狸</text>
+</svg>

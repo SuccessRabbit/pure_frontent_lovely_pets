@@ -1,0 +1,10 @@
+<!-- 集体摸鱼 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#EAF8F4" rx="0"/>
+  <circle cx="84" cy="84" r="16" fill="#7DD3C7" opacity="0.38"/>
+  <circle cx="320" cy="108" r="12" fill="#FFE08A" opacity="0.34"/>
+  <circle cx="338.00" cy="84.00" r="10.08" fill="#14B8A6" opacity="0.72"/><circle cx="325.56" cy="101.12" r="10.08" fill="#14B8A6" opacity="0.72"/><circle cx="305.44" cy="94.58" r="10.08" fill="#14B8A6" opacity="0.72"/><circle cx="305.44" cy="73.42" r="10.08" fill="#14B8A6" opacity="0.72"/><circle cx="325.56" cy="66.88" r="10.08" fill="#14B8A6" opacity="0.72"/>
+  <ellipse cx="200" cy="176" rx="70" ry="62" fill="#ffffff" opacity="0.82"/>
+  <path d="M 116 344 Q 200 420 284 344" stroke="#14B8A6" stroke-width="12" fill="none"/><line x1="116" y1="344" x2="116" y2="240" stroke="#7DD3C7" stroke-width="8"/><line x1="284" y1="344" x2="284" y2="240" stroke="#7DD3C7" stroke-width="8"/><ellipse cx="200" cy="320" rx="44" ry="24" fill="#FFE08A" opacity="0.9"/>
+  
+</svg>

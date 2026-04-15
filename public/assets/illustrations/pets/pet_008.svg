@@ -1,0 +1,23 @@
+<!-- 摇滚鹦鹉 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#FFF1F0" rx="0"/>
+  <circle cx="80" cy="84" r="12" fill="#FFE066" opacity="0.45"/><circle cx="320" cy="104" r="10" fill="#FF6B6B" opacity="0.34"/><circle cx="338.00" cy="78.00" r="8.96" fill="#FF6B6B" opacity="0.72"/><circle cx="326.94" cy="93.22" r="8.96" fill="#FF6B6B" opacity="0.72"/><circle cx="309.06" cy="87.40" r="8.96" fill="#FF6B6B" opacity="0.72"/><circle cx="309.06" cy="68.60" r="8.96" fill="#FF6B6B" opacity="0.72"/><circle cx="326.94" cy="62.78" r="8.96" fill="#FF6B6B" opacity="0.72"/>
+  <ellipse cx="290" cy="372" rx="30" ry="68" fill="#25A18E" transform="rotate(28 290 372)"/><ellipse cx="296" cy="384" rx="20" ry="48" fill="#FFE066" opacity="0.85" transform="rotate(28 296 384)"/>
+  <ellipse cx="200" cy="212" rx="82" ry="72" fill="#25A18E"/>
+  <ellipse cx="200" cy="140" rx="64" ry="60" fill="#25A18E"/>
+  <path d="M 40 160 L 60 112 L 84 176 Z" fill="#25A18E"/><circle cx="64" cy="132" r="10" fill="#FFE066" opacity="0.8"/>
+  <path d="M 160 160 L 140 112 L 116 176 Z" fill="#25A18E"/><circle cx="136" cy="132" r="10" fill="#FFE066" opacity="0.8"/>
+  <ellipse cx="200" cy="195" rx="48" ry="42" fill="#FFE066" opacity="0.94"/>
+  <ellipse cx="168" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <ellipse cx="232" cy="136" rx="13" ry="15" fill="#2c1810"/>
+  <circle cx="174" cy="132" r="4.8" fill="#ffffff"/>
+  <circle cx="238" cy="132" r="4.8" fill="#ffffff"/>
+  <ellipse cx="200" cy="156" rx="8" ry="6" fill="#3b2f2f"/>
+  <path d="M 176 166 Q 200 176 224 166" stroke="#3b2f2f" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <ellipse cx="136" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  <ellipse cx="264" cy="150" rx="14" ry="8" fill="#FFB3C7" opacity="0.48"/>
+  
+  <rect x="140" y="420" width="24" height="48" rx="12" fill="#25A18E"/><rect x="236" y="420" width="24" height="48" rx="12" fill="#25A18E"/><ellipse cx="152" cy="468" rx="16" ry="10" fill="#FFE066"/><ellipse cx="248" cy="468" rx="16" ry="10" fill="#FFE066"/>
+  <ellipse cx="276" cy="350" rx="20" ry="28" fill="#FF6B6B"/><rect x="260" y="300" width="10" height="68" rx="4" fill="#FFE066"/><line x1="264" y1="300" x2="264" y2="372" stroke="#ffffff" stroke-width="3"/>
+  
+</svg>

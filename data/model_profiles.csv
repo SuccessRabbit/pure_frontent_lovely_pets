@@ -5,4 +5,21 @@ model_capybara,摸鱼水豚 Low Poly,low_poly_preset,capybara,1,0,0,0,0,1,/asset
 model_orange_cat,橘猫胖丁 Low Poly,low_poly_preset,orange_cat,1,0,0,0,0,1,/assets/cards/pets/pet_004.svg,默认橘猫预设
 model_ragdoll,高冷布偶 Low Poly,low_poly_preset,ragdoll,1,0,0,0,0,1,/assets/cards/pets/pet_005.svg,默认布偶预设
 model_eternal_cat,永动机猫 Low Poly,low_poly_preset,eternal_cat,1,0,0,0,0,1,/assets/cards/pets/pet_006.svg,默认永动机猫预设
+model_intern_pony,实习牛马 Low Poly,low_poly_preset,intern_pony,1,0,0,0,0,1,/assets/cards/workers/worker_001.svg,默认实习牛马预设
+model_veteran_horse,资深社畜 Low Poly,low_poly_preset,veteran_horse,1,0,0,0,0,1,/assets/cards/workers/worker_002.svg,默认资深社畜预设
+model_hustle_horse,卷王 Low Poly,low_poly_preset,hustle_horse,1,0,0,0,0,1,/assets/cards/workers/worker_003.svg,默认卷王预设
+model_finance_hamster,算账小仓鼠 Low Poly,low_poly_preset,finance_hamster,1,0,0,0,0,1,/assets/cards/workers/worker_004.svg,默认算账小仓鼠预设
+model_investor_fox,投资老狐狸 Low Poly,low_poly_preset,investor_fox,1,0,0,0,0,1,/assets/cards/workers/worker_005.svg,默认投资老狐狸预设
+model_overtime_penguin,加班企鹅 Low Poly,low_poly_preset,overtime_penguin,1,0,0,0,0,1,/assets/cards/workers/worker_006.svg,新增加班企鹅预设
+model_data_otter,数据水獭 Low Poly,low_poly_preset,data_otter,1,0,0,0,0,1,/assets/cards/workers/worker_007.svg,新增数据水獭预设
+model_legal_mastiff,法务獒犬 Low Poly,low_poly_preset,legal_mastiff,1,0,0,0,0,1,/assets/cards/workers/worker_008.svg,新增法务獒犬预设
+model_logistics_beaver,后勤河狸 Low Poly,low_poly_preset,logistics_beaver,1,0,0,0,0,1,/assets/cards/workers/worker_009.svg,新增后勤河狸预设
+model_night_owl,夜班猫头鹰 Low Poly,low_poly_preset,night_owl,1,0,0,0,0,1,/assets/cards/pets/pet_007.svg,新增夜班猫头鹰预设
+model_rock_parrot,摇滚鹦鹉 Low Poly,low_poly_preset,rock_parrot,1,0,0,0,0,1,/assets/cards/pets/pet_008.svg,新增摇滚鹦鹉预设
+model_kpi_beaver,KPI海狸 Low Poly,low_poly_preset,kpi_beaver,1,0,0,0,0,1,/assets/cards/pets/pet_009.svg,新增KPI海狸预设
+model_slacker_sloth,摆烂树懒 Low Poly,low_poly_preset,slacker_sloth,1,0,0,0,0,1,/assets/cards/pets/pet_010.svg,新增摆烂树懒预设
+model_clockin_shiba,打卡柴犬 Low Poly,low_poly_preset,clockin_shiba,1,0,0,0,0,1,/assets/cards/pets/pet_011.svg,新增打卡柴犬预设
+model_trending_rabbit,热搜兔 Low Poly,low_poly_preset,trending_rabbit,1,0,0,0,0,1,/assets/cards/pets/pet_012.svg,新增热搜兔预设
+model_pr_meerkat,危机公关狐獴 Low Poly,low_poly_preset,pr_meerkat,1,0,0,0,0,1,/assets/cards/pets/pet_013.svg,新增危机公关狐獴预设
+model_milk_tea_panda,奶茶熊猫 Low Poly,low_poly_preset,milk_tea_panda,1,0,0,0,0,1,/assets/cards/pets/pet_014.svg,新增奶茶熊猫预设
 model_default,默认宠物模型,low_poly_preset,default,1,0,0,0,0,1,/assets/cards/pets/pet_001.svg,资源缺失时回退

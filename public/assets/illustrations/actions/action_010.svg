@@ -1,0 +1,10 @@
+<!-- 热搜投放 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" fill="none">
+  <rect width="400" height="300" fill="#FFF2F2" rx="0"/>
+  <circle cx="84" cy="84" r="16" fill="#FFD166" opacity="0.38"/>
+  <circle cx="320" cy="108" r="12" fill="#5B7CFA" opacity="0.34"/>
+  <circle cx="338.00" cy="84.00" r="10.08" fill="#FF5D73" opacity="0.72"/><circle cx="325.56" cy="101.12" r="10.08" fill="#FF5D73" opacity="0.72"/><circle cx="305.44" cy="94.58" r="10.08" fill="#FF5D73" opacity="0.72"/><circle cx="305.44" cy="73.42" r="10.08" fill="#FF5D73" opacity="0.72"/><circle cx="325.56" cy="66.88" r="10.08" fill="#FF5D73" opacity="0.72"/>
+  <ellipse cx="200" cy="176" rx="70" ry="62" fill="#ffffff" opacity="0.82"/>
+  <path d="M 140 300 L 252 260 L 252 368 Z" fill="#FF5D73"/><rect x="116" y="300" width="32" height="36" rx="8" fill="#5B7CFA"/><path d="M 272 272 Q 320 312 272 352" stroke="#FFD166" stroke-width="10" fill="none"/><circle cx="316" cy="264" r="14" fill="#FFD166" opacity="0.9"/><circle cx="328" cy="360" r="10" fill="#5B7CFA" opacity="0.9"/>
+  
+</svg>

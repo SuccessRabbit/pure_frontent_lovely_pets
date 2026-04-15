@@ -249,8 +249,13 @@ function validateData(cards, skillTemplates, cardSkills, modelProfiles, globalCo
     cardIds.add(card.id);
     if (!card.name) throw new Error(`Card ${card.id} missing name`);
     if (!card.type) throw new Error(`Card ${card.id} missing type`);
-    if (card.type === 'entity_pet' && card.modelProfileId && !modelProfileIds.has(card.modelProfileId)) {
-      throw new Error(`Card ${card.id} references unknown modelProfileId: ${card.modelProfileId}`);
+    if (card.type === 'entity_pet' || card.type === 'entity_worker') {
+      if (!card.modelProfileId) {
+        throw new Error(`Stage entity ${card.id} is missing modelProfileId`);
+      }
+      if (!modelProfileIds.has(card.modelProfileId)) {
+        throw new Error(`Card ${card.id} references unknown modelProfileId: ${card.modelProfileId}`);
+      }
     }
   }
 

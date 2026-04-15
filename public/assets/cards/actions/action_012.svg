@@ -1,0 +1,10 @@
+<!-- 外包止损 - generated expansion asset -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 280" fill="none">
+  <rect width="200" height="280" fill="#FFF6E8" rx="14"/>
+  <circle cx="42" cy="42" r="8" fill="#E9B872" opacity="0.38"/>
+  <circle cx="160" cy="54" r="6" fill="#334155" opacity="0.34"/>
+  <circle cx="171.00" cy="68.00" r="5.04" fill="#C67C2E" opacity="0.72"/><circle cx="164.78" cy="76.56" r="5.04" fill="#C67C2E" opacity="0.72"/><circle cx="154.72" cy="73.29" r="5.04" fill="#C67C2E" opacity="0.72"/><circle cx="154.72" cy="62.71" r="5.04" fill="#C67C2E" opacity="0.72"/><circle cx="164.78" cy="59.44" r="5.04" fill="#C67C2E" opacity="0.72"/>
+  <ellipse cx="100" cy="168" rx="44" ry="42" fill="#ffffff" opacity="0.82"/>
+  <rect x="70" y="132" width="72" height="52" rx="8" fill="#C67C2E"/><path d="M 106 108 L 140 126 L 126 188 L 92 170 Z" fill="#334155" opacity="0.9"/><path d="M 100 136 Q 116 148 100 164 Q 84 148 100 136" fill="#ffffff"/><rect x="82" y="142" width="36" height="6" rx="3" fill="#E9B872"/>
+  <rect x="54" y="228" width="92" height="18" rx="6" fill="#ffffff" opacity="0.92"/><text x="100" y="240" font-family="Arial" font-size="9" fill="#425466" text-anchor="middle" font-weight="bold">外包止损</text>
+</svg>

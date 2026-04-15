@@ -302,6 +302,7 @@
     "illustrationPath": "/assets/illustrations/workers/worker_001.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
+    "modelProfileId": "model_intern_pony",
     "derivedDescription": "可献祭：消耗此单位降低相邻萌宠压力2点",
     "skills": [
       {
@@ -340,6 +341,7 @@
     "illustrationPath": "/assets/illustrations/workers/worker_002.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
+    "modelProfileId": "model_veteran_horse",
     "derivedDescription": "不受压力传染影响，不会被拆家波及",
     "skills": [
       {
@@ -387,6 +389,7 @@
     "illustrationPath": "/assets/illustrations/workers/worker_003.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
+    "modelProfileId": "model_hustle_horse",
     "derivedDescription": "相邻牛马效率 -20%",
     "skills": [
       {
@@ -437,6 +440,7 @@
     "illustrationPath": "/assets/illustrations/workers/worker_004.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
+    "modelProfileId": "model_finance_hamster",
     "derivedDescription": "利息门槛从每 10 罐头降低为每 4 罐头",
     "skills": [
       {
@@ -484,6 +488,7 @@
     "illustrationPath": "/assets/illustrations/workers/worker_005.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
+    "modelProfileId": "model_investor_fox",
     "derivedDescription": "每次拆家发生时，从废墟中捡回 2 罐头",
     "skills": [
       {
@@ -508,6 +513,588 @@
         },
         "summary": "每次拆家返还 2 罐头",
         "descriptionPreview": "每次拆家发生时，从废墟中捡回 2 罐头"
+      }
+    ]
+  },
+  {
+    "id": "worker_006",
+    "name": "加班企鹅",
+    "type": "entity_worker",
+    "cost": 2,
+    "rarity": "rare",
+    "description": "在冰点加班也面不改色",
+    "tags": [
+      "worker",
+      "steady"
+    ],
+    "income": 3,
+    "stress": 0,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/workers/worker_006.svg",
+    "illustrationPath": "/assets/illustrations/workers/worker_006.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_overtime_penguin",
+    "derivedDescription": "不受压力传染影响，不会被拆家波及",
+    "skills": [
+      {
+        "id": "skill_worker_006_a",
+        "templateId": "worker_ignore_adjacent_and_meltdown",
+        "templateName": "抗压老员工",
+        "trigger": "before_stress_apply",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_adjacent_stress",
+            "selector": "self",
+            "params": {}
+          },
+          {
+            "kind": "prevent_meltdown_splash",
+            "selector": "self",
+            "params": {}
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "不受压力传染影响，不会被拆家波及",
+        "descriptionPreview": "不受压力传染影响，不会被拆家波及"
+      }
+    ]
+  },
+  {
+    "id": "worker_007",
+    "name": "数据水獭",
+    "type": "entity_worker",
+    "cost": 3,
+    "rarity": "epic",
+    "description": "靠流水报表找出每一滴利润",
+    "tags": [
+      "worker",
+      "analysis"
+    ],
+    "income": 1,
+    "stress": 0,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/workers/worker_007.svg",
+    "illustrationPath": "/assets/illustrations/workers/worker_007.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_data_otter",
+    "derivedDescription": "利息门槛从每 10 罐头降低为每 3 罐头",
+    "skills": [
+      {
+        "id": "skill_worker_007_a",
+        "templateId": "worker_interest_threshold_reduce",
+        "templateName": "利息门槛降低",
+        "trigger": "income_calc",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "modify_interest_rule",
+            "selector": "self",
+            "params": {
+              "threshold": "$threshold",
+              "stackMode": "min"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "threshold": 3
+        },
+        "summary": "利息门槛改为每 3 罐头",
+        "descriptionPreview": "利息门槛从每 10 罐头降低为每 3 罐头"
+      }
+    ]
+  },
+  {
+    "id": "worker_008",
+    "name": "法务獒犬",
+    "type": "entity_worker",
+    "cost": 2,
+    "rarity": "rare",
+    "description": "开会时一句话能让全员老实",
+    "tags": [
+      "worker",
+      "legal"
+    ],
+    "income": 4,
+    "stress": 0,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/workers/worker_008.svg",
+    "illustrationPath": "/assets/illustrations/workers/worker_008.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_legal_mastiff",
+    "derivedDescription": "相邻牛马效率 -10%",
+    "skills": [
+      {
+        "id": "skill_worker_008_a",
+        "templateId": "worker_adjacent_worker_income_penalty",
+        "templateName": "内卷打击",
+        "trigger": "income_calc",
+        "targetMode": "adjacent_workers",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "income_modifier_aura",
+            "selector": "adjacent_orthogonal",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "percent": "-$amount",
+              "statusKind": "worker_income_penalty"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 10
+        },
+        "summary": "相邻牛马效率 -10%",
+        "descriptionPreview": "相邻牛马效率 -10%"
+      }
+    ]
+  },
+  {
+    "id": "worker_009",
+    "name": "后勤河狸",
+    "type": "entity_worker",
+    "cost": 3,
+    "rarity": "epic",
+    "description": "拆了也能迅速从废墟里捞回物资",
+    "tags": [
+      "worker",
+      "support"
+    ],
+    "income": 1,
+    "stress": 0,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/workers/worker_009.svg",
+    "illustrationPath": "/assets/illustrations/workers/worker_009.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_logistics_beaver",
+    "derivedDescription": "每次拆家发生时，从废墟中捡回 3 罐头",
+    "skills": [
+      {
+        "id": "skill_worker_009_a",
+        "templateId": "worker_gain_cans_on_meltdown",
+        "templateName": "废墟捡钱",
+        "trigger": "after_meltdown",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "on_meltdown_gain_cans",
+            "selector": "self",
+            "params": {
+              "amount": "$amount"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 3
+        },
+        "summary": "每次拆家返还 3 罐头",
+        "descriptionPreview": "每次拆家发生时，从废墟中捡回 3 罐头"
+      }
+    ]
+  },
+  {
+    "id": "pet_007",
+    "name": "夜班猫头鹰",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "common",
+    "description": "深夜档数据稳定的守夜主播",
+    "tags": [
+      "bird",
+      "night"
+    ],
+    "income": 2,
+    "stress": 1,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_007.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_007.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_night_owl",
+    "derivedDescription": "每回合自动抽 1 张牌",
+    "skills": [
+      {
+        "id": "skill_pet_007_a",
+        "templateId": "pet_draw_on_turn_start",
+        "templateName": "回合开始抽牌",
+        "trigger": "turn_start",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 1
+        },
+        "summary": "每回合自动抽 1 张牌",
+        "descriptionPreview": "每回合自动抽 1 张牌"
+      }
+    ]
+  },
+  {
+    "id": "pet_008",
+    "name": "摇滚鹦鹉",
+    "type": "entity_pet",
+    "cost": 3,
+    "rarity": "rare",
+    "description": "开麦就能带动气氛的热场王",
+    "tags": [
+      "bird",
+      "music"
+    ],
+    "income": 4,
+    "stress": 1,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_008.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_008.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_rock_parrot",
+    "derivedDescription": "相邻牛马效率 +15%",
+    "skills": [
+      {
+        "id": "skill_pet_008_a",
+        "templateId": "pet_adjacent_worker_income_bonus",
+        "templateName": "相邻牛马收益加成",
+        "trigger": "income_calc",
+        "targetMode": "adjacent_workers",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "income_modifier_aura",
+            "selector": "adjacent_orthogonal",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "percent": "$amount",
+              "statusKind": "worker_income_boost"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 15
+        },
+        "summary": "相邻牛马效率 +15%",
+        "descriptionPreview": "相邻牛马效率 +15%"
+      }
+    ]
+  },
+  {
+    "id": "pet_009",
+    "name": "KPI海狸",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "rare",
+    "description": "搭木头做看板的目标管理大师",
+    "tags": [
+      "beaver",
+      "builder"
+    ],
+    "income": 3,
+    "stress": 1,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_009.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_009.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_kpi_beaver",
+    "derivedDescription": "相邻萌宠每回合压力 -1",
+    "skills": [
+      {
+        "id": "skill_pet_009_a",
+        "templateId": "pet_adjacent_pet_stress_each_turn",
+        "templateName": "相邻萌宠压力变化",
+        "trigger": "turn_end",
+        "targetMode": "adjacent_pets",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "self",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "$amount",
+              "pattern": "orthogonal",
+              "excludeSelf": true,
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": -1
+        },
+        "summary": "相邻萌宠每回合压力 -1",
+        "descriptionPreview": "相邻萌宠每回合压力 -1"
+      }
+    ]
+  },
+  {
+    "id": "pet_010",
+    "name": "摆烂树懒",
+    "type": "entity_pet",
+    "cost": 1,
+    "rarity": "common",
+    "description": "不争不抢但从不爆炸",
+    "tags": [
+      "sloth",
+      "chill"
+    ],
+    "income": 1,
+    "stress": 0,
+    "stressLimit": 6,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_010.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_010.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_slacker_sloth",
+    "derivedDescription": "永远不会拆家",
+    "skills": [
+      {
+        "id": "skill_pet_010_a",
+        "templateId": "pet_never_meltdown",
+        "templateName": "不会拆家",
+        "trigger": "before_meltdown",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_meltdown",
+            "selector": "self",
+            "params": {}
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "永远不会拆家",
+        "descriptionPreview": "永远不会拆家"
+      }
+    ]
+  },
+  {
+    "id": "pet_011",
+    "name": "打卡柴犬",
+    "type": "entity_pet",
+    "cost": 2,
+    "rarity": "common",
+    "description": "准点开播且情绪管理极稳",
+    "tags": [
+      "dog",
+      "discipline"
+    ],
+    "income": 2,
+    "stress": 0,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_011.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_011.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_clockin_shiba",
+    "derivedDescription": "不受相邻单位压力传染影响",
+    "skills": [
+      {
+        "id": "skill_pet_011_a",
+        "templateId": "pet_ignore_adjacent_stress",
+        "templateName": "免疫相邻压力",
+        "trigger": "before_stress_apply",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_adjacent_stress",
+            "selector": "self",
+            "params": {}
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {},
+        "summary": "不受相邻单位压力传染影响",
+        "descriptionPreview": "不受相邻单位压力传染影响"
+      }
+    ]
+  },
+  {
+    "id": "pet_012",
+    "name": "热搜兔",
+    "type": "entity_pet",
+    "cost": 4,
+    "rarity": "epic",
+    "description": "追热点的速度比弹幕还快",
+    "tags": [
+      "rabbit",
+      "trend"
+    ],
+    "income": 3,
+    "stress": 1,
+    "stressLimit": 4,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_012.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_012.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_trending_rabbit",
+    "derivedDescription": "每回合自动抽 2 张牌",
+    "skills": [
+      {
+        "id": "skill_pet_012_a",
+        "templateId": "pet_draw_on_turn_start",
+        "templateName": "回合开始抽牌",
+        "trigger": "turn_start",
+        "targetMode": "self",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 2
+        },
+        "summary": "每回合自动抽 2 张牌",
+        "descriptionPreview": "每回合自动抽 2 张牌"
+      }
+    ]
+  },
+  {
+    "id": "pet_013",
+    "name": "危机公关狐獴",
+    "type": "entity_pet",
+    "cost": 3,
+    "rarity": "rare",
+    "description": "越到高压时刻越会安抚团队",
+    "tags": [
+      "meerkat",
+      "support"
+    ],
+    "income": 3,
+    "stress": 1,
+    "stressLimit": 3,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_013.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_013.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_pr_meerkat",
+    "derivedDescription": "相邻牛马效率 +20%",
+    "skills": [
+      {
+        "id": "skill_pet_013_a",
+        "templateId": "pet_adjacent_worker_income_bonus",
+        "templateName": "相邻牛马收益加成",
+        "trigger": "income_calc",
+        "targetMode": "adjacent_workers",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "income_modifier_aura",
+            "selector": "adjacent_orthogonal",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "percent": "$amount",
+              "statusKind": "worker_income_boost"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 20
+        },
+        "summary": "相邻牛马效率 +20%",
+        "descriptionPreview": "相邻牛马效率 +20%"
+      }
+    ]
+  },
+  {
+    "id": "pet_014",
+    "name": "奶茶熊猫",
+    "type": "entity_pet",
+    "cost": 4,
+    "rarity": "epic",
+    "description": "直播间常驻福袋担当，治愈感拉满",
+    "tags": [
+      "panda",
+      "cute"
+    ],
+    "income": 2,
+    "stress": 0,
+    "stressLimit": 5,
+    "canDiscard": true,
+    "image": "/assets/cards/pets/pet_014.svg",
+    "illustrationPath": "/assets/illustrations/pets/pet_014.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "modelProfileId": "model_milk_tea_panda",
+    "derivedDescription": "相邻萌宠每回合压力 -1",
+    "skills": [
+      {
+        "id": "skill_pet_014_a",
+        "templateId": "pet_adjacent_pet_stress_each_turn",
+        "templateName": "相邻萌宠压力变化",
+        "trigger": "turn_end",
+        "targetMode": "adjacent_pets",
+        "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "self",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "$amount",
+              "pattern": "orthogonal",
+              "excludeSelf": true,
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": -1
+        },
+        "summary": "相邻萌宠每回合压力 -1",
+        "descriptionPreview": "相邻萌宠每回合压力 -1"
       }
     ]
   },
@@ -890,6 +1477,202 @@
         "params": {},
         "summary": "将目标萌宠收回手牌",
         "descriptionPreview": "将一个萌宠收回手牌"
+      }
+    ]
+  },
+  {
+    "id": "action_009",
+    "name": "集体摸鱼",
+    "type": "action_buff",
+    "cost": 1,
+    "rarity": "rare",
+    "description": "短暂休整，先把工位气压降下来",
+    "tags": [
+      "utility",
+      "relief"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_009.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_009.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "全场 worker 压力 -1",
+    "skills": [
+      {
+        "id": "skill_action_009_a",
+        "templateId": "action_adjust_stress_all",
+        "templateName": "群体调整压力",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "adjust_stress_all",
+        "operations": [
+          {
+            "kind": "adjust_stress_by_selector",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "amount": "$amount",
+              "reason": "action"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "worker",
+          "amount": -1
+        },
+        "summary": "全场 worker 压力 -1",
+        "descriptionPreview": "全场 worker 压力 -1"
+      }
+    ]
+  },
+  {
+    "id": "action_010",
+    "name": "热搜投放",
+    "type": "action_buff",
+    "cost": 3,
+    "rarity": "legendary",
+    "description": "把预算全砸给当日热点",
+    "tags": [
+      "media",
+      "powerful"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_010.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_010.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "本回合所有 pet 收益翻倍",
+    "skills": [
+      {
+        "id": "skill_action_010_a",
+        "templateId": "action_income_multiplier_turn",
+        "templateName": "本回合收益倍率",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "income_multiplier_turn",
+        "operations": [
+          {
+            "kind": "multiply_income_turn",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "multiplier": "$multiplier"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "entityType": "pet",
+          "multiplier": 3
+        },
+        "summary": "本回合 pet 收益 x3",
+        "descriptionPreview": "本回合所有 pet 收益翻倍"
+      }
+    ]
+  },
+  {
+    "id": "action_011",
+    "name": "人事补招",
+    "type": "action_utility",
+    "cost": 1,
+    "rarity": "common",
+    "description": "临时扩编，先把人手补起来",
+    "tags": [
+      "draw",
+      "utility"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_011.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_011.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "抽 3 张牌",
+    "skills": [
+      {
+        "id": "skill_action_011_a",
+        "templateId": "action_draw_cards",
+        "templateName": "抽牌",
+        "trigger": "on_play",
+        "targetMode": "none",
+        "effectKind": "draw_cards",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "count": 3
+        },
+        "summary": "抽 3 张牌",
+        "descriptionPreview": "抽 3 张牌"
+      }
+    ]
+  },
+  {
+    "id": "action_012",
+    "name": "外包止损",
+    "type": "action_utility",
+    "cost": 1,
+    "rarity": "rare",
+    "description": "把锅甩出去，顺便给主播减压",
+    "tags": [
+      "sacrifice",
+      "utility"
+    ],
+    "canDiscard": true,
+    "image": "/assets/cards/actions/action_012.svg",
+    "illustrationPath": "/assets/illustrations/actions/action_012.svg",
+    "imageFitMode": "contain",
+    "imageAnchorPreset": "center",
+    "derivedDescription": "献祭一个牛马，降低相邻萌宠压力 3 点",
+    "skills": [
+      {
+        "id": "skill_action_012_a",
+        "templateId": "action_sacrifice_worker_relief",
+        "templateName": "献祭牛马减压",
+        "trigger": "on_play",
+        "targetMode": "worker",
+        "effectKind": "sacrifice_worker_reduce_adjacent_pet_stress",
+        "operations": [
+          {
+            "kind": "remove_entity",
+            "selector": "target",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "reason": "action"
+            }
+          },
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "target",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "-$amount",
+              "pattern": "orthogonal",
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
+        "supportsSecondTarget": false,
+        "params": {
+          "amount": 3
+        },
+        "summary": "献祭牛马后相邻萌宠压力 3",
+        "descriptionPreview": "献祭一个牛马，降低相邻萌宠压力 3 点"
       }
     ]
   },
