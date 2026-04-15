@@ -26,6 +26,7 @@ export interface SkillTemplateRow {
   targetMode: string;
   effectKind: string;
   paramSchemaJson: string;
+  operationsJson: string;
   summaryTemplate: string;
   descriptionTemplate: string;
   supportsSecondTarget: string;
@@ -85,4 +86,41 @@ export interface AdminDatasetResponse {
     };
     [key: string]: unknown;
   };
+}
+
+export interface TemplateParamFieldRow {
+  name: string;
+  label: string;
+  type: 'number' | 'text' | 'select';
+  defaultValue?: number | string;
+  options?: string[];
+}
+
+export interface TemplateOperationDraft {
+  id: string;
+  kind: string;
+  selector: string;
+  filtersJson: string;
+  paramsJson: string;
+}
+
+export interface TemplateEditorModel {
+  id: string;
+  name: string;
+  description: string;
+  scope: string;
+  trigger: string;
+  targetMode: string;
+  effectKind: string;
+  summaryTemplate: string;
+  descriptionTemplate: string;
+  supportsSecondTarget: string;
+  paramSchema: TemplateParamFieldRow[];
+  operations: TemplateOperationDraft[];
+}
+
+export interface TemplateValidationIssue {
+  templateId: string;
+  field: string;
+  message: string;
 }

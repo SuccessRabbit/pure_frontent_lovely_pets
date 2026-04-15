@@ -27,6 +27,7 @@
         "trigger": "passive",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [],
         "supportsSecondTarget": false,
         "params": {
           "text": "可献祭：消耗此单位降低相邻萌宠压力2点"
@@ -59,15 +60,25 @@
     "skills": [
       {
         "id": "skill_worker_002_a",
-        "templateId": "worker_passive_summary",
-        "templateName": "被动说明",
-        "trigger": "passive",
+        "templateId": "worker_ignore_adjacent_and_meltdown",
+        "templateName": "抗压老员工",
+        "trigger": "before_stress_apply",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_adjacent_stress",
+            "selector": "self",
+            "params": {}
+          },
+          {
+            "kind": "prevent_meltdown_splash",
+            "selector": "self",
+            "params": {}
+          }
+        ],
         "supportsSecondTarget": false,
-        "params": {
-          "text": "不受压力传染影响，不会被拆家波及"
-        },
+        "params": {},
         "summary": "不受压力传染影响，不会被拆家波及",
         "descriptionPreview": "不受压力传染影响，不会被拆家波及"
       }
@@ -92,21 +103,34 @@
     "illustrationPath": "/assets/illustrations/workers/worker_003.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
-    "derivedDescription": "相邻牛马效率-20%",
+    "derivedDescription": "相邻牛马效率 -20%",
     "skills": [
       {
         "id": "skill_worker_003_a",
-        "templateId": "worker_passive_summary",
-        "templateName": "被动说明",
-        "trigger": "passive",
-        "targetMode": "self",
+        "templateId": "worker_adjacent_worker_income_penalty",
+        "templateName": "内卷打击",
+        "trigger": "income_calc",
+        "targetMode": "adjacent_workers",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "income_modifier_aura",
+            "selector": "adjacent_orthogonal",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "percent": "-$amount",
+              "statusKind": "worker_income_penalty"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
-          "text": "相邻牛马效率-20%"
+          "amount": 20
         },
-        "summary": "相邻牛马效率-20%",
-        "descriptionPreview": "相邻牛马效率-20%"
+        "summary": "相邻牛马效率 -20%",
+        "descriptionPreview": "相邻牛马效率 -20%"
       }
     ]
   },
@@ -129,21 +153,31 @@
     "illustrationPath": "/assets/illustrations/workers/worker_004.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
-    "derivedDescription": "利息门槛从每5罐头降低为每4罐头",
+    "derivedDescription": "利息门槛从每 10 罐头降低为每 4 罐头",
     "skills": [
       {
         "id": "skill_worker_004_a",
-        "templateId": "worker_passive_summary",
-        "templateName": "被动说明",
-        "trigger": "passive",
+        "templateId": "worker_interest_threshold_reduce",
+        "templateName": "利息门槛降低",
+        "trigger": "income_calc",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "modify_interest_rule",
+            "selector": "self",
+            "params": {
+              "threshold": "$threshold",
+              "stackMode": "min"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
-          "text": "利息门槛从每5罐头降低为每4罐头"
+          "threshold": 4
         },
-        "summary": "利息门槛从每5罐头降低为每4罐头",
-        "descriptionPreview": "利息门槛从每5罐头降低为每4罐头"
+        "summary": "利息门槛改为每 4 罐头",
+        "descriptionPreview": "利息门槛从每 10 罐头降低为每 4 罐头"
       }
     ]
   },
@@ -166,21 +200,30 @@
     "illustrationPath": "/assets/illustrations/workers/worker_005.svg",
     "imageFitMode": "contain",
     "imageAnchorPreset": "center",
-    "derivedDescription": "每次拆家发生时，从废墟中捡回2罐头",
+    "derivedDescription": "每次拆家发生时，从废墟中捡回 2 罐头",
     "skills": [
       {
         "id": "skill_worker_005_a",
-        "templateId": "worker_passive_summary",
-        "templateName": "被动说明",
-        "trigger": "passive",
+        "templateId": "worker_gain_cans_on_meltdown",
+        "templateName": "废墟捡钱",
+        "trigger": "after_meltdown",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "on_meltdown_gain_cans",
+            "selector": "self",
+            "params": {
+              "amount": "$amount"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
-          "text": "每次拆家发生时，从废墟中捡回2罐头"
+          "amount": 2
         },
-        "summary": "每次拆家发生时，从废墟中捡回2罐头",
-        "descriptionPreview": "每次拆家发生时，从废墟中捡回2罐头"
+        "summary": "每次拆家返还 2 罐头",
+        "descriptionPreview": "每次拆家发生时，从废墟中捡回 2 罐头"
       }
     ]
   }

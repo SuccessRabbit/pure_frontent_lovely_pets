@@ -145,6 +145,61 @@ const STATUS_VISUALS: Record<string, StatusVisualSpec> = {
     vfxKey: 'draw_engine',
     priority: 18,
   },
+  worker_ignore_adjacent_and_meltdown: {
+    kind: 'worker_ignore_adjacent_and_meltdown',
+    title: '抗压硬扛',
+    shortLabel: '稳',
+    theme: 'passive',
+    color: 0x8fe3cf,
+    symbol: '#',
+    iconKey: 'worker_ignore_adjacent_and_meltdown',
+    vfxKey: 'calm_guard',
+    priority: 18,
+  },
+  worker_adjacent_worker_income_penalty: {
+    kind: 'worker_adjacent_worker_income_penalty',
+    title: '内卷打击',
+    shortLabel: '卷',
+    theme: 'passive',
+    color: 0xff9a62,
+    symbol: '!',
+    iconKey: 'worker_adjacent_worker_income_penalty',
+    vfxKey: 'stress_pressure',
+    priority: 18,
+  },
+  worker_interest_threshold_reduce: {
+    kind: 'worker_interest_threshold_reduce',
+    title: '精算利息',
+    shortLabel: '利',
+    theme: 'passive',
+    color: 0xf6c85f,
+    symbol: '$',
+    iconKey: 'worker_interest_threshold_reduce',
+    vfxKey: 'income_boost',
+    priority: 18,
+  },
+  worker_gain_cans_on_meltdown: {
+    kind: 'worker_gain_cans_on_meltdown',
+    title: '废墟捡钱',
+    shortLabel: '财',
+    theme: 'passive',
+    color: 0xffd166,
+    symbol: '$',
+    iconKey: 'worker_gain_cans_on_meltdown',
+    vfxKey: 'income_boost',
+    priority: 18,
+  },
+  worker_income_penalty: {
+    kind: 'worker_income_penalty',
+    title: '收益压制',
+    shortLabel: '降',
+    theme: 'debuff',
+    color: 0xff8f70,
+    symbol: '-',
+    iconKey: 'worker_income_penalty',
+    vfxKey: 'stress_pressure',
+    priority: 34,
+  },
 };
 
 export function resolveStatusVisual(kind: string, fallbackTheme: StatusTheme = 'utility'): StatusVisualSpec {
@@ -196,6 +251,18 @@ function createPassiveStatusFromSkill(cardId: string, skill: RuntimeSkillBinding
   }
   if (skill.templateId === 'pet_draw_on_turn_start') {
     return makePassive('pet_draw_on_turn_start');
+  }
+  if (skill.templateId === 'worker_ignore_adjacent_and_meltdown') {
+    return makePassive('worker_ignore_adjacent_and_meltdown');
+  }
+  if (skill.templateId === 'worker_adjacent_worker_income_penalty') {
+    return makePassive('worker_adjacent_worker_income_penalty');
+  }
+  if (skill.templateId === 'worker_interest_threshold_reduce') {
+    return makePassive('worker_interest_threshold_reduce');
+  }
+  if (skill.templateId === 'worker_gain_cans_on_meltdown') {
+    return makePassive('worker_gain_cans_on_meltdown');
   }
   return null;
 }

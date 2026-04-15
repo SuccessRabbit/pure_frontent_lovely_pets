@@ -23,6 +23,15 @@
         "trigger": "on_play",
         "targetMode": "pet",
         "effectKind": "set_stress_value",
+        "operations": [
+          {
+            "kind": "set_stress",
+            "selector": "target",
+            "params": {
+              "value": "$value"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "value": 0
@@ -56,6 +65,18 @@
         "trigger": "on_play",
         "targetMode": "none",
         "effectKind": "income_multiplier_turn",
+        "operations": [
+          {
+            "kind": "multiply_income_turn",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "multiplier": "$multiplier"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "entityType": "worker",
@@ -71,6 +92,15 @@
         "trigger": "on_play",
         "targetMode": "none",
         "effectKind": "queue_card_next_turn",
+        "operations": [
+          {
+            "kind": "queue_card_next_turn",
+            "selector": "self",
+            "params": {
+              "cardId": "$cardId"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "cardId": "action_resentment"
@@ -104,6 +134,13 @@
         "trigger": "on_play",
         "targetMode": "swap",
         "effectKind": "swap_positions",
+        "operations": [
+          {
+            "kind": "swap_entities",
+            "selector": "target",
+            "params": {}
+          }
+        ],
         "supportsSecondTarget": true,
         "params": {},
         "summary": "交换两个单位的位置",
@@ -135,6 +172,18 @@
         "trigger": "on_play",
         "targetMode": "none",
         "effectKind": "income_multiplier_turn",
+        "operations": [
+          {
+            "kind": "multiply_income_turn",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "multiplier": "$multiplier"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "entityType": "pet",
@@ -169,6 +218,19 @@
         "trigger": "on_play",
         "targetMode": "none",
         "effectKind": "adjust_stress_all",
+        "operations": [
+          {
+            "kind": "adjust_stress_by_selector",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "amount": "$amount",
+              "reason": "action"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "entityType": "pet",
@@ -203,6 +265,30 @@
         "trigger": "on_play",
         "targetMode": "worker",
         "effectKind": "sacrifice_worker_reduce_adjacent_pet_stress",
+        "operations": [
+          {
+            "kind": "remove_entity",
+            "selector": "target",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "reason": "action"
+            }
+          },
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "target",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "-$amount",
+              "pattern": "orthogonal",
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "amount": 2
@@ -236,6 +322,15 @@
         "trigger": "on_play",
         "targetMode": "none",
         "effectKind": "draw_cards",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "count": 2
@@ -269,6 +364,16 @@
         "trigger": "on_play",
         "targetMode": "pet",
         "effectKind": "return_pet_to_hand",
+        "operations": [
+          {
+            "kind": "return_entity_to_hand",
+            "selector": "target",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {}
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {},
         "summary": "将目标萌宠收回手牌",
@@ -300,6 +405,19 @@
         "trigger": "on_play",
         "targetMode": "none",
         "effectKind": "adjust_stress_all",
+        "operations": [
+          {
+            "kind": "adjust_stress_by_selector",
+            "selector": "all_entities",
+            "filters": {
+              "entityType": "$entityType"
+            },
+            "params": {
+              "amount": "$amount",
+              "reason": "action"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "entityType": "pet",

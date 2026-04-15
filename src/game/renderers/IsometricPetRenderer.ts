@@ -732,17 +732,12 @@ export class IsometricPetRenderer {
     row: number,
     col: number
   ): { x: number; y: number; scale: number } | null {
-    const petMesh = this.petMeshes.get(this.gridKey(row, col));
-    if (!petMesh) return null;
-
-    const bounds = this.getProjectedBounds(petMesh.rig.root);
-    if (!bounds) return null;
-
-    const width = Math.max(1, bounds.maxX - bounds.minX);
+    const center = this.getGridCellCenterAnchor(row, col);
+    if (!center) return null;
     return {
-      x: bounds.maxX + 8,
-      y: bounds.minY + 10,
-      scale: Math.max(1, Math.min(1.22, width / 150)),
+      x: center.x + 57,
+      y: center.y - 53,
+      scale: 1.08,
     };
   }
 

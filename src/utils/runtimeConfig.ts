@@ -7,6 +7,7 @@ export interface RuntimeSkillBinding {
   trigger: string;
   targetMode: string;
   effectKind: string;
+  operations: Array<Record<string, unknown>>;
   supportsSecondTarget: boolean;
   params: Record<string, unknown>;
   summary: string;

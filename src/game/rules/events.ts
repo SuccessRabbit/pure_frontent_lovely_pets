@@ -72,6 +72,18 @@ export type DomainEvent =
       success: boolean;
     }
   | {
+      type: 'skill_triggered';
+      skillId: string;
+      templateId: string;
+      trigger: string;
+      sourceCardId: string;
+      sourceEntityId?: string;
+      targetEntityId?: string;
+      targetRow?: number;
+      targetCol?: number;
+      operationKind?: string;
+    }
+  | {
       type: 'status_added';
       status: StatusInstance;
       targetRow?: number;
@@ -91,6 +103,27 @@ export type DomainEvent =
       targetRow?: number;
       targetCol?: number;
       reason: 'expired' | 'entity_removed' | 'consumed' | 'replaced';
+    }
+  | {
+      type: 'interest_rule_applied';
+      sourceCardId: string;
+      sourceEntityId: string;
+      threshold: number;
+    }
+  | {
+      type: 'income_modifier_applied';
+      sourceCardId: string;
+      sourceEntityId: string;
+      targetEntityId: string;
+      targetRow: number;
+      targetCol: number;
+      percent: number;
+    }
+  | {
+      type: 'cans_granted_by_skill';
+      sourceCardId: string;
+      sourceEntityId: string;
+      amount: number;
     }
   | {
       type: 'status_triggered';

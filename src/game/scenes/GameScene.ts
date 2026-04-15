@@ -76,6 +76,7 @@ export class GameScene extends Scene {
   private hudToastAnchor!: PIXI.Container;
   private toastPresenter: ToastPresenter;
   private globalStatusHud!: PIXI.Container;
+  private entityStatusHud!: PIXI.Container;
   private statusTooltipLayer!: PIXI.Container;
   private statusTooltipBg!: PIXI.Graphics;
   private statusTooltipTitle!: PIXI.Text;
@@ -114,6 +115,10 @@ export class GameScene extends Scene {
     this.globalStatusHud = new PIXI.Container();
     this.globalStatusHud.position.set(1180, 102);
     this.uiContainer.addChild(this.globalStatusHud);
+    this.entityStatusHud = new PIXI.Container();
+    this.entityStatusHud.eventMode = 'static';
+    this.entityStatusHud.sortableChildren = true;
+    this.uiContainer.addChild(this.entityStatusHud);
 
     this.uiController = new GameSceneUiController({
       uiContainer: this.uiContainer,
@@ -555,6 +560,107 @@ export class GameScene extends Scene {
     this.statusTooltipLayer.addChild(this.statusTooltipTitle);
     this.statusTooltipLayer.addChild(this.statusTooltipDescription);
     this.uiContainer.addChild(this.statusTooltipLayer);
+  }
+
+  private updateEntityStatusHud(
+    grid: (GridEntity | null)[][],
+    entityStatuses: Record<string, StatusInstance[]>
+  ) {
+    this.entityStatusHud.removeChildren().forEach(child => child.destroy({ children: true }));
+
+    this.gridCells.forEach(cell => {
+      const entity = grid[cell.row][cell.col];
+      if (!entity) return;
+
+      const statuses = entityStatuses[entity.id] ?? [];
+      const visible = statuses
+        .filter(status => !status.isPassive || status.shortLabel.length > 0)
+        .sort(
+          (a, b) =>
+            resolveStatusVisual(b.kind, b.theme).priority - resolveStatusVisual(a.kind, a.theme).priority
+        )
+        .slice(0, 3);
+
+      if (visible.length === 0) return;
+
+      const anchor = this.petRenderer?.getPetStatusAnchor(cell.row, cell.col);
+      if (!anchor) return;
+
+      const wrap = new PIXI.Container();
+      wrap.position.set(anchor.x, anchor.y);
+      wrap.zIndex = 50 + cell.row * 10 + cell.col;
+      this.entityStatusHud.addChild(wrap);
+
+      visible.forEach((status, index) => {
+        const visual = resolveStatusVisual(status.kind, status.theme);
+        const badge = new PIXI.Container();
+        badge.position.set(index * 34, 0);
+        badge.eventMode = 'static';
+        badge.cursor = 'help';
+        badge.hitArea = new PIXI.Rectangle(0, 0, 28, 28);
+
+        const bg = new PIXI.Graphics();
+        bg.beginFill(visual.color, 0.9);
+        bg.lineStyle(1.5, 0xffffff, 0.72);
+        bg.drawRoundedRect(0, 0, 28, 28, 10);
+        bg.endFill();
+        badge.addChild(bg);
+
+        const label = new PIXI.Text(visual.shortLabel || visual.symbol, {
+          fontFamily: VISUAL_THEME.typography.heading,
+          fontSize: 11,
+          fill: 0x1f1b2d,
+          fontWeight: 'bold',
+          stroke: 0xffffff,
+        });
+        label.anchor.set(0.5);
+        label.position.set(14, 11.5);
+        badge.addChild(label);
+
+        if (!status.isPassive && status.duration > 0) {
+          const duration = new PIXI.Text(`${status.duration}`, {
+            fontFamily: VISUAL_THEME.typography.body,
+            fontSize: 9,
+            fill: 0xfefefe,
+            fontWeight: 'bold',
+            stroke: strokeDark,
+          });
+          duration.anchor.set(0.5);
+          duration.position.set(14, 21.5);
+          badge.addChild(duration);
+        }
+
+        const tooltipKey = `entity:${status.id}`;
+        const description = this.getStatusDescription(status);
+        badge.on('pointerover', (e: PIXI.FederatedPointerEvent) => {
+          e.stopPropagation();
+          this.showStatusTooltip(e.global.x + 18, e.global.y + 12, status.title, description, null);
+        });
+        badge.on('pointerout', (e: PIXI.FederatedPointerEvent) => {
+          e.stopPropagation();
+          if (this.pinnedStatusTooltipKey === tooltipKey) return;
+          this.hideStatusTooltip(false);
+        });
+        badge.on('pointertap', (e: PIXI.FederatedPointerEvent) => {
+          e.stopPropagation();
+          this.toggleStatusTooltip(tooltipKey, e.global.x + 18, e.global.y + 12, status.title, description);
+        });
+
+        wrap.addChild(badge);
+      });
+
+      if (statuses.length > 3) {
+        const more = new PIXI.Text(`+${statuses.length - 3}`, {
+          fontFamily: VISUAL_THEME.typography.body,
+          fontSize: 12,
+          fill: 0xf7f7f7,
+          fontWeight: 'bold',
+          stroke: strokeDark,
+        });
+        more.position.set(108, 7);
+        wrap.addChild(more);
+      }
+    });
   }
 
   private isHandTrimUiActive(): boolean {
@@ -1004,6 +1110,7 @@ export class GameScene extends Scene {
         this.petRenderer.updatePetAura(cell.row, cell.col, null, 0);
       }
     });
+    this.updateEntityStatusHud(grid, entityStatuses);
     this.updateGlobalStatusHud(globalStatuses);
     this.syncVisualMood();
   }

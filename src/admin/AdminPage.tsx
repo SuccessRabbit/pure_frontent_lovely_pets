@@ -1,6 +1,8 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { loadAdminDatasets, saveAdminDatasets, subscribeToAdminEvents } from './api';
 import { ModelPreviewCanvas } from './ModelPreviewCanvas';
+import { AdminSelect } from './AdminSelect';
+import { TemplateWorkspace, collectTemplateValidationIssues } from './TemplateWorkspace';
 import type {
   AdminDatasetResponse,
   CardRow,
@@ -8,9 +10,10 @@ import type {
   ModelProfileRow,
   RawAdminDatasets,
   SkillTemplateRow,
+  TemplateValidationIssue,
 } from './types';
 
-type AdminTab = 'cards' | 'global';
+type AdminTab = 'cards' | 'templates' | 'global';
 type CardViewMode = 'detail' | 'table';
 type CardSortField = 'type' | 'name' | 'id' | 'cost' | 'rarity' | 'income' | 'stress' | 'stressLimit' | 'canDiscard' | 'tags';
 type SortDirection = 'asc' | 'desc';
@@ -59,19 +62,6 @@ interface ResourcePreviewProps {
   src: string;
   fit?: 'contain' | 'cover';
   scaleMode?: 'fill' | 'fit';
-}
-
-interface SelectOption {
-  value: string;
-  label: string;
-}
-
-interface CustomSelectProps {
-  value: string;
-  options: SelectOption[];
-  disabled?: boolean;
-  compact?: boolean;
-  onChange: (value: string) => void;
 }
 
 const shellStyle: CSSProperties = {
@@ -123,6 +113,14 @@ function renderBindingSummary(template: SkillTemplateRow | undefined, binding: C
 function readParamSchema(template: SkillTemplateRow | undefined): ParamSchemaField[] {
   if (!template) return [];
   return parseJsonSafe<ParamSchemaField[]>(template.paramSchemaJson, []);
+}
+
+function readOperationsSummary(template: SkillTemplateRow | undefined) {
+  if (!template) return [];
+  const operations = parseJsonSafe<Array<Record<string, unknown>>>(template.operationsJson, []);
+  return operations
+    .map(operation => String(operation.kind ?? '').trim())
+    .filter(Boolean);
 }
 
 function cardSkillBindings(raw: RawAdminDatasets, cardId: string) {
@@ -258,21 +256,6 @@ function tableInputStyle(disabled = false): CSSProperties {
   };
 }
 
-function customSelectButtonStyle(disabled = false, compact = false, open = false): CSSProperties {
-  const baseStyle = compact ? tableInputStyle(disabled) : inputStyle(true);
-  return {
-    ...baseStyle,
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-    textAlign: 'left',
-    cursor: disabled ? 'not-allowed' : 'pointer',
-    borderColor: open ? 'rgba(255,210,133,0.36)' : 'rgba(255,255,255,0.14)',
-    background: open ? 'rgba(255,210,133,0.10)' : baseStyle.background,
-  };
-}
-
 const compactNumericColumnStyle: CSSProperties = {
   minWidth: 72,
   maxWidth: 92,
@@ -296,119 +279,6 @@ const compactHeaderTextStyle: CSSProperties = {
   overflowWrap: 'anywhere',
   lineHeight: 1.3,
 };
-
-function CustomSelect({ value, options, disabled = false, compact = false, onChange }: CustomSelectProps) {
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement | null>(null);
-  const selectedOption = options.find(option => option.value === value) ?? options[0] ?? null;
-
-  useEffect(() => {
-    if (!open) return undefined;
-
-    function handlePointerDown(event: PointerEvent) {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    }
-
-    window.addEventListener('pointerdown', handlePointerDown);
-    return () => {
-      window.removeEventListener('pointerdown', handlePointerDown);
-    };
-  }, [open]);
-
-  useEffect(() => {
-    if (disabled) {
-      setOpen(false);
-    }
-  }, [disabled]);
-
-  return (
-    <div ref={rootRef} style={{ position: 'relative' }}>
-      <button
-        type="button"
-        disabled={disabled}
-        onClick={() => {
-          if (!disabled) {
-            setOpen(current => !current);
-          }
-        }}
-        style={customSelectButtonStyle(disabled, compact, open)}
-      >
-        <span
-          style={{
-            flex: 1,
-            minWidth: 0,
-            whiteSpace: 'normal',
-            overflowWrap: 'anywhere',
-            opacity: selectedOption ? 1 : 0.48,
-          }}
-        >
-          {selectedOption?.label ?? '未选择'}
-        </span>
-        <span
-          style={{
-            flexShrink: 0,
-            opacity: 0.72,
-            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
-            transition: 'transform 120ms ease',
-          }}
-        >
-          ▾
-        </span>
-      </button>
-
-      {open && !disabled ? (
-        <div
-          style={{
-            position: 'absolute',
-            top: 'calc(100% + 8px)',
-            left: 0,
-            right: 0,
-            zIndex: 40,
-            padding: 6,
-            borderRadius: 16,
-            border: '1px solid rgba(255,255,255,0.12)',
-            background: 'rgba(20,16,22,0.98)',
-            boxShadow: '0 20px 40px rgba(0,0,0,0.28)',
-            backdropFilter: 'blur(14px)',
-          }}
-        >
-          <div style={{ display: 'grid', gap: 4, maxHeight: compact ? 220 : 280, overflowY: 'auto' }}>
-            {options.map(option => {
-              const selected = option.value === value;
-              return (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(option.value);
-                    setOpen(false);
-                  }}
-                  style={{
-                    width: '100%',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    borderRadius: 12,
-                    padding: compact ? '8px 10px' : '10px 12px',
-                    background: selected ? 'rgba(255,210,133,0.18)' : 'rgba(255,255,255,0.04)',
-                    color: '#fff8ef',
-                    textAlign: 'left',
-                    cursor: 'pointer',
-                    whiteSpace: 'normal',
-                    overflowWrap: 'anywhere',
-                    fontSize: compact ? 13 : 14,
-                  }}
-                >
-                  {option.label}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 const rarityRank: Record<string, number> = {
   common: 0,
@@ -539,7 +409,7 @@ function CardEditorPanel({
         </label>
         <label>
           <div style={{ marginBottom: 6 }}>稀有度</div>
-          <CustomSelect
+          <AdminSelect
             value={selectedCard.rarity}
             disabled={!canEdit}
             onChange={value => updateCard({ rarity: value })}
@@ -616,7 +486,7 @@ function CardEditorPanel({
       <div style={{ display: 'grid', gap: 12 }}>
         <label>
           <div style={{ marginBottom: 6 }}>卡面图片资源</div>
-          <CustomSelect
+          <AdminSelect
             value={selectedCard.cardImagePath}
             disabled={!canEdit}
             onChange={value => updateCard({ cardImagePath: value })}
@@ -634,7 +504,7 @@ function CardEditorPanel({
         />
         <label>
           <div style={{ marginBottom: 6 }}>插画资源</div>
-          <CustomSelect
+          <AdminSelect
             value={selectedCard.illustrationPath}
             disabled={!canEdit}
             onChange={value => updateCard({ illustrationPath: value })}
@@ -649,7 +519,7 @@ function CardEditorPanel({
           <>
             <label>
               <div style={{ marginBottom: 6 }}>3D 模型配置</div>
-              <CustomSelect
+              <AdminSelect
                 value={selectedCard.modelProfileId}
                 disabled={!canEdit}
                 onChange={value => updateCard({ modelProfileId: value })}
@@ -673,7 +543,7 @@ function CardEditorPanel({
               >
                 <label>
                   <div style={{ marginBottom: 6 }}>模型预设 source</div>
-                  <CustomSelect
+                  <AdminSelect
                     value={selectedModelProfile.source}
                     disabled={!canEdit}
                     onChange={value => updateModelProfile(selectedModelProfile.id, { source: value })}
@@ -737,6 +607,11 @@ function CardEditorPanel({
                     {template?.trigger ?? 'unknown'} / {template?.targetMode ?? 'unknown'} /{' '}
                     {template?.effectKind ?? 'unknown'}
                   </div>
+                  {readOperationsSummary(template).length > 0 ? (
+                    <div style={{ fontSize: 12, opacity: 0.56, marginTop: 4 }}>
+                      ops: {readOperationsSummary(template).join(' -> ')}
+                    </div>
+                  ) : null}
                 </div>
                 <button
                   disabled={!canEdit}
@@ -755,7 +630,7 @@ function CardEditorPanel({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 10, marginBottom: 12 }}>
-                <CustomSelect
+                <AdminSelect
                   value={binding.templateId}
                   disabled={!canEdit}
                   onChange={value => updateBinding(binding.id, { templateId: value })}
@@ -767,7 +642,7 @@ function CardEditorPanel({
                   onChange={event => updateBinding(binding.id, { sortOrder: event.target.value })}
                   style={inputStyle(true)}
                 />
-                <CustomSelect
+                <AdminSelect
                   value={binding.enabled}
                   disabled={!canEdit}
                   onChange={value => updateBinding(binding.id, { enabled: value })}
@@ -784,7 +659,7 @@ function CardEditorPanel({
                     <label key={field.name}>
                       <div style={{ marginBottom: 6 }}>{field.label}</div>
                       {field.type === 'select' ? (
-                        <CustomSelect
+                        <AdminSelect
                           value={String(params[field.name] ?? field.defaultValue ?? '')}
                           disabled={!canEdit}
                           onChange={value => {
@@ -912,6 +787,7 @@ export function AdminPage() {
   const [tab, setTab] = useState<AdminTab>('cards');
   const [viewMode, setViewMode] = useState<CardViewMode>('detail');
   const [selectedCardId, setSelectedCardId] = useState<string>('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [tableEditorOpen, setTableEditorOpen] = useState(false);
   const [search, setSearch] = useState('');
   const [cardTypeFilter, setCardTypeFilter] = useState<string>('all');
@@ -919,6 +795,7 @@ export function AdminPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
+  const [templateIssues, setTemplateIssues] = useState<TemplateValidationIssue[]>([]);
   const canEdit = response?.canEdit ?? false;
 
   useEffect(() => {
@@ -927,6 +804,7 @@ export function AdminPage() {
       setResponse(payload);
       setDraft(cloneDatasets(payload.raw));
       setSelectedCardId(payload.raw.cards[0]?.id ?? '');
+      setSelectedTemplateId(payload.raw.skillTemplates[0]?.id ?? '');
     })();
   }, []);
 
@@ -993,6 +871,14 @@ export function AdminPage() {
     if (!draft || !selectedCard) return [];
     return cardSkillBindings(draft, selectedCard.id);
   }, [draft, selectedCard]);
+
+  useEffect(() => {
+    if (!draft) {
+      setTemplateIssues([]);
+      return;
+    }
+    setTemplateIssues(collectTemplateValidationIssues(draft));
+  }, [draft]);
 
   const availableTemplates = useMemo(() => {
     if (!draft || !selectedCard) return [];
@@ -1151,6 +1037,17 @@ export function AdminPage() {
 
   async function handleSave() {
     if (!canEdit || !draft) return;
+    const issues = collectTemplateValidationIssues(draft);
+    setTemplateIssues(issues);
+    if (issues.length > 0) {
+      setError(`模板工作台存在 ${issues.length} 条前端校验问题，请先修复后再保存。`);
+      setInfo('');
+      if (issues[0]?.templateId) {
+        setSelectedTemplateId(issues[0].templateId);
+        setTab('templates');
+      }
+      return;
+    }
     setSaving(true);
     setError('');
     setInfo('');
@@ -1158,6 +1055,7 @@ export function AdminPage() {
       const next = await saveAdminDatasets(draft);
       setResponse(next);
       setDraft(cloneDatasets(next.raw));
+      setTemplateIssues(collectTemplateValidationIssues(next.raw));
       setInfo('CSV 已保存并重新编译，游戏页会在本地热更新时刷新。');
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : String(saveError));
@@ -1207,7 +1105,7 @@ export function AdminPage() {
         </div>
 
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          {(['cards', 'global'] as AdminTab[]).map(item => (
+          {(['cards', 'templates', 'global'] as AdminTab[]).map(item => (
             <button
               key={item}
               onClick={() => setTab(item)}
@@ -1221,7 +1119,7 @@ export function AdminPage() {
                 cursor: 'pointer',
               }}
             >
-              {item === 'cards' ? '卡牌与技能' : '全局参数'}
+              {item === 'cards' ? '卡牌与技能' : item === 'templates' ? '模板工作台' : '全局参数'}
             </button>
           ))}
         </div>
@@ -1231,6 +1129,11 @@ export function AdminPage() {
         {!response.canEdit ? (
           <div style={{ color: '#ffd9a5', marginBottom: 12 }}>
             当前环境未连接本地 Admin API，线上仅提供只读预览。
+          </div>
+        ) : null}
+        {templateIssues.length > 0 ? (
+          <div style={{ color: '#ffcfaa', marginBottom: 12 }}>
+            模板工作台有 {templateIssues.length} 条待修复校验问题。
           </div>
         ) : null}
 
@@ -1302,7 +1205,7 @@ export function AdminPage() {
                   placeholder="搜索 ID / 名称 / 标签 / 稀有度"
                   style={inputStyle(true)}
                 />
-                <CustomSelect
+                <AdminSelect
                   value={cardTypeFilter}
                   onChange={value => setCardTypeFilter(value)}
                   options={[
@@ -1385,7 +1288,7 @@ export function AdminPage() {
               >
                 <div style={{ fontWeight: 700 }}>列表排序</div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
-                  <CustomSelect
+                  <AdminSelect
                     value={tableSort.field}
                     onChange={value =>
                       setTableSort({
@@ -1526,6 +1429,35 @@ export function AdminPage() {
               </div>
             )}
           </>
+        ) : tab === 'templates' ? (
+          <div style={{ display: 'grid', gap: 10 }}>
+            <div
+              style={{
+                borderRadius: 14,
+                padding: 12,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>模板工作台说明</div>
+              <div style={{ fontSize: 13, opacity: 0.74, lineHeight: 1.6 }}>
+                这里维护 `skillTemplates` 的参数 schema、operations 编排链、模板文案和引用影响面。
+              </div>
+            </div>
+            <div
+              style={{
+                borderRadius: 14,
+                padding: 12,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>当前状态</div>
+              <div style={{ fontSize: 13, opacity: 0.74 }}>模板总数 {draft.skillTemplates.length}</div>
+              <div style={{ fontSize: 13, opacity: 0.74 }}>绑定总数 {draft.cardSkills.length}</div>
+              <div style={{ fontSize: 13, opacity: 0.74 }}>前端校验问题 {templateIssues.length}</div>
+            </div>
+          </div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
             {draft.globalConfig.map((entry, index) => (
@@ -1772,7 +1704,7 @@ export function AdminPage() {
                             />
                           </td>
                           <td style={{ padding: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 126 }}>
-                            <CustomSelect
+                            <AdminSelect
                               value={card.rarity}
                               disabled={!response.canEdit}
                               compact
@@ -1844,7 +1776,7 @@ export function AdminPage() {
                               ...compactBooleanColumnStyle,
                             }}
                           >
-                            <CustomSelect
+                            <AdminSelect
                               value={card.canDiscard}
                               disabled={!response.canEdit}
                               compact
@@ -1914,12 +1846,49 @@ export function AdminPage() {
               </div>
             </div>
           )
+        ) : tab === 'templates' ? (
+          <div style={{ minHeight: '100%' }}>
+            <TemplateWorkspace
+              draft={draft}
+              canEdit={response.canEdit}
+              selectedTemplateId={selectedTemplateId}
+              onSelectTemplate={setSelectedTemplateId}
+              validationIssues={templateIssues}
+              onDraftChange={(updater: (current: RawAdminDatasets) => RawAdminDatasets) => {
+                setDraft(current => (current ? updater(current) : current));
+              }}
+            />
+          </div>
         ) : (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%' }}>选择左侧卡牌开始编辑</div>
         )}
       </main>
 
       <aside style={{ padding: 24, overflow: 'auto' }}>
+        {tab === 'templates' ? (
+          <div style={{ display: 'grid', gap: 18 }}>
+            <div
+              style={{
+                borderRadius: 20,
+                padding: 18,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              {sectionTitle('Template Status')}
+              <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                  结构化编排结果会在中间工作台实时更新。保存时仍以 CSV 编译链作为最终权威校验。
+                </div>
+                <div style={{ fontSize: 13, opacity: 0.72 }}>当前模板数 {draft.skillTemplates.length}</div>
+                <div style={{ fontSize: 13, opacity: 0.72 }}>当前绑定数 {draft.cardSkills.length}</div>
+                <div style={{ fontSize: 13, opacity: templateIssues.length > 0 ? 1 : 0.72, color: templateIssues.length > 0 ? '#ffcece' : '#d3f9c6' }}>
+                  {templateIssues.length > 0 ? `前端校验问题 ${templateIssues.length} 条` : '前端结构校验通过'}
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
         <div style={{ display: 'grid', gap: 18 }}>
           <div
             style={{
@@ -2074,6 +2043,11 @@ export function AdminPage() {
                         触发 {template?.trigger ?? '-'} {'->'} 目标 {template?.targetMode ?? '-'} {'->'} 效果{' '}
                         {template?.effectKind ?? '-'}
                       </div>
+                      {readOperationsSummary(template).length > 0 ? (
+                        <div style={{ fontSize: 12, opacity: 0.56, marginBottom: 8 }}>
+                          执行链 {readOperationsSummary(template).join(' -> ')}
+                        </div>
+                      ) : null}
                       <div>{renderBindingSummary(template, binding)}</div>
                     </div>
                   );
@@ -2084,6 +2058,7 @@ export function AdminPage() {
             )}
           </div>
         </div>
+        )}
       </aside>
 
       {tab === 'cards' && viewMode === 'table' && tableEditorOpen && selectedCard ? (

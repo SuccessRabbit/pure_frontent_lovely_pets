@@ -52,6 +52,7 @@ const DATASET_HEADERS = {
     'targetMode',
     'effectKind',
     'paramSchemaJson',
+    'operationsJson',
     'summaryTemplate',
     'descriptionTemplate',
     'supportsSecondTarget',
@@ -96,6 +97,56 @@ function applyTemplate(template, params) {
   return String(template ?? '').replace(/\{(\w+)\}/g, (_match, key) => formatValueForTemplate(params[key]));
 }
 
+function defaultOperationsForEffectKind(effectKind) {
+  switch (effectKind) {
+    case 'set_stress_value':
+      return [{ kind: 'set_stress', selector: 'target', params: { value: '$value' } }];
+    case 'income_multiplier_turn':
+      return [
+        {
+          kind: 'multiply_income_turn',
+          selector: 'all_entities',
+          filters: { entityType: '$entityType' },
+          params: { multiplier: '$multiplier' },
+        },
+      ];
+    case 'queue_card_next_turn':
+      return [{ kind: 'queue_card_next_turn', selector: 'self', params: { cardId: '$cardId' } }];
+    case 'swap_positions':
+      return [{ kind: 'swap_entities', selector: 'target', params: {} }];
+    case 'adjust_stress_all':
+      return [
+        {
+          kind: 'adjust_stress_by_selector',
+          selector: 'all_entities',
+          filters: { entityType: '$entityType' },
+          params: { amount: '$amount', reason: 'action' },
+        },
+      ];
+    case 'sacrifice_worker_reduce_adjacent_pet_stress':
+      return [
+        {
+          kind: 'remove_entity',
+          selector: 'target',
+          filters: { entityType: 'worker' },
+          params: { reason: 'action' },
+        },
+        {
+          kind: 'adjust_stress_adjacent',
+          selector: 'target',
+          filters: { entityType: 'pet' },
+          params: { amount: '-$amount', pattern: 'orthogonal', reason: 'skill_adjacent' },
+        },
+      ];
+    case 'draw_cards':
+      return [{ kind: 'draw_cards', selector: 'self', params: { count: '$count' } }];
+    case 'return_pet_to_hand':
+      return [{ kind: 'return_entity_to_hand', selector: 'target', filters: { entityType: 'pet' }, params: {} }];
+    default:
+      return [];
+  }
+}
+
 function normalizeTags(tags) {
   if (!tags) return [];
   return String(tags)
@@ -126,6 +177,8 @@ function parseCardRow(row) {
 }
 
 function parseSkillTemplateRow(row) {
+  const effectKind = row.effectKind.trim();
+  const operations = parseJsonCell(row.operationsJson, []);
   return {
     id: row.id.trim(),
     name: row.name.trim(),
@@ -133,8 +186,9 @@ function parseSkillTemplateRow(row) {
     scope: normalizeTags(row.scope),
     trigger: row.trigger.trim(),
     targetMode: row.targetMode.trim() || 'none',
-    effectKind: row.effectKind.trim(),
+    effectKind,
     paramSchema: parseJsonCell(row.paramSchemaJson, []),
+    operations: operations.length > 0 ? operations : defaultOperationsForEffectKind(effectKind),
     summaryTemplate: row.summaryTemplate.trim(),
     descriptionTemplate: row.descriptionTemplate.trim(),
     supportsSecondTarget: parseBoolean(row.supportsSecondTarget, false),
@@ -277,6 +331,7 @@ function buildCompiledConfig(parsed) {
           trigger: template.trigger,
           targetMode: template.targetMode,
           effectKind: template.effectKind,
+          operations: template.operations,
           supportsSecondTarget: template.supportsSecondTarget,
           params: binding.params,
           summary,
@@ -347,6 +402,7 @@ export interface CardSkillBinding {
   trigger: string;
   targetMode: string;
   effectKind: string;
+  operations: Array<Record<string, unknown>>;
   supportsSecondTarget: boolean;
   params: Record<string, unknown>;
   summary: string;

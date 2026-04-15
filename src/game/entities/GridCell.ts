@@ -106,7 +106,9 @@ export class GridCell extends PIXI.Container {
     this.createBackground(width, height);
     this.stressContainer = new PIXI.Container();
     this.statusContainer = new PIXI.Container();
-    this.statusContainer.eventMode = 'passive';
+    // 3D 模式下状态层会持续同步位置；使用 dynamic 让鼠标静止时也能刷新 hover 命中。
+    this.statusContainer.eventMode = 'dynamic';
+    this.statusContainer.interactiveChildren = true;
     this.statusContainer.sortableChildren = true;
     this.createStressUi(width, height);
     this.addChild(this.stressContainer);
@@ -296,6 +298,13 @@ export class GridCell extends PIXI.Container {
     });
     this.statusOverflowText.visible = false;
 
+    if (this.renderBackground3DMode) {
+      this.statusContainer.visible = false;
+      return;
+    }
+
+    this.statusContainer.visible = true;
+
     if (!statuses.length) return;
     const visible = statuses
       .filter(status => !status.isPassive || status.shortLabel.length > 0)
@@ -306,7 +315,7 @@ export class GridCell extends PIXI.Container {
       const visual = resolveStatusVisual(status.kind, status.theme);
       const badge = new PIXI.Container();
       badge.position.set(6 + index * 34, 6);
-      badge.eventMode = 'static';
+      badge.eventMode = 'dynamic';
       badge.cursor = 'help';
       badge.hitArea = new PIXI.Rectangle(0, 0, 28, 28);
       badge.zIndex = 1;
@@ -342,8 +351,7 @@ export class GridCell extends PIXI.Container {
 
       badge.on('pointerover', (e: PIXI.FederatedPointerEvent) => {
         e.stopPropagation();
-        const point = badge.getGlobalPosition(new PIXI.Point());
-        this.showStatusTooltipHandler?.(status, point.x + 30, point.y + 14);
+        this.showStatusTooltipHandler?.(status, e.global.x + 18, e.global.y + 12);
       });
       badge.on('pointerout', (e: PIXI.FederatedPointerEvent) => {
         e.stopPropagation();
@@ -351,11 +359,10 @@ export class GridCell extends PIXI.Container {
       });
       badge.on('pointertap', (e: PIXI.FederatedPointerEvent) => {
         e.stopPropagation();
-        const point = badge.getGlobalPosition(new PIXI.Point());
         this.toggleStatusTooltipHandler?.(
           status,
-          point.x + 30,
-          point.y + 14,
+          e.global.x + 18,
+          e.global.y + 12,
           `entity:${status.id}`
         );
       });
@@ -431,7 +438,8 @@ export class GridCell extends PIXI.Container {
   /** 设置为 3D 渲染模式：隐藏 2D 背景（由 Three.js 3D 格子替代） */
   public setRenderBackground3DMode(enabled: boolean): void {
     this.renderBackground3DMode = enabled;
-    this.eventMode = enabled ? 'passive' : 'static';
+    // 3D 模式下仍需要格子与其状态徽章参与命中，不能退成 passive。
+    this.eventMode = 'static';
     this.background.visible = !enabled;
     this.highlight.visible = !enabled && this.isHighlighted;
     if (enabled) {
@@ -622,8 +630,9 @@ export class GridCell extends PIXI.Container {
     }
 
     const scale = anchor.scale ?? 1;
-    const offsetX = anchor.x - this.x - (this.stressBaseWidth * scale) / 2 - 4 * scale;
-    const offsetY = anchor.y - this.y;
+    const local = this.toLocal(new PIXI.Point(anchor.x, anchor.y), this.parent ?? undefined);
+    const offsetX = local.x - (this.stressBaseWidth * scale) / 2 - 4 * scale;
+    const offsetY = local.y;
     this.stressContainer.position.set(offsetX, offsetY);
     this.stressContainer.scale.set(scale);
   }
@@ -645,15 +654,16 @@ export class GridCell extends PIXI.Container {
 
     this.statusContainer.visible = true;
     const scale = anchor.scale ?? 1;
-    const localX = anchor.x - this.x;
-    const localY = anchor.y - this.y;
+    const local = this.toLocal(new PIXI.Point(anchor.x, anchor.y), this.parent ?? undefined);
+    const localX = local.x;
+    const localY = local.y;
     this.statusContainer.position.set(localX, localY);
     this.statusContainer.scale.set(scale);
     this.statusContainer.hitArea = new PIXI.Rectangle(
       -8,
       -8,
-      Math.max(132, 132 * scale),
-      Math.max(40, 40 * scale)
+      132,
+      40
     );
     this.hitArea = new PIXI.Rectangle(
       0,

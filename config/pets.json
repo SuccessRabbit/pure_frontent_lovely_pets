@@ -25,9 +25,22 @@
         "id": "skill_pet_001_a",
         "templateId": "pet_adjacent_worker_income_bonus",
         "templateName": "相邻牛马收益加成",
-        "trigger": "passive",
+        "trigger": "income_calc",
         "targetMode": "adjacent_workers",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "income_modifier_aura",
+            "selector": "adjacent_orthogonal",
+            "filters": {
+              "entityType": "worker"
+            },
+            "params": {
+              "percent": "$amount",
+              "statusKind": "worker_income_boost"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "amount": 10
@@ -63,9 +76,18 @@
         "id": "skill_pet_002_a",
         "templateId": "pet_meltdown_radius_bonus",
         "templateName": "拆家范围扩大",
-        "trigger": "passive",
+        "trigger": "before_meltdown",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "modify_meltdown_radius",
+            "selector": "self",
+            "params": {
+              "radius": "$radius"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "radius": 3
@@ -101,9 +123,16 @@
         "id": "skill_pet_003_a",
         "templateId": "pet_never_meltdown",
         "templateName": "不会拆家",
-        "trigger": "passive",
+        "trigger": "before_meltdown",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_meltdown",
+            "selector": "self",
+            "params": {}
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {},
         "summary": "永远不会拆家",
@@ -140,6 +169,21 @@
         "trigger": "turn_end",
         "targetMode": "adjacent_pets",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "adjust_stress_adjacent",
+            "selector": "self",
+            "filters": {
+              "entityType": "pet"
+            },
+            "params": {
+              "amount": "$amount",
+              "pattern": "orthogonal",
+              "excludeSelf": true,
+              "reason": "skill_adjacent"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "amount": 1
@@ -175,9 +219,16 @@
         "id": "skill_pet_005_a",
         "templateId": "pet_ignore_adjacent_stress",
         "templateName": "免疫相邻压力",
-        "trigger": "passive",
+        "trigger": "before_stress_apply",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "prevent_adjacent_stress",
+            "selector": "self",
+            "params": {}
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {},
         "summary": "不受相邻单位压力传染影响",
@@ -214,6 +265,15 @@
         "trigger": "turn_start",
         "targetMode": "self",
         "effectKind": "passive_summary",
+        "operations": [
+          {
+            "kind": "draw_cards",
+            "selector": "self",
+            "params": {
+              "count": "$count"
+            }
+          }
+        ],
         "supportsSecondTarget": false,
         "params": {
           "count": 1

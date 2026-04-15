@@ -37,6 +37,7 @@ function toRawReadonlyDatasets(): RawAdminDatasets {
       targetMode: String(template.targetMode ?? ''),
       effectKind: String(template.effectKind ?? ''),
       paramSchemaJson: JSON.stringify(template.paramSchema ?? []),
+      operationsJson: JSON.stringify(template.operations ?? []),
       summaryTemplate: String(template.summaryTemplate ?? ''),
       descriptionTemplate: String(template.descriptionTemplate ?? ''),
       supportsSecondTarget: String(Boolean(template.supportsSecondTarget)),

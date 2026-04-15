@@ -1,6 +1,6 @@
 {
-  "version": 1776237823563,
-  "generatedAt": "2026-04-15T07:23:43.563Z",
+  "version": 1776244241179,
+  "generatedAt": "2026-04-15T09:10:41.179Z",
   "cards": [
     {
       "id": "pet_001",
@@ -28,9 +28,22 @@
           "id": "skill_pet_001_a",
           "templateId": "pet_adjacent_worker_income_bonus",
           "templateName": "相邻牛马收益加成",
-          "trigger": "passive",
+          "trigger": "income_calc",
           "targetMode": "adjacent_workers",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "income_modifier_aura",
+              "selector": "adjacent_orthogonal",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "percent": "$amount",
+                "statusKind": "worker_income_boost"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 10
@@ -66,9 +79,18 @@
           "id": "skill_pet_002_a",
           "templateId": "pet_meltdown_radius_bonus",
           "templateName": "拆家范围扩大",
-          "trigger": "passive",
+          "trigger": "before_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "modify_meltdown_radius",
+              "selector": "self",
+              "params": {
+                "radius": "$radius"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "radius": 3
@@ -104,9 +126,16 @@
           "id": "skill_pet_003_a",
           "templateId": "pet_never_meltdown",
           "templateName": "不会拆家",
-          "trigger": "passive",
+          "trigger": "before_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_meltdown",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "永远不会拆家",
@@ -143,6 +172,21 @@
           "trigger": "turn_end",
           "targetMode": "adjacent_pets",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "adjust_stress_adjacent",
+              "selector": "self",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {
+                "amount": "$amount",
+                "pattern": "orthogonal",
+                "excludeSelf": true,
+                "reason": "skill_adjacent"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 1
@@ -178,9 +222,16 @@
           "id": "skill_pet_005_a",
           "templateId": "pet_ignore_adjacent_stress",
           "templateName": "免疫相邻压力",
-          "trigger": "passive",
+          "trigger": "before_stress_apply",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_adjacent_stress",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "不受相邻单位压力传染影响",
@@ -217,6 +268,15 @@
           "trigger": "turn_start",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "draw_cards",
+              "selector": "self",
+              "params": {
+                "count": "$count"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "count": 1
@@ -254,6 +314,7 @@
           "trigger": "passive",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [],
           "supportsSecondTarget": false,
           "params": {
             "text": "可献祭：消耗此单位降低相邻萌宠压力2点"
@@ -286,15 +347,25 @@
       "skills": [
         {
           "id": "skill_worker_002_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_ignore_adjacent_and_meltdown",
+          "templateName": "抗压老员工",
+          "trigger": "before_stress_apply",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_adjacent_stress",
+              "selector": "self",
+              "params": {}
+            },
+            {
+              "kind": "prevent_meltdown_splash",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
-          "params": {
-            "text": "不受压力传染影响，不会被拆家波及"
-          },
+          "params": {},
           "summary": "不受压力传染影响，不会被拆家波及",
           "descriptionPreview": "不受压力传染影响，不会被拆家波及"
         }
@@ -319,21 +390,34 @@
       "illustrationPath": "/assets/illustrations/workers/worker_003.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "相邻牛马效率-20%",
+      "derivedDescription": "相邻牛马效率 -20%",
       "skills": [
         {
           "id": "skill_worker_003_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
-          "targetMode": "self",
+          "templateId": "worker_adjacent_worker_income_penalty",
+          "templateName": "内卷打击",
+          "trigger": "income_calc",
+          "targetMode": "adjacent_workers",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "income_modifier_aura",
+              "selector": "adjacent_orthogonal",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "percent": "-$amount",
+                "statusKind": "worker_income_penalty"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "相邻牛马效率-20%"
+            "amount": 20
           },
-          "summary": "相邻牛马效率-20%",
-          "descriptionPreview": "相邻牛马效率-20%"
+          "summary": "相邻牛马效率 -20%",
+          "descriptionPreview": "相邻牛马效率 -20%"
         }
       ]
     },
@@ -356,21 +440,31 @@
       "illustrationPath": "/assets/illustrations/workers/worker_004.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "利息门槛从每5罐头降低为每4罐头",
+      "derivedDescription": "利息门槛从每 10 罐头降低为每 4 罐头",
       "skills": [
         {
           "id": "skill_worker_004_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_interest_threshold_reduce",
+          "templateName": "利息门槛降低",
+          "trigger": "income_calc",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "modify_interest_rule",
+              "selector": "self",
+              "params": {
+                "threshold": "$threshold",
+                "stackMode": "min"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "利息门槛从每5罐头降低为每4罐头"
+            "threshold": 4
           },
-          "summary": "利息门槛从每5罐头降低为每4罐头",
-          "descriptionPreview": "利息门槛从每5罐头降低为每4罐头"
+          "summary": "利息门槛改为每 4 罐头",
+          "descriptionPreview": "利息门槛从每 10 罐头降低为每 4 罐头"
         }
       ]
     },
@@ -393,21 +487,30 @@
       "illustrationPath": "/assets/illustrations/workers/worker_005.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "每次拆家发生时，从废墟中捡回2罐头",
+      "derivedDescription": "每次拆家发生时，从废墟中捡回 2 罐头",
       "skills": [
         {
           "id": "skill_worker_005_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_gain_cans_on_meltdown",
+          "templateName": "废墟捡钱",
+          "trigger": "after_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "on_meltdown_gain_cans",
+              "selector": "self",
+              "params": {
+                "amount": "$amount"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "每次拆家发生时，从废墟中捡回2罐头"
+            "amount": 2
           },
-          "summary": "每次拆家发生时，从废墟中捡回2罐头",
-          "descriptionPreview": "每次拆家发生时，从废墟中捡回2罐头"
+          "summary": "每次拆家返还 2 罐头",
+          "descriptionPreview": "每次拆家发生时，从废墟中捡回 2 罐头"
         }
       ]
     },
@@ -435,6 +538,15 @@
           "trigger": "on_play",
           "targetMode": "pet",
           "effectKind": "set_stress_value",
+          "operations": [
+            {
+              "kind": "set_stress",
+              "selector": "target",
+              "params": {
+                "value": "$value"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "value": 0
@@ -468,6 +580,18 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "income_multiplier_turn",
+          "operations": [
+            {
+              "kind": "multiply_income_turn",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "multiplier": "$multiplier"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "worker",
@@ -483,6 +607,15 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "queue_card_next_turn",
+          "operations": [
+            {
+              "kind": "queue_card_next_turn",
+              "selector": "self",
+              "params": {
+                "cardId": "$cardId"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "cardId": "action_resentment"
@@ -516,6 +649,13 @@
           "trigger": "on_play",
           "targetMode": "swap",
           "effectKind": "swap_positions",
+          "operations": [
+            {
+              "kind": "swap_entities",
+              "selector": "target",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": true,
           "params": {},
           "summary": "交换两个单位的位置",
@@ -547,6 +687,18 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "income_multiplier_turn",
+          "operations": [
+            {
+              "kind": "multiply_income_turn",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "multiplier": "$multiplier"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -581,6 +733,19 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "adjust_stress_all",
+          "operations": [
+            {
+              "kind": "adjust_stress_by_selector",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "amount": "$amount",
+                "reason": "action"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -615,6 +780,30 @@
           "trigger": "on_play",
           "targetMode": "worker",
           "effectKind": "sacrifice_worker_reduce_adjacent_pet_stress",
+          "operations": [
+            {
+              "kind": "remove_entity",
+              "selector": "target",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "reason": "action"
+              }
+            },
+            {
+              "kind": "adjust_stress_adjacent",
+              "selector": "target",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {
+                "amount": "-$amount",
+                "pattern": "orthogonal",
+                "reason": "skill_adjacent"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 2
@@ -648,6 +837,15 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "draw_cards",
+          "operations": [
+            {
+              "kind": "draw_cards",
+              "selector": "self",
+              "params": {
+                "count": "$count"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "count": 2
@@ -681,6 +879,16 @@
           "trigger": "on_play",
           "targetMode": "pet",
           "effectKind": "return_pet_to_hand",
+          "operations": [
+            {
+              "kind": "return_entity_to_hand",
+              "selector": "target",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "将目标萌宠收回手牌",
@@ -712,6 +920,19 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "adjust_stress_all",
+          "operations": [
+            {
+              "kind": "adjust_stress_by_selector",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "amount": "$amount",
+                "reason": "action"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -750,9 +971,22 @@
           "id": "skill_pet_001_a",
           "templateId": "pet_adjacent_worker_income_bonus",
           "templateName": "相邻牛马收益加成",
-          "trigger": "passive",
+          "trigger": "income_calc",
           "targetMode": "adjacent_workers",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "income_modifier_aura",
+              "selector": "adjacent_orthogonal",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "percent": "$amount",
+                "statusKind": "worker_income_boost"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 10
@@ -788,9 +1022,18 @@
           "id": "skill_pet_002_a",
           "templateId": "pet_meltdown_radius_bonus",
           "templateName": "拆家范围扩大",
-          "trigger": "passive",
+          "trigger": "before_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "modify_meltdown_radius",
+              "selector": "self",
+              "params": {
+                "radius": "$radius"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "radius": 3
@@ -826,9 +1069,16 @@
           "id": "skill_pet_003_a",
           "templateId": "pet_never_meltdown",
           "templateName": "不会拆家",
-          "trigger": "passive",
+          "trigger": "before_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_meltdown",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "永远不会拆家",
@@ -865,6 +1115,21 @@
           "trigger": "turn_end",
           "targetMode": "adjacent_pets",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "adjust_stress_adjacent",
+              "selector": "self",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {
+                "amount": "$amount",
+                "pattern": "orthogonal",
+                "excludeSelf": true,
+                "reason": "skill_adjacent"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 1
@@ -900,9 +1165,16 @@
           "id": "skill_pet_005_a",
           "templateId": "pet_ignore_adjacent_stress",
           "templateName": "免疫相邻压力",
-          "trigger": "passive",
+          "trigger": "before_stress_apply",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_adjacent_stress",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "不受相邻单位压力传染影响",
@@ -939,6 +1211,15 @@
           "trigger": "turn_start",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "draw_cards",
+              "selector": "self",
+              "params": {
+                "count": "$count"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "count": 1
@@ -976,6 +1257,7 @@
           "trigger": "passive",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [],
           "supportsSecondTarget": false,
           "params": {
             "text": "可献祭：消耗此单位降低相邻萌宠压力2点"
@@ -1008,15 +1290,25 @@
       "skills": [
         {
           "id": "skill_worker_002_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_ignore_adjacent_and_meltdown",
+          "templateName": "抗压老员工",
+          "trigger": "before_stress_apply",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_adjacent_stress",
+              "selector": "self",
+              "params": {}
+            },
+            {
+              "kind": "prevent_meltdown_splash",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
-          "params": {
-            "text": "不受压力传染影响，不会被拆家波及"
-          },
+          "params": {},
           "summary": "不受压力传染影响，不会被拆家波及",
           "descriptionPreview": "不受压力传染影响，不会被拆家波及"
         }
@@ -1041,21 +1333,34 @@
       "illustrationPath": "/assets/illustrations/workers/worker_003.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "相邻牛马效率-20%",
+      "derivedDescription": "相邻牛马效率 -20%",
       "skills": [
         {
           "id": "skill_worker_003_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
-          "targetMode": "self",
+          "templateId": "worker_adjacent_worker_income_penalty",
+          "templateName": "内卷打击",
+          "trigger": "income_calc",
+          "targetMode": "adjacent_workers",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "income_modifier_aura",
+              "selector": "adjacent_orthogonal",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "percent": "-$amount",
+                "statusKind": "worker_income_penalty"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "相邻牛马效率-20%"
+            "amount": 20
           },
-          "summary": "相邻牛马效率-20%",
-          "descriptionPreview": "相邻牛马效率-20%"
+          "summary": "相邻牛马效率 -20%",
+          "descriptionPreview": "相邻牛马效率 -20%"
         }
       ]
     },
@@ -1078,21 +1383,31 @@
       "illustrationPath": "/assets/illustrations/workers/worker_004.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "利息门槛从每5罐头降低为每4罐头",
+      "derivedDescription": "利息门槛从每 10 罐头降低为每 4 罐头",
       "skills": [
         {
           "id": "skill_worker_004_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_interest_threshold_reduce",
+          "templateName": "利息门槛降低",
+          "trigger": "income_calc",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "modify_interest_rule",
+              "selector": "self",
+              "params": {
+                "threshold": "$threshold",
+                "stackMode": "min"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "利息门槛从每5罐头降低为每4罐头"
+            "threshold": 4
           },
-          "summary": "利息门槛从每5罐头降低为每4罐头",
-          "descriptionPreview": "利息门槛从每5罐头降低为每4罐头"
+          "summary": "利息门槛改为每 4 罐头",
+          "descriptionPreview": "利息门槛从每 10 罐头降低为每 4 罐头"
         }
       ]
     },
@@ -1115,21 +1430,30 @@
       "illustrationPath": "/assets/illustrations/workers/worker_005.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "每次拆家发生时，从废墟中捡回2罐头",
+      "derivedDescription": "每次拆家发生时，从废墟中捡回 2 罐头",
       "skills": [
         {
           "id": "skill_worker_005_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_gain_cans_on_meltdown",
+          "templateName": "废墟捡钱",
+          "trigger": "after_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "on_meltdown_gain_cans",
+              "selector": "self",
+              "params": {
+                "amount": "$amount"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "每次拆家发生时，从废墟中捡回2罐头"
+            "amount": 2
           },
-          "summary": "每次拆家发生时，从废墟中捡回2罐头",
-          "descriptionPreview": "每次拆家发生时，从废墟中捡回2罐头"
+          "summary": "每次拆家返还 2 罐头",
+          "descriptionPreview": "每次拆家发生时，从废墟中捡回 2 罐头"
         }
       ]
     },
@@ -1157,6 +1481,15 @@
           "trigger": "on_play",
           "targetMode": "pet",
           "effectKind": "set_stress_value",
+          "operations": [
+            {
+              "kind": "set_stress",
+              "selector": "target",
+              "params": {
+                "value": "$value"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "value": 0
@@ -1190,6 +1523,18 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "income_multiplier_turn",
+          "operations": [
+            {
+              "kind": "multiply_income_turn",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "multiplier": "$multiplier"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "worker",
@@ -1205,6 +1550,15 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "queue_card_next_turn",
+          "operations": [
+            {
+              "kind": "queue_card_next_turn",
+              "selector": "self",
+              "params": {
+                "cardId": "$cardId"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "cardId": "action_resentment"
@@ -1238,6 +1592,13 @@
           "trigger": "on_play",
           "targetMode": "swap",
           "effectKind": "swap_positions",
+          "operations": [
+            {
+              "kind": "swap_entities",
+              "selector": "target",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": true,
           "params": {},
           "summary": "交换两个单位的位置",
@@ -1269,6 +1630,18 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "income_multiplier_turn",
+          "operations": [
+            {
+              "kind": "multiply_income_turn",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "multiplier": "$multiplier"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -1303,6 +1676,19 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "adjust_stress_all",
+          "operations": [
+            {
+              "kind": "adjust_stress_by_selector",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "amount": "$amount",
+                "reason": "action"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -1337,6 +1723,30 @@
           "trigger": "on_play",
           "targetMode": "worker",
           "effectKind": "sacrifice_worker_reduce_adjacent_pet_stress",
+          "operations": [
+            {
+              "kind": "remove_entity",
+              "selector": "target",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "reason": "action"
+              }
+            },
+            {
+              "kind": "adjust_stress_adjacent",
+              "selector": "target",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {
+                "amount": "-$amount",
+                "pattern": "orthogonal",
+                "reason": "skill_adjacent"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 2
@@ -1370,6 +1780,15 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "draw_cards",
+          "operations": [
+            {
+              "kind": "draw_cards",
+              "selector": "self",
+              "params": {
+                "count": "$count"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "count": 2
@@ -1403,6 +1822,16 @@
           "trigger": "on_play",
           "targetMode": "pet",
           "effectKind": "return_pet_to_hand",
+          "operations": [
+            {
+              "kind": "return_entity_to_hand",
+              "selector": "target",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "将目标萌宠收回手牌",
@@ -1434,6 +1863,19 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "adjust_stress_all",
+          "operations": [
+            {
+              "kind": "adjust_stress_by_selector",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "amount": "$amount",
+                "reason": "action"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -1472,9 +1914,22 @@
           "id": "skill_pet_001_a",
           "templateId": "pet_adjacent_worker_income_bonus",
           "templateName": "相邻牛马收益加成",
-          "trigger": "passive",
+          "trigger": "income_calc",
           "targetMode": "adjacent_workers",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "income_modifier_aura",
+              "selector": "adjacent_orthogonal",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "percent": "$amount",
+                "statusKind": "worker_income_boost"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 10
@@ -1510,9 +1965,18 @@
           "id": "skill_pet_002_a",
           "templateId": "pet_meltdown_radius_bonus",
           "templateName": "拆家范围扩大",
-          "trigger": "passive",
+          "trigger": "before_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "modify_meltdown_radius",
+              "selector": "self",
+              "params": {
+                "radius": "$radius"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "radius": 3
@@ -1548,9 +2012,16 @@
           "id": "skill_pet_003_a",
           "templateId": "pet_never_meltdown",
           "templateName": "不会拆家",
-          "trigger": "passive",
+          "trigger": "before_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_meltdown",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "永远不会拆家",
@@ -1587,6 +2058,21 @@
           "trigger": "turn_end",
           "targetMode": "adjacent_pets",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "adjust_stress_adjacent",
+              "selector": "self",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {
+                "amount": "$amount",
+                "pattern": "orthogonal",
+                "excludeSelf": true,
+                "reason": "skill_adjacent"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 1
@@ -1622,9 +2108,16 @@
           "id": "skill_pet_005_a",
           "templateId": "pet_ignore_adjacent_stress",
           "templateName": "免疫相邻压力",
-          "trigger": "passive",
+          "trigger": "before_stress_apply",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_adjacent_stress",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "不受相邻单位压力传染影响",
@@ -1661,6 +2154,15 @@
           "trigger": "turn_start",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "draw_cards",
+              "selector": "self",
+              "params": {
+                "count": "$count"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "count": 1
@@ -1700,6 +2202,7 @@
           "trigger": "passive",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [],
           "supportsSecondTarget": false,
           "params": {
             "text": "可献祭：消耗此单位降低相邻萌宠压力2点"
@@ -1732,15 +2235,25 @@
       "skills": [
         {
           "id": "skill_worker_002_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_ignore_adjacent_and_meltdown",
+          "templateName": "抗压老员工",
+          "trigger": "before_stress_apply",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "prevent_adjacent_stress",
+              "selector": "self",
+              "params": {}
+            },
+            {
+              "kind": "prevent_meltdown_splash",
+              "selector": "self",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
-          "params": {
-            "text": "不受压力传染影响，不会被拆家波及"
-          },
+          "params": {},
           "summary": "不受压力传染影响，不会被拆家波及",
           "descriptionPreview": "不受压力传染影响，不会被拆家波及"
         }
@@ -1765,21 +2278,34 @@
       "illustrationPath": "/assets/illustrations/workers/worker_003.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "相邻牛马效率-20%",
+      "derivedDescription": "相邻牛马效率 -20%",
       "skills": [
         {
           "id": "skill_worker_003_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
-          "targetMode": "self",
+          "templateId": "worker_adjacent_worker_income_penalty",
+          "templateName": "内卷打击",
+          "trigger": "income_calc",
+          "targetMode": "adjacent_workers",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "income_modifier_aura",
+              "selector": "adjacent_orthogonal",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "percent": "-$amount",
+                "statusKind": "worker_income_penalty"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "相邻牛马效率-20%"
+            "amount": 20
           },
-          "summary": "相邻牛马效率-20%",
-          "descriptionPreview": "相邻牛马效率-20%"
+          "summary": "相邻牛马效率 -20%",
+          "descriptionPreview": "相邻牛马效率 -20%"
         }
       ]
     },
@@ -1802,21 +2328,31 @@
       "illustrationPath": "/assets/illustrations/workers/worker_004.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "利息门槛从每5罐头降低为每4罐头",
+      "derivedDescription": "利息门槛从每 10 罐头降低为每 4 罐头",
       "skills": [
         {
           "id": "skill_worker_004_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_interest_threshold_reduce",
+          "templateName": "利息门槛降低",
+          "trigger": "income_calc",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "modify_interest_rule",
+              "selector": "self",
+              "params": {
+                "threshold": "$threshold",
+                "stackMode": "min"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "利息门槛从每5罐头降低为每4罐头"
+            "threshold": 4
           },
-          "summary": "利息门槛从每5罐头降低为每4罐头",
-          "descriptionPreview": "利息门槛从每5罐头降低为每4罐头"
+          "summary": "利息门槛改为每 4 罐头",
+          "descriptionPreview": "利息门槛从每 10 罐头降低为每 4 罐头"
         }
       ]
     },
@@ -1839,21 +2375,30 @@
       "illustrationPath": "/assets/illustrations/workers/worker_005.svg",
       "imageFitMode": "contain",
       "imageAnchorPreset": "center",
-      "derivedDescription": "每次拆家发生时，从废墟中捡回2罐头",
+      "derivedDescription": "每次拆家发生时，从废墟中捡回 2 罐头",
       "skills": [
         {
           "id": "skill_worker_005_a",
-          "templateId": "worker_passive_summary",
-          "templateName": "被动说明",
-          "trigger": "passive",
+          "templateId": "worker_gain_cans_on_meltdown",
+          "templateName": "废墟捡钱",
+          "trigger": "after_meltdown",
           "targetMode": "self",
           "effectKind": "passive_summary",
+          "operations": [
+            {
+              "kind": "on_meltdown_gain_cans",
+              "selector": "self",
+              "params": {
+                "amount": "$amount"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
-            "text": "每次拆家发生时，从废墟中捡回2罐头"
+            "amount": 2
           },
-          "summary": "每次拆家发生时，从废墟中捡回2罐头",
-          "descriptionPreview": "每次拆家发生时，从废墟中捡回2罐头"
+          "summary": "每次拆家返还 2 罐头",
+          "descriptionPreview": "每次拆家发生时，从废墟中捡回 2 罐头"
         }
       ]
     }
@@ -1883,6 +2428,15 @@
           "trigger": "on_play",
           "targetMode": "pet",
           "effectKind": "set_stress_value",
+          "operations": [
+            {
+              "kind": "set_stress",
+              "selector": "target",
+              "params": {
+                "value": "$value"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "value": 0
@@ -1916,6 +2470,18 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "income_multiplier_turn",
+          "operations": [
+            {
+              "kind": "multiply_income_turn",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "multiplier": "$multiplier"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "worker",
@@ -1931,6 +2497,15 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "queue_card_next_turn",
+          "operations": [
+            {
+              "kind": "queue_card_next_turn",
+              "selector": "self",
+              "params": {
+                "cardId": "$cardId"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "cardId": "action_resentment"
@@ -1964,6 +2539,13 @@
           "trigger": "on_play",
           "targetMode": "swap",
           "effectKind": "swap_positions",
+          "operations": [
+            {
+              "kind": "swap_entities",
+              "selector": "target",
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": true,
           "params": {},
           "summary": "交换两个单位的位置",
@@ -1995,6 +2577,18 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "income_multiplier_turn",
+          "operations": [
+            {
+              "kind": "multiply_income_turn",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "multiplier": "$multiplier"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -2029,6 +2623,19 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "adjust_stress_all",
+          "operations": [
+            {
+              "kind": "adjust_stress_by_selector",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "amount": "$amount",
+                "reason": "action"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -2063,6 +2670,30 @@
           "trigger": "on_play",
           "targetMode": "worker",
           "effectKind": "sacrifice_worker_reduce_adjacent_pet_stress",
+          "operations": [
+            {
+              "kind": "remove_entity",
+              "selector": "target",
+              "filters": {
+                "entityType": "worker"
+              },
+              "params": {
+                "reason": "action"
+              }
+            },
+            {
+              "kind": "adjust_stress_adjacent",
+              "selector": "target",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {
+                "amount": "-$amount",
+                "pattern": "orthogonal",
+                "reason": "skill_adjacent"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "amount": 2
@@ -2096,6 +2727,15 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "draw_cards",
+          "operations": [
+            {
+              "kind": "draw_cards",
+              "selector": "self",
+              "params": {
+                "count": "$count"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "count": 2
@@ -2129,6 +2769,16 @@
           "trigger": "on_play",
           "targetMode": "pet",
           "effectKind": "return_pet_to_hand",
+          "operations": [
+            {
+              "kind": "return_entity_to_hand",
+              "selector": "target",
+              "filters": {
+                "entityType": "pet"
+              },
+              "params": {}
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {},
           "summary": "将目标萌宠收回手牌",
@@ -2160,6 +2810,19 @@
           "trigger": "on_play",
           "targetMode": "none",
           "effectKind": "adjust_stress_all",
+          "operations": [
+            {
+              "kind": "adjust_stress_by_selector",
+              "selector": "all_entities",
+              "filters": {
+                "entityType": "$entityType"
+              },
+              "params": {
+                "amount": "$amount",
+                "reason": "action"
+              }
+            }
+          ],
           "supportsSecondTarget": false,
           "params": {
             "entityType": "pet",
@@ -2188,6 +2851,15 @@
           "label": "目标压力",
           "type": "number",
           "defaultValue": 0
+        }
+      ],
+      "operations": [
+        {
+          "kind": "set_stress",
+          "selector": "target",
+          "params": {
+            "value": "$value"
+          }
         }
       ],
       "summaryTemplate": "目标萌宠压力设为 {value}",
@@ -2222,6 +2894,18 @@
           "defaultValue": 2
         }
       ],
+      "operations": [
+        {
+          "kind": "multiply_income_turn",
+          "selector": "all_entities",
+          "filters": {
+            "entityType": "$entityType"
+          },
+          "params": {
+            "multiplier": "$multiplier"
+          }
+        }
+      ],
       "summaryTemplate": "本回合 {entityType} 收益 x{multiplier}",
       "descriptionTemplate": "本回合所有 {entityType} 收益翻倍",
       "supportsSecondTarget": false
@@ -2244,6 +2928,15 @@
           "defaultValue": ""
         }
       ],
+      "operations": [
+        {
+          "kind": "queue_card_next_turn",
+          "selector": "self",
+          "params": {
+            "cardId": "$cardId"
+          }
+        }
+      ],
       "summaryTemplate": "下回合注入卡牌 {cardId}",
       "descriptionTemplate": "下回合开始时加入 {cardId}",
       "supportsSecondTarget": false
@@ -2259,6 +2952,13 @@
       "targetMode": "swap",
       "effectKind": "swap_positions",
       "paramSchema": [],
+      "operations": [
+        {
+          "kind": "swap_entities",
+          "selector": "target",
+          "params": {}
+        }
+      ],
       "summaryTemplate": "交换两个单位的位置",
       "descriptionTemplate": "交换场上两个单位的位置",
       "supportsSecondTarget": true
@@ -2291,6 +2991,19 @@
           "defaultValue": -2
         }
       ],
+      "operations": [
+        {
+          "kind": "adjust_stress_by_selector",
+          "selector": "all_entities",
+          "filters": {
+            "entityType": "$entityType"
+          },
+          "params": {
+            "amount": "$amount",
+            "reason": "action"
+          }
+        }
+      ],
       "summaryTemplate": "全场 {entityType} 压力 {amount}",
       "descriptionTemplate": "全场 {entityType} 压力 {amount}",
       "supportsSecondTarget": false
@@ -2311,6 +3024,30 @@
           "label": "减压值",
           "type": "number",
           "defaultValue": 2
+        }
+      ],
+      "operations": [
+        {
+          "kind": "remove_entity",
+          "selector": "target",
+          "filters": {
+            "entityType": "worker"
+          },
+          "params": {
+            "reason": "action"
+          }
+        },
+        {
+          "kind": "adjust_stress_adjacent",
+          "selector": "target",
+          "filters": {
+            "entityType": "pet"
+          },
+          "params": {
+            "amount": "-$amount",
+            "pattern": "orthogonal",
+            "reason": "skill_adjacent"
+          }
         }
       ],
       "summaryTemplate": "献祭牛马后相邻萌宠压力 {amount}",
@@ -2335,6 +3072,15 @@
           "defaultValue": 2
         }
       ],
+      "operations": [
+        {
+          "kind": "draw_cards",
+          "selector": "self",
+          "params": {
+            "count": "$count"
+          }
+        }
+      ],
       "summaryTemplate": "抽 {count} 张牌",
       "descriptionTemplate": "抽 {count} 张牌",
       "supportsSecondTarget": false
@@ -2350,6 +3096,16 @@
       "targetMode": "pet",
       "effectKind": "return_pet_to_hand",
       "paramSchema": [],
+      "operations": [
+        {
+          "kind": "return_entity_to_hand",
+          "selector": "target",
+          "filters": {
+            "entityType": "pet"
+          },
+          "params": {}
+        }
+      ],
       "summaryTemplate": "将目标萌宠收回手牌",
       "descriptionTemplate": "将一个萌宠收回手牌",
       "supportsSecondTarget": false
@@ -2361,7 +3117,7 @@
       "scope": [
         "entity_pet"
       ],
-      "trigger": "passive",
+      "trigger": "income_calc",
       "targetMode": "adjacent_workers",
       "effectKind": "passive_summary",
       "paramSchema": [
@@ -2370,6 +3126,19 @@
           "label": "加成百分比",
           "type": "number",
           "defaultValue": 10
+        }
+      ],
+      "operations": [
+        {
+          "kind": "income_modifier_aura",
+          "selector": "adjacent_orthogonal",
+          "filters": {
+            "entityType": "worker"
+          },
+          "params": {
+            "percent": "$amount",
+            "statusKind": "worker_income_boost"
+          }
         }
       ],
       "summaryTemplate": "相邻牛马效率 +{amount}%",
@@ -2383,7 +3152,7 @@
       "scope": [
         "entity_pet"
       ],
-      "trigger": "passive",
+      "trigger": "before_meltdown",
       "targetMode": "self",
       "effectKind": "passive_summary",
       "paramSchema": [
@@ -2392,6 +3161,15 @@
           "label": "影响半径",
           "type": "number",
           "defaultValue": 1
+        }
+      ],
+      "operations": [
+        {
+          "kind": "modify_meltdown_radius",
+          "selector": "self",
+          "params": {
+            "radius": "$radius"
+          }
         }
       ],
       "summaryTemplate": "拆家范围扩大到 {radius}",
@@ -2405,10 +3183,17 @@
       "scope": [
         "entity_pet"
       ],
-      "trigger": "passive",
+      "trigger": "before_meltdown",
       "targetMode": "self",
       "effectKind": "passive_summary",
       "paramSchema": [],
+      "operations": [
+        {
+          "kind": "prevent_meltdown",
+          "selector": "self",
+          "params": {}
+        }
+      ],
       "summaryTemplate": "永远不会拆家",
       "descriptionTemplate": "永远不会拆家",
       "supportsSecondTarget": false
@@ -2431,6 +3216,21 @@
           "defaultValue": 1
         }
       ],
+      "operations": [
+        {
+          "kind": "adjust_stress_adjacent",
+          "selector": "self",
+          "filters": {
+            "entityType": "pet"
+          },
+          "params": {
+            "amount": "$amount",
+            "pattern": "orthogonal",
+            "excludeSelf": true,
+            "reason": "skill_adjacent"
+          }
+        }
+      ],
       "summaryTemplate": "相邻萌宠每回合压力 {amount}",
       "descriptionTemplate": "相邻萌宠每回合压力 {amount}",
       "supportsSecondTarget": false
@@ -2442,10 +3242,17 @@
       "scope": [
         "entity_pet"
       ],
-      "trigger": "passive",
+      "trigger": "before_stress_apply",
       "targetMode": "self",
       "effectKind": "passive_summary",
       "paramSchema": [],
+      "operations": [
+        {
+          "kind": "prevent_adjacent_stress",
+          "selector": "self",
+          "params": {}
+        }
+      ],
       "summaryTemplate": "不受相邻单位压力传染影响",
       "descriptionTemplate": "不受相邻单位压力传染影响",
       "supportsSecondTarget": false
@@ -2466,6 +3273,15 @@
           "label": "抽牌数",
           "type": "number",
           "defaultValue": 1
+        }
+      ],
+      "operations": [
+        {
+          "kind": "draw_cards",
+          "selector": "self",
+          "params": {
+            "count": "$count"
+          }
         }
       ],
       "summaryTemplate": "每回合自动抽 {count} 张牌",
@@ -2490,8 +3306,134 @@
           "defaultValue": ""
         }
       ],
+      "operations": [],
       "summaryTemplate": "{text}",
       "descriptionTemplate": "{text}",
+      "supportsSecondTarget": false
+    },
+    {
+      "id": "worker_ignore_adjacent_and_meltdown",
+      "name": "抗压老员工",
+      "description": "不受相邻压力传染影响，不会被拆家波及",
+      "scope": [
+        "entity_worker"
+      ],
+      "trigger": "before_stress_apply",
+      "targetMode": "self",
+      "effectKind": "passive_summary",
+      "paramSchema": [],
+      "operations": [
+        {
+          "kind": "prevent_adjacent_stress",
+          "selector": "self",
+          "params": {}
+        },
+        {
+          "kind": "prevent_meltdown_splash",
+          "selector": "self",
+          "params": {}
+        }
+      ],
+      "summaryTemplate": "不受压力传染影响，不会被拆家波及",
+      "descriptionTemplate": "不受压力传染影响，不会被拆家波及",
+      "supportsSecondTarget": false
+    },
+    {
+      "id": "worker_adjacent_worker_income_penalty",
+      "name": "内卷打击",
+      "description": "相邻牛马效率下降",
+      "scope": [
+        "entity_worker"
+      ],
+      "trigger": "income_calc",
+      "targetMode": "adjacent_workers",
+      "effectKind": "passive_summary",
+      "paramSchema": [
+        {
+          "name": "amount",
+          "label": "降幅百分比",
+          "type": "number",
+          "defaultValue": 20
+        }
+      ],
+      "operations": [
+        {
+          "kind": "income_modifier_aura",
+          "selector": "adjacent_orthogonal",
+          "filters": {
+            "entityType": "worker"
+          },
+          "params": {
+            "percent": "-$amount",
+            "statusKind": "worker_income_penalty"
+          }
+        }
+      ],
+      "summaryTemplate": "相邻牛马效率 -{amount}%",
+      "descriptionTemplate": "相邻牛马效率 -{amount}%",
+      "supportsSecondTarget": false
+    },
+    {
+      "id": "worker_interest_threshold_reduce",
+      "name": "利息门槛降低",
+      "description": "利息门槛从每 10 罐头降低为每 4 罐头",
+      "scope": [
+        "entity_worker"
+      ],
+      "trigger": "income_calc",
+      "targetMode": "self",
+      "effectKind": "passive_summary",
+      "paramSchema": [
+        {
+          "name": "threshold",
+          "label": "利息门槛",
+          "type": "number",
+          "defaultValue": 4
+        }
+      ],
+      "operations": [
+        {
+          "kind": "modify_interest_rule",
+          "selector": "self",
+          "params": {
+            "threshold": "$threshold",
+            "stackMode": "min"
+          }
+        }
+      ],
+      "summaryTemplate": "利息门槛改为每 {threshold} 罐头",
+      "descriptionTemplate": "利息门槛从每 10 罐头降低为每 {threshold} 罐头",
+      "supportsSecondTarget": false
+    },
+    {
+      "id": "worker_gain_cans_on_meltdown",
+      "name": "废墟捡钱",
+      "description": "每次拆家发生时返还罐头",
+      "scope": [
+        "entity_worker"
+      ],
+      "trigger": "after_meltdown",
+      "targetMode": "self",
+      "effectKind": "passive_summary",
+      "paramSchema": [
+        {
+          "name": "amount",
+          "label": "返还罐头",
+          "type": "number",
+          "defaultValue": 2
+        }
+      ],
+      "operations": [
+        {
+          "kind": "on_meltdown_gain_cans",
+          "selector": "self",
+          "params": {
+            "amount": "$amount"
+          }
+        }
+      ],
+      "summaryTemplate": "每次拆家返还 {amount} 罐头",
+      "descriptionTemplate": "每次拆家发生时，从废墟中捡回 {amount} 罐头",
       "supportsSecondTarget": false
     }
   ],
@@ -2565,41 +3507,39 @@
     {
       "id": "skill_worker_002_a",
       "cardId": "worker_002",
-      "templateId": "worker_passive_summary",
+      "templateId": "worker_ignore_adjacent_and_meltdown",
       "enabled": true,
       "sortOrder": 1,
-      "params": {
-        "text": "不受压力传染影响，不会被拆家波及"
-      }
+      "params": {}
     },
     {
       "id": "skill_worker_003_a",
       "cardId": "worker_003",
-      "templateId": "worker_passive_summary",
+      "templateId": "worker_adjacent_worker_income_penalty",
       "enabled": true,
       "sortOrder": 1,
       "params": {
-        "text": "相邻牛马效率-20%"
+        "amount": 20
       }
     },
     {
       "id": "skill_worker_004_a",
       "cardId": "worker_004",
-      "templateId": "worker_passive_summary",
+      "templateId": "worker_interest_threshold_reduce",
       "enabled": true,
       "sortOrder": 1,
       "params": {
-        "text": "利息门槛从每5罐头降低为每4罐头"
+        "threshold": 4
       }
     },
     {
       "id": "skill_worker_005_a",
       "cardId": "worker_005",
-      "templateId": "worker_passive_summary",
+      "templateId": "worker_gain_cans_on_meltdown",
       "enabled": true,
       "sortOrder": 1,
       "params": {
-        "text": "每次拆家发生时，从废墟中捡回2罐头"
+        "amount": 2
       }
     },
     {
