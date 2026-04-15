@@ -438,7 +438,8 @@ export class GridCell extends PIXI.Container {
   /** 设置为 3D 渲染模式：隐藏 2D 背景（由 Three.js 3D 格子替代） */
   public setRenderBackground3DMode(enabled: boolean): void {
     this.renderBackground3DMode = enabled;
-    // 3D 模式下仍需要格子与其状态徽章参与命中，不能退成 passive。
+    // 3D 模式下格子仍参与点击，但命中区域必须保持工位本体大小。
+    // 状态徽章由 GameScene.entityStatusHud 单独承载，避免扩大的锚点矩形遮挡邻近废墟工位。
     this.eventMode = 'static';
     this.background.visible = !enabled;
     this.highlight.visible = !enabled && this.isHighlighted;
@@ -645,32 +646,10 @@ export class GridCell extends PIXI.Container {
       this.statusContainer.scale.set(1);
       return;
     }
-    if (!anchor) {
-      this.statusContainer.visible = false;
-      this.hitArea = new PIXI.Rectangle(0, 0, this.cellWidth, this.cellHeight);
-      this.statusContainer.hitArea = null;
-      return;
-    }
-
-    this.statusContainer.visible = true;
-    const scale = anchor.scale ?? 1;
-    const local = this.toLocal(new PIXI.Point(anchor.x, anchor.y), this.parent ?? undefined);
-    const localX = local.x;
-    const localY = local.y;
-    this.statusContainer.position.set(localX, localY);
-    this.statusContainer.scale.set(scale);
-    this.statusContainer.hitArea = new PIXI.Rectangle(
-      -8,
-      -8,
-      132,
-      40
-    );
-    this.hitArea = new PIXI.Rectangle(
-      0,
-      Math.min(0, localY - 8),
-      Math.max(this.cellWidth, localX + Math.max(132, 132 * scale)),
-      Math.max(this.cellHeight, localY + Math.max(40, 40 * scale))
-    );
+    void anchor;
+    this.statusContainer.visible = false;
+    this.statusContainer.hitArea = null;
+    this.hitArea = new PIXI.Rectangle(0, 0, this.cellWidth, this.cellHeight);
   }
 
   public setStatusTooltipHandlers(

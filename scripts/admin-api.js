@@ -70,7 +70,8 @@ function writeRawDatasets(raw) {
 }
 
 function getDatasetsPayload() {
-  current = compileAllData();
+  // Keep GET /datasets side-effect free. Recompiling here rewrites watched files and
+  // causes Vite to full-reload /admin forever because the page refetches on every mount.
   return {
     canEdit: true,
     headers: getDatasetHeaders(),

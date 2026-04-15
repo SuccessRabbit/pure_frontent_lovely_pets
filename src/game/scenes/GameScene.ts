@@ -363,8 +363,15 @@ export class GameScene extends Scene {
         cell.y = startY + row * (cellHeight + padding);
 
         cell.on('pointertap', (e: PIXI.FederatedPointerEvent) => {
-          e.stopPropagation();
-          this.gridInteractionController.handleGridCellPointer(cell);
+          const { x: screenX, y: screenY } = this.inputManager.getMouse();
+          const handled = this.gridInteractionController.handleGridCellPointerAt(
+            cell,
+            screenX,
+            screenY
+          );
+          if (handled) {
+            e.stopPropagation();
+          }
         });
 
         this.gridCells.push(cell);

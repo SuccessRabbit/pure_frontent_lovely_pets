@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill:*)",
+      "Bash(cmd:*)",
+      "Bash(findstr :3001)",
+      "Bash(findstr LISTENING)",
+      "WebSearch",
+      "WebFetch(domain:anthropic.com)",
+      "WebFetch(domain:platform.openai.com)"
+    ]
+  }
+}

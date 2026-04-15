@@ -57,6 +57,8 @@ interface PetMesh {
   auraColor: THREE.Color | null;
   materials: PetMaterialState[];
   shadow: THREE.Mesh;
+  debugBounds: THREE.Box3;
+  debugBoundsHelper: THREE.Box3Helper;
 }
 
 interface ProjectedBounds {
@@ -188,6 +190,7 @@ export class IsometricPetRenderer {
 
   private qualityLevel: QualityLevel = 'high';
   private sceneMood: SceneMood = 'idle';
+  private petBoundsDebugVisible = true;
 
   private readonly GRID_START_X = 400;
   private readonly GRID_START_Y = 200;
@@ -462,6 +465,44 @@ export class IsometricPetRenderer {
     shadow.renderOrder = 1;
     this.scene.add(shadow);
     return shadow;
+  }
+
+  private createPetDebugBoundsHelper(): { box: THREE.Box3; helper: THREE.Box3Helper } {
+    const box = new THREE.Box3();
+    const helper = new THREE.Box3Helper(box, 0x00e5ff);
+    helper.visible = this.petBoundsDebugVisible;
+    helper.renderOrder = 3000;
+    const material = helper.material as THREE.LineBasicMaterial;
+    material.depthTest = false;
+    material.depthWrite = false;
+    material.transparent = true;
+    material.opacity = 0.9;
+    this.scene.add(helper);
+    return { box, helper };
+  }
+
+  private updatePetDebugBounds(petMesh: PetMesh): void {
+    if (!this.petBoundsDebugVisible) {
+      petMesh.debugBoundsHelper.visible = false;
+      return;
+    }
+
+    petMesh.rig.root.updateMatrixWorld(true);
+    petMesh.debugBounds.setFromObject(petMesh.rig.root);
+    const isVisible = !petMesh.debugBounds.isEmpty();
+    petMesh.debugBoundsHelper.visible = isVisible;
+    if (!isVisible) return;
+
+    const material = petMesh.debugBoundsHelper.material as THREE.LineBasicMaterial;
+    material.color.setHex(petMesh.stressRatio >= 0.5 ? 0xff4f6d : 0x00e5ff);
+    petMesh.debugBoundsHelper.updateMatrixWorld(true);
+  }
+
+  public setPetBoundsDebugVisible(visible: boolean): void {
+    this.petBoundsDebugVisible = visible;
+    this.petMeshes.forEach(petMesh => {
+      petMesh.debugBoundsHelper.visible = visible;
+    });
   }
 
   private getMotionProfile(cardId: string): PetMotionProfile {
@@ -769,6 +810,7 @@ export class IsometricPetRenderer {
     const shadow = this.createShadow(worldPos, modelProfile?.shadowSize ?? 1);
     const materials = this.enhancePetMaterials(root);
     this.scene.add(root);
+    const debugBounds = this.createPetDebugBoundsHelper();
 
     const petMesh: PetMesh = {
       rig,
@@ -782,8 +824,11 @@ export class IsometricPetRenderer {
       auraColor: null,
       materials,
       shadow,
+      debugBounds: debugBounds.box,
+      debugBoundsHelper: debugBounds.helper,
     };
     this.petMeshes.set(key, petMesh);
+    this.updatePetDebugBounds(petMesh);
     this.playIdle(row, col);
     this.updatePetStress(row, col, entity.stress, entity.maxStress);
   }
@@ -796,9 +841,12 @@ export class IsometricPetRenderer {
     this.stopAnimations(petMesh);
     this.scene.remove(petMesh.rig.root);
     this.scene.remove(petMesh.shadow);
+    this.scene.remove(petMesh.debugBoundsHelper);
 
     petMesh.shadow.geometry.dispose();
     (petMesh.shadow.material as THREE.Material).dispose();
+    petMesh.debugBoundsHelper.geometry.dispose();
+    (petMesh.debugBoundsHelper.material as THREE.Material).dispose();
 
     petMesh.rig.root.traverse(child => {
       if (!(child instanceof THREE.Mesh)) return;
@@ -1121,6 +1169,7 @@ export class IsometricPetRenderer {
     this.updateSceneShaders(elapsed);
     this.gridCellMeshes.forEach(cell => cell.update(elapsed));
     this.updatePetMaterials(elapsed);
+    this.petMeshes.forEach(petMesh => this.updatePetDebugBounds(petMesh));
     this.renderer.render(this.scene, this.camera);
   }
 

@@ -158,6 +158,15 @@ export class GridInteractionController {
     return true;
   }
 
+  public handleGridCellPointerAt(
+    fallbackCell: GridCell,
+    screenX: number,
+    screenY: number
+  ): boolean {
+    const projectedCell = this.resolveProjectedGridCell(screenX, screenY);
+    return this.handleGridCellPointer(projectedCell ?? fallbackCell);
+  }
+
   private resolveProjectedGridCell(screenX: number, screenY: number): GridCell | null {
     const petRenderer = this.getPetRenderer();
     if (petRenderer) {
