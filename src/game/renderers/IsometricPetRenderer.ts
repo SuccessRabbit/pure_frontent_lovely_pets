@@ -199,6 +199,9 @@ export class IsometricPetRenderer {
   private readonly CELL_PADDING = 10;
   private readonly PET_WORLD_SCALE = 70;
   private readonly PET_GROUND_Y = 0.5;
+  private readonly DECK_WORLD_Y = 4;
+  private readonly DECK_SCREEN_RIGHT_MARGIN_RATIO = 0.1;
+  private readonly DECK_SCREEN_Y_RATIO = 0.5;
 
   constructor(canvas: HTMLCanvasElement) {
     const initialWidth = Math.max(1, canvas.width || canvas.clientWidth || window.innerWidth);
@@ -240,11 +243,18 @@ export class IsometricPetRenderer {
     this.stageMesh.position.set(halfW, -3, halfH + 70);
     this.scene.add(this.stageMesh);
 
+    const deckAnchor =
+      this.designToWorldOnPlane(
+        IsometricPetRenderer.DESIGN_WIDTH * (1 - this.DECK_SCREEN_RIGHT_MARGIN_RATIO),
+        IsometricPetRenderer.DESIGN_HEIGHT * this.DECK_SCREEN_Y_RATIO,
+        this.DECK_WORLD_Y
+      ) ?? new THREE.Vector3(192, this.DECK_WORLD_Y, 418);
+
     this.deckRenderer = new DeckRenderer(
       this.scene,
       world => this.projectWorldToDesignPoint(world),
-      1500,
-      120
+      deckAnchor.x,
+      deckAnchor.z
     );
 
     this.setQualityLevel('high');
@@ -307,6 +317,23 @@ export class IsometricPetRenderer {
 
   private gridKey(row: number, col: number): string {
     return `${row}|${col}`;
+  }
+
+  private designToWorldOnPlane(
+    designX: number,
+    designY: number,
+    planeY = 0
+  ): THREE.Vector3 | null {
+    const ndc = new THREE.Vector2(
+      (designX / IsometricPetRenderer.DESIGN_WIDTH) * 2 - 1,
+      -(designY / IsometricPetRenderer.DESIGN_HEIGHT) * 2 + 1
+    );
+    const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -planeY);
+    const target = new THREE.Vector3();
+
+    this.camera.updateMatrixWorld(true);
+    this.raycaster.setFromCamera(ndc, this.camera);
+    return this.raycaster.ray.intersectPlane(plane, target) ?? null;
   }
 
   private getRigNodes(rig: PetRig): THREE.Object3D[] {
