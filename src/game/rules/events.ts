@@ -1,4 +1,5 @@
 import type { DrawCardsMeta, DrawEvent, GamePhase } from '../../store/gameStore';
+import type { StatusInstance } from '../status/statusTypes';
 
 export type DomainEvent =
   | { type: 'phase_started'; phase: GamePhase }
@@ -69,6 +70,36 @@ export type DomainEvent =
       entityId: string;
       cardId: string;
       success: boolean;
+    }
+  | {
+      type: 'status_added';
+      status: StatusInstance;
+      targetRow?: number;
+      targetCol?: number;
+    }
+  | {
+      type: 'status_updated';
+      status: StatusInstance;
+      targetRow?: number;
+      targetCol?: number;
+    }
+  | {
+      type: 'status_removed';
+      statusId: string;
+      statusKind: string;
+      targetEntityId?: string;
+      targetRow?: number;
+      targetCol?: number;
+      reason: 'expired' | 'entity_removed' | 'consumed' | 'replaced';
+    }
+  | {
+      type: 'status_triggered';
+      statusId: string;
+      statusKind: string;
+      targetEntityId?: string;
+      targetRow?: number;
+      targetCol?: number;
+      sourceCardId: string;
     }
   | { type: 'turn_started'; turn: number }
   | { type: 'turn_ended'; turn: number }

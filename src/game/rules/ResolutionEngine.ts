@@ -22,6 +22,8 @@ import type {
   StressResolutionResult,
 } from '../../store/gameStore';
 import type { Card } from '../../types/card';
+import { getPassiveStatusesForCard, resolveStatusVisual } from '../status/statusRegistry';
+import type { StatusInstance, StatusTheme } from '../status/statusTypes';
 import { buildShuffledStartingDeck } from '../../utils/deckFactory';
 import { getEntityCardTemplate } from '../../utils/cardCatalog';
 import { normalizeCard } from '../../utils/cardNormalize';
@@ -73,6 +75,13 @@ interface ResolutionUnit {
   entityId: string;
 }
 
+function cloneStatus(status: StatusInstance): StatusInstance {
+  return {
+    ...status,
+    params: { ...status.params },
+  };
+}
+
 function cloneGridEntity(entity: GridEntity | null): GridEntity | null {
   if (!entity) return null;
   return {
@@ -116,6 +125,14 @@ function cloneState(state: GameState): GameState {
     awaitingHandTrim: state.awaitingHandTrim,
     lastDrawEvent: cloneDrawEvent(state.lastDrawEvent),
     nextDrawEventId: state.nextDrawEventId,
+    entityStatuses: Object.fromEntries(
+      Object.entries(state.entityStatuses).map(([entityId, statuses]) => [
+        entityId,
+        statuses.map(status => cloneStatus(status)),
+      ])
+    ),
+    globalStatuses: state.globalStatuses.map(status => cloneStatus(status)),
+    nextStatusId: state.nextStatusId,
   };
 }
 
@@ -157,6 +174,9 @@ function createBaseState(initialDeck: Card[] = []): GameState {
     awaitingHandTrim: false,
     lastDrawEvent: null,
     nextDrawEventId: 1,
+    entityStatuses: {},
+    globalStatuses: [],
+    nextStatusId: 1,
   };
 }
 
@@ -207,6 +227,151 @@ function addEvent(ctx: ResolutionContext, event: DomainEvent): void {
 
 function addPresentation(ctx: ResolutionContext, ...events: PresentationEvent[]): void {
   ctx.presentation.push(...events);
+}
+
+function makeStatusId(state: GameState): string {
+  const id = `status_${state.nextStatusId}`;
+  state.nextStatusId += 1;
+  return id;
+}
+
+function findEntityCellById(state: GameState, entityId: string): { row: number; col: number } | null {
+  for (let row = 0; row < state.grid.length; row += 1) {
+    for (let col = 0; col < state.grid[row]!.length; col += 1) {
+      if (state.grid[row]![col]?.id === entityId) return { row, col };
+    }
+  }
+  return null;
+}
+
+function emitStatusBurst(
+  ctx: ResolutionContext,
+  options: {
+    kind: string;
+    theme: StatusTheme;
+    title: string;
+    subtitle: string;
+    row?: number;
+    col?: number;
+    global?: boolean;
+    color?: number;
+  }
+): void {
+  const visual = resolveStatusVisual(options.kind, options.theme);
+  addPresentation(ctx, {
+    type: 'status_burst',
+    statusKind: options.kind,
+    theme: options.theme,
+    title: options.title,
+    subtitle: options.subtitle,
+    row: options.row,
+    col: options.col,
+    global: options.global,
+    color: options.color ?? visual.color,
+  });
+}
+
+function addGlobalStatus(
+  ctx: ResolutionContext,
+  statusInput: Omit<StatusInstance, 'id' | 'targetEntityId'>
+): StatusInstance {
+  const state = ctx.draft;
+  const next: StatusInstance = {
+    ...statusInput,
+    id: makeStatusId(state),
+  };
+  state.globalStatuses = [...state.globalStatuses.filter(status => status.kind !== next.kind), next];
+  addEvent(ctx, { type: 'status_added', status: cloneStatus(next) });
+  return next;
+}
+
+function removeEntityStatuses(
+  ctx: ResolutionContext,
+  entityId: string,
+  reason: 'expired' | 'entity_removed' | 'consumed' | 'replaced'
+): void {
+  const statuses = ctx.draft.entityStatuses[entityId] ?? [];
+  if (statuses.length === 0) return;
+  const cell = findEntityCellById(ctx.draft, entityId);
+  statuses.forEach(status => {
+    addEvent(ctx, {
+      type: 'status_removed',
+      statusId: status.id,
+      statusKind: status.kind,
+      targetEntityId: entityId,
+      targetRow: cell?.row,
+      targetCol: cell?.col,
+      reason,
+    });
+  });
+  delete ctx.draft.entityStatuses[entityId];
+}
+
+function removeGlobalStatusByKind(
+  ctx: ResolutionContext,
+  kind: string,
+  reason: 'expired' | 'entity_removed' | 'consumed' | 'replaced'
+): void {
+  const removed = ctx.draft.globalStatuses.filter(status => status.kind === kind);
+  if (removed.length === 0) return;
+  removed.forEach(status => {
+    addEvent(ctx, {
+      type: 'status_removed',
+      statusId: status.id,
+      statusKind: status.kind,
+      reason,
+    });
+  });
+  ctx.draft.globalStatuses = ctx.draft.globalStatuses.filter(status => status.kind !== kind);
+}
+
+function tickGlobalStatusesForNewTurn(ctx: ResolutionContext): void {
+  const kept: StatusInstance[] = [];
+  for (const status of ctx.draft.globalStatuses) {
+    if (status.isPassive) {
+      kept.push(status);
+      continue;
+    }
+    const nextDuration = Math.max(0, status.duration - 1);
+    if (nextDuration <= 0) {
+      addEvent(ctx, {
+        type: 'status_removed',
+        statusId: status.id,
+        statusKind: status.kind,
+        reason: 'expired',
+      });
+      emitStatusBurst(ctx, {
+        kind: status.kind,
+        theme: status.theme,
+        title: status.title,
+        subtitle: '效果结束',
+        global: true,
+      });
+      continue;
+    }
+    const updated = { ...status, duration: nextDuration };
+    kept.push(updated);
+    addEvent(ctx, { type: 'status_updated', status: cloneStatus(updated) });
+  }
+  ctx.draft.globalStatuses = kept;
+}
+
+function attachPassiveStatuses(ctx: ResolutionContext, entity: GridEntity): void {
+  const passives = getPassiveStatusesForCard(entity.cardId);
+  if (passives.length === 0) return;
+  const cell = findEntityCellById(ctx.draft, entity.id);
+  ctx.draft.entityStatuses[entity.id] = passives.map(status => ({
+    ...cloneStatus(status),
+    targetEntityId: entity.id,
+  }));
+  passives.forEach(status => {
+    addEvent(ctx, {
+      type: 'status_added',
+      status: { ...cloneStatus(status), targetEntityId: entity.id },
+      targetRow: cell?.row,
+      targetCol: cell?.col,
+    });
+  });
 }
 
 function pushStep(
@@ -421,6 +586,7 @@ function advanceTurnAfterTrim(
     state.awaitingHandTrim = false;
   }
 
+  tickGlobalStatusesForNewTurn(ctx);
   const inject = [...state.pendingCardsNextTurnDiscard];
   state.turn += 1;
   state.phase = 'preparation';
@@ -431,6 +597,25 @@ function advanceTurnAfterTrim(
   state.workerIncomeMultiplierThisTurn = 1;
   state.pendingCardsNextTurnDiscard = [];
   state.discardPile = [...state.discardPile, ...inject];
+  if (inject.length > 0) {
+    const queued = state.globalStatuses.find(status => status.kind === 'queued_resentment');
+    if (queued) {
+      addEvent(ctx, {
+        type: 'status_triggered',
+        statusId: queued.id,
+        statusKind: queued.kind,
+        sourceCardId: queued.sourceCardId,
+      });
+      emitStatusBurst(ctx, {
+        kind: queued.kind,
+        theme: queued.theme,
+        title: queued.title,
+        subtitle: '怨气卡已注入弃牌堆',
+        global: true,
+      });
+      removeGlobalStatusByKind(ctx, queued.kind, 'consumed');
+    }
+  }
   addEvent(ctx, { type: 'turn_started', turn: state.turn });
 
   maybeEndGameByVictoryWindow(state, ctx);
@@ -491,6 +676,7 @@ function triggerMeltdownInState(
     state.discardPile.push(cardTpl);
   }
 
+  removeEntityStatuses(ctx, entity.id, 'entity_removed');
   state.grid[row][col] = null;
   state.cellDurability[row][col] = 0;
   addEvent(ctx, {
@@ -511,6 +697,7 @@ function triggerMeltdownInState(
       state.cellDurability[nr][nc] = 0;
       const destroyed = state.grid[nr][nc];
       if (destroyed) {
+        removeEntityStatuses(ctx, destroyed.id, 'entity_removed');
         addEvent(ctx, {
           type: 'entity_removed',
           row: nr,
@@ -620,18 +807,80 @@ function resolveConfiguredActionCardEffect(
         ...entity,
         stress: Number(params.value ?? 0),
       };
+      emitStatusBurst(ctx, {
+        kind: 'stress_relief',
+        theme: 'buff',
+        title: '安抚减压',
+        subtitle: entity.stress > 0 ? '压力归零' : '状态稳定',
+        row: targetRow,
+        col: targetCol,
+      });
       continue;
     }
 
     if (skill.effectKind === 'income_multiplier_turn') {
       const entityType = String(params.entityType ?? '');
       const multiplier = Math.max(1, Number(params.multiplier ?? 1));
+      const kind = entityType === 'pet' ? 'pet_income_boost' : 'worker_income_boost';
+      const visual = resolveStatusVisual(kind, 'buff');
       if (entityType === 'pet') {
         state.petIncomeMultiplierThisTurn *= multiplier;
+        addGlobalStatus(ctx, {
+          kind,
+          scope: 'global',
+          sourceCardId: card.id,
+          sourceSkillId: skill.id,
+          title: visual.title,
+          shortLabel: visual.shortLabel,
+          theme: visual.theme,
+          duration: 1,
+          maxDuration: 1,
+          durationUnit: 'turn',
+        stacks: 1,
+        iconKey: visual.iconKey,
+        vfxKey: visual.vfxKey,
+        appliedTurn: state.turn,
+        description: skill.descriptionPreview || skill.summary || `本回合 ${entityType} 收益 x${multiplier}`,
+        params: { entityType, multiplier, summary: skill.summary, descriptionPreview: skill.descriptionPreview },
+      });
+        emitStatusBurst(ctx, {
+          kind,
+          theme: visual.theme,
+          title: visual.title,
+          subtitle: `本回合收益 x${multiplier}`,
+          global: true,
+          color: visual.color,
+        });
         continue;
       }
       if (entityType === 'worker') {
         state.workerIncomeMultiplierThisTurn *= multiplier;
+        addGlobalStatus(ctx, {
+          kind,
+          scope: 'global',
+          sourceCardId: card.id,
+          sourceSkillId: skill.id,
+          title: visual.title,
+          shortLabel: visual.shortLabel,
+          theme: visual.theme,
+          duration: 1,
+          maxDuration: 1,
+          durationUnit: 'turn',
+        stacks: 1,
+        iconKey: visual.iconKey,
+        vfxKey: visual.vfxKey,
+        appliedTurn: state.turn,
+        description: skill.descriptionPreview || skill.summary || `本回合 ${entityType} 收益 x${multiplier}`,
+        params: { entityType, multiplier, summary: skill.summary, descriptionPreview: skill.descriptionPreview },
+      });
+        emitStatusBurst(ctx, {
+          kind,
+          theme: visual.theme,
+          title: visual.title,
+          subtitle: `本回合收益 x${multiplier}`,
+          global: true,
+          color: visual.color,
+        });
         continue;
       }
       return false;
@@ -646,6 +895,33 @@ function resolveConfiguredActionCardEffect(
       const next = queuedId === 'action_resentment' ? resentmentCard() : queuedRaw ? normalizeCard(queuedRaw as Card) : null;
       if (!next) return false;
       state.pendingCardsNextTurnDiscard = [...state.pendingCardsNextTurnDiscard, next];
+      const visual = resolveStatusVisual('queued_resentment', 'debuff');
+      addGlobalStatus(ctx, {
+        kind: visual.kind,
+        scope: 'global',
+        sourceCardId: card.id,
+        sourceSkillId: skill.id,
+        title: visual.title,
+        shortLabel: visual.shortLabel,
+        theme: visual.theme,
+        duration: 1,
+        maxDuration: 1,
+        durationUnit: 'turn',
+        stacks: 1,
+        iconKey: visual.iconKey,
+        vfxKey: visual.vfxKey,
+        appliedTurn: state.turn,
+        description: skill.descriptionPreview || skill.summary || `下回合开始时加入 ${queuedId}`,
+        params: { cardId: queuedId, summary: skill.summary, descriptionPreview: skill.descriptionPreview },
+      });
+      emitStatusBurst(ctx, {
+        kind: visual.kind,
+        theme: visual.theme,
+        title: visual.title,
+        subtitle: `下回合注入 ${next.name}`,
+        global: true,
+        color: visual.color,
+      });
       continue;
     }
 
@@ -707,7 +983,22 @@ function resolveConfiguredActionCardEffect(
             ...entity,
             stress: Math.max(0, entity.stress + amount),
           };
+          emitStatusBurst(ctx, {
+            kind: 'stress_relief',
+            theme: 'buff',
+            title: '安抚减压',
+            subtitle: `压力 ${amount}`,
+            row: cell.row,
+            col: cell.col,
+          });
         }
+      });
+      emitStatusBurst(ctx, {
+        kind: amount >= 0 ? 'stress_pressure' : 'stress_relief',
+        theme: amount >= 0 ? 'debuff' : 'buff',
+        title: amount >= 0 ? '压力提升' : '安抚减压',
+        subtitle: `全场 ${entityType} 压力 ${amount >= 0 ? `+${amount}` : amount}`,
+        global: true,
       });
       continue;
     }
@@ -717,6 +1008,7 @@ function resolveConfiguredActionCardEffect(
       if (!cellDurabilityOk(state, targetRow, targetCol)) return false;
       const victim = state.grid[targetRow][targetCol];
       if (!victim || victim.type !== 'worker') return false;
+      removeEntityStatuses(ctx, victim.id, 'entity_removed');
       state.grid[targetRow][targetCol] = null;
       addEvent(ctx, {
         type: 'entity_removed',
@@ -738,6 +1030,14 @@ function resolveConfiguredActionCardEffect(
           ...entity,
           stress: Math.max(0, entity.stress - amount),
         };
+        emitStatusBurst(ctx, {
+          kind: 'stress_relief',
+          theme: 'buff',
+          title: '安抚减压',
+          subtitle: `压力 -${amount}`,
+          row: r,
+          col: c,
+        });
       }
       continue;
     }
@@ -756,6 +1056,7 @@ function resolveConfiguredActionCardEffect(
       if (!cellDurabilityOk(state, targetRow, targetCol)) return false;
       const entity = state.grid[targetRow][targetCol];
       if (!entity || entity.type !== 'pet') return false;
+      removeEntityStatuses(ctx, entity.id, 'entity_removed');
       const petCard = getEntityCardTemplate(entity.cardId);
       if (!petCard) return false;
       state.grid[targetRow][targetCol] = null;
@@ -850,6 +1151,7 @@ function runPlayCardCommand(
       isExhausted: false,
     };
     ctx.draft.grid[targetRow][targetCol] = entity;
+    attachPassiveStatuses(ctx, entity);
     addEvent(ctx, {
       type: 'entity_placed',
       row: targetRow,
@@ -1072,6 +1374,7 @@ function runPlaceEntityCommand(
     isExhausted: false,
   };
   ctx.draft.grid[row][col] = entity;
+  attachPassiveStatuses(ctx, entity);
   addEvent(ctx, {
     type: 'entity_placed',
     row,
@@ -1104,6 +1407,7 @@ function runRemoveEntityCommand(state: GameState, row: number, col: number): Res
     };
   }
 
+  removeEntityStatuses(ctx, entity.id, 'entity_removed');
   ctx.draft.grid[row][col] = null;
   addEvent(ctx, {
     type: 'entity_removed',
@@ -1286,6 +1590,7 @@ function resolveEntityIncomeTrigger(
   if (!live || live.id !== entityId) return;
 
   if (live.type === 'pet' && live.cardId === 'pet_006') {
+    const visual = resolveStatusVisual('draw_engine', 'buff');
     const skillPresentation: PresentationEvent[] = [
       {
         type: 'show_entity_cue',
@@ -1294,6 +1599,16 @@ function resolveEntityIncomeTrigger(
         title: '永动机猫',
         subtitle: '技能触发：抽 1 张牌',
         color: 0xffd54f,
+      },
+      {
+        type: 'status_burst',
+        statusKind: visual.kind,
+        theme: visual.theme,
+        title: visual.title,
+        subtitle: '技能已触发',
+        row,
+        col,
+        color: visual.color,
       },
     ];
     const drawEvent = drawCardsInState(ctx, 1, {
@@ -1361,6 +1676,33 @@ function runResolveTurnSequenceCommand(state: GameState): ResolutionResult {
         entityType: live.type,
         amount: entry.income,
       });
+      if (live.type === 'pet') {
+        const status = ctx.draft.globalStatuses.find(item => item.kind === 'pet_income_boost');
+        if (status) {
+          addEvent(ctx, {
+            type: 'status_triggered',
+            statusId: status.id,
+            statusKind: status.kind,
+            targetEntityId: live.id,
+            targetRow: unit.row,
+            targetCol: unit.col,
+            sourceCardId: status.sourceCardId,
+          });
+        }
+      } else if (live.type === 'worker') {
+        const status = ctx.draft.globalStatuses.find(item => item.kind === 'worker_income_boost');
+        if (status) {
+          addEvent(ctx, {
+            type: 'status_triggered',
+            statusId: status.id,
+            statusKind: status.kind,
+            targetEntityId: live.id,
+            targetRow: unit.row,
+            targetCol: unit.col,
+            sourceCardId: status.sourceCardId,
+          });
+        }
+      }
       pushStep(ctx, ctx.draft, [
         {
           type: 'show_entity_cue',
@@ -1377,6 +1719,34 @@ function runResolveTurnSequenceCommand(state: GameState): ResolutionResult {
           amount: entry.income,
         },
       ]);
+      if (live.type === 'pet' && ctx.draft.globalStatuses.some(status => status.kind === 'pet_income_boost')) {
+        pushStep(ctx, ctx.draft, [
+          {
+            type: 'status_burst',
+            statusKind: 'pet_income_boost',
+            theme: 'buff',
+            title: '萌宠收益提升',
+            subtitle: '增益已生效',
+            row: unit.row,
+            col: unit.col,
+            color: resolveStatusVisual('pet_income_boost', 'buff').color,
+          },
+        ]);
+      }
+      if (live.type === 'worker' && ctx.draft.globalStatuses.some(status => status.kind === 'worker_income_boost')) {
+        pushStep(ctx, ctx.draft, [
+          {
+            type: 'status_burst',
+            statusKind: 'worker_income_boost',
+            theme: 'buff',
+            title: '牛马收益提升',
+            subtitle: '增益已生效',
+            row: unit.row,
+            col: unit.col,
+            color: resolveStatusVisual('worker_income_boost', 'buff').color,
+          },
+        ]);
+      }
 
       resolveEntityIncomeTrigger(ctx, unit.row, unit.col, unit.entityId);
       if (ctx.draft.gameStatus !== 'playing') {
@@ -1387,14 +1757,14 @@ function runResolveTurnSequenceCommand(state: GameState): ResolutionResult {
     if (ctx.draft.gameStatus === 'playing' && breakdown.interest > 0) {
       addCans(ctx.draft, breakdown.interest);
       pushStep(ctx, ctx.draft, [
-        { type: 'spawn_hud_float', text: `利息 +${breakdown.interest}`, color: 0xfff9c4 },
+        { type: 'spawn_hud_float', text: `利息 +${breakdown.interest}`, tone: 'warning', color: 0xfff9c4 },
       ]);
     }
 
     if (ctx.draft.gameStatus === 'playing' && breakdown.streakBonus > 0) {
       addCans(ctx.draft, breakdown.streakBonus);
       pushStep(ctx, ctx.draft, [
-        { type: 'spawn_hud_float', text: `连胜 +${breakdown.streakBonus}`, color: 0xabebc6 },
+        { type: 'spawn_hud_float', text: `连胜 +${breakdown.streakBonus}`, tone: 'success', color: 0xabebc6 },
       ]);
     }
 
@@ -1403,7 +1773,7 @@ function runResolveTurnSequenceCommand(state: GameState): ResolutionResult {
       if (heartsGain > 0) {
         addHearts(ctx.draft, heartsGain);
         pushStep(ctx, ctx.draft, [
-          { type: 'spawn_hud_float', text: `人气 +${heartsGain}`, color: 0xffd6e8 },
+          { type: 'spawn_hud_float', text: `人气 +${heartsGain}`, tone: 'info', color: 0xffd6e8 },
         ]);
       }
       if (ctx.draft.gameStatus !== 'playing') {
@@ -1491,6 +1861,7 @@ function runResolveTurnSequenceCommand(state: GameState): ResolutionResult {
         {
           type: 'spawn_hud_float',
           text: `手牌超过 ${HAND_SIZE_MAX} 张，请打出或将可弃牌拖向屏幕底边红区弃牌`,
+          tone: 'warning',
           color: 0xfff9c4,
         },
       ]);

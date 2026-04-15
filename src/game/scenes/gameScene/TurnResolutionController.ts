@@ -2,6 +2,7 @@ import { snapshotGameState, useGameStore } from '../../../store/gameStore';
 import type { DrawEvent } from '../../../store/gameStore';
 import { runGameCommand, type ResolutionStep } from '../../rules/ResolutionEngine';
 import type { PresentationEvent } from '../../rules/presentation';
+import type { ToastMessage } from '../../systems/ToastPresenter';
 
 const PHASE_GAP_MS = 380;
 
@@ -25,7 +26,17 @@ interface TurnResolutionControllerDeps {
     color: number
   ) => Promise<void>;
   spawnIncomeFloat: (row: number, col: number, amount: number) => void;
-  spawnHudFloat: (text: string, color: number) => void;
+  showToast: (message: ToastMessage) => void;
+  spawnStatusBurst: (
+    kind: string,
+    theme: 'buff' | 'debuff' | 'passive' | 'utility',
+    title: string,
+    subtitle: string,
+    color: number,
+    row?: number,
+    col?: number,
+    global?: boolean
+  ) => void;
   syncGridFromStore: () => void;
   sync3DStressOverlays: () => void;
   pulseStressCell: (row: number, col: number) => void;
@@ -47,7 +58,17 @@ export class TurnResolutionController {
     color: number
   ) => Promise<void>;
   private readonly spawnIncomeFloat: (row: number, col: number, amount: number) => void;
-  private readonly spawnHudFloat: (text: string, color: number) => void;
+  private readonly showToast: (message: ToastMessage) => void;
+  private readonly spawnStatusBurst: (
+    kind: string,
+    theme: 'buff' | 'debuff' | 'passive' | 'utility',
+    title: string,
+    subtitle: string,
+    color: number,
+    row?: number,
+    col?: number,
+    global?: boolean
+  ) => void;
   private readonly syncGridFromStore: () => void;
   private readonly sync3DStressOverlays: () => void;
   private readonly pulseStressCell: (row: number, col: number) => void;
@@ -62,7 +83,8 @@ export class TurnResolutionController {
     this.showPhaseBanner = deps.showPhaseBanner;
     this.showEntityCue = deps.showEntityCue;
     this.spawnIncomeFloat = deps.spawnIncomeFloat;
-    this.spawnHudFloat = deps.spawnHudFloat;
+    this.showToast = deps.showToast;
+    this.spawnStatusBurst = deps.spawnStatusBurst;
     this.syncGridFromStore = deps.syncGridFromStore;
     this.sync3DStressOverlays = deps.sync3DStressOverlays;
     this.pulseStressCell = deps.pulseStressCell;
@@ -137,13 +159,32 @@ export class TurnResolutionController {
     }
 
     if (event.type === 'spawn_hud_float') {
-      this.spawnHudFloat(event.text, event.color);
+      this.showToast({
+        text: event.text,
+        tone: event.tone,
+        color: event.color,
+      });
       await waitMs(360);
       return;
     }
 
     if (event.type === 'play_draw_event') {
       await this.playManualDrawEvent(event.event);
+      return;
+    }
+
+    if (event.type === 'status_burst') {
+      this.spawnStatusBurst(
+        event.statusKind,
+        event.theme,
+        event.title,
+        event.subtitle,
+        event.color,
+        event.row,
+        event.col,
+        event.global
+      );
+      await waitMs(event.global ? 360 : 280);
       return;
     }
 

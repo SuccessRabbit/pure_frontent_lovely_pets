@@ -5,6 +5,7 @@ import type { Card } from '../../../types/card';
 import { CardSprite } from '../../entities/CardSprite';
 import { GridCell } from '../../entities/GridCell';
 import { DragSystem } from '../../systems/DragSystem';
+import type { ToastMessage } from '../../systems/ToastPresenter';
 import { VfxQueue } from '../../systems/VfxQueue';
 import { runActionTargetVfx, runActionTriggerVfx, runEntityPlaceVfx } from '../../utils/placeVfx';
 import { GridInteractionController } from './GridInteractionController';
@@ -21,7 +22,7 @@ interface CardInteractionControllerDeps {
   getGridInteractionController: () => GridInteractionController;
   getGridCellCenterGlobal: (row: number, col: number) => PIXI.Point;
   revealPlacedEntity: (row: number, col: number) => void;
-  spawnHudFloat: (text: string, color: number) => void;
+  showToast: (message: ToastMessage) => void;
   logFlow: (message: string, payload?: unknown) => void;
 }
 
@@ -36,7 +37,7 @@ export class CardInteractionController {
   private readonly getGridInteractionController: () => GridInteractionController;
   private readonly getGridCellCenterGlobal: (row: number, col: number) => PIXI.Point;
   private readonly revealPlacedEntity: (row: number, col: number) => void;
-  private readonly spawnHudFloat: (text: string, color: number) => void;
+  private readonly showToast: (message: ToastMessage) => void;
   private readonly logFlow: (message: string, payload?: unknown) => void;
 
   constructor(deps: CardInteractionControllerDeps) {
@@ -50,8 +51,16 @@ export class CardInteractionController {
     this.getGridInteractionController = deps.getGridInteractionController;
     this.getGridCellCenterGlobal = deps.getGridCellCenterGlobal;
     this.revealPlacedEntity = deps.revealPlacedEntity;
-    this.spawnHudFloat = deps.spawnHudFloat;
+    this.showToast = deps.showToast;
     this.logFlow = deps.logFlow;
+  }
+
+  private showInsufficientCans(cost: number, cans: number) {
+    this.showToast({
+      text: `小罐头不足：需要 ${cost}，当前仅有 ${cans}`,
+      tone: 'danger',
+      color: 0xff7a7a,
+    });
   }
 
   public wire() {
@@ -100,6 +109,7 @@ export class CardInteractionController {
       cost: card.cardData.cost,
     });
     if (card.cardData.cost > 0 && get().cans < card.cardData.cost) {
+      this.showInsufficientCans(card.cardData.cost, get().cans);
       card.playReturnAnimation();
       return;
     }
@@ -169,6 +179,7 @@ export class CardInteractionController {
       return;
     }
     if (data.cost > 0 && get().cans < data.cost) {
+      this.showInsufficientCans(data.cost, get().cans);
       card.playReturnAnimation();
       return;
     }
@@ -220,6 +231,11 @@ export class CardInteractionController {
       card.playReturnAnimation();
       return;
     }
+    if (data.cost > 0 && get().cans < data.cost) {
+      this.showInsufficientCans(data.cost, get().cans);
+      card.playReturnAnimation();
+      return;
+    }
     const targetEntity = useGameStore.getState().grid[cell.row][cell.col];
     const isEligibleTarget =
       !cell.isRuins &&
@@ -229,7 +245,7 @@ export class CardInteractionController {
         mode === 'swap');
     if (!isEligibleTarget) {
       card.playReturnAnimation();
-      this.spawnHudFloat('目标无效，已取消释放', 0xffb3b3);
+      this.showToast({ text: '目标无效，已取消释放', tone: 'danger', color: 0xffb3b3 });
       return;
     }
 
@@ -249,7 +265,7 @@ export class CardInteractionController {
     const success = get().playCard(liveIdx, cell.row, cell.col);
     if (!success) {
       card.playReturnAnimation();
-      this.spawnHudFloat('目标无效，已取消释放', 0xffb3b3);
+      this.showToast({ text: '目标无效，已取消释放', tone: 'danger', color: 0xffb3b3 });
       return;
     }
 
@@ -270,7 +286,7 @@ export class CardInteractionController {
     }
     const ok = get().discardHandCardForTrim(liveIdx);
     if (!ok) {
-      this.spawnHudFloat('此卡不可弃置，请打出', 0xffb3b3);
+      this.showToast({ text: '此卡不可弃置，请打出', tone: 'danger', color: 0xffb3b3 });
       card.playReturnAnimation();
     }
   }

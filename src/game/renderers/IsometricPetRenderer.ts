@@ -53,6 +53,8 @@ interface PetMesh {
   animationToken: number;
   restPose: TransformSnapshot[];
   stressRatio: number;
+  auraIntensity: number;
+  auraColor: THREE.Color | null;
   materials: PetMaterialState[];
   shadow: THREE.Mesh;
 }
@@ -726,6 +728,24 @@ export class IsometricPetRenderer {
     };
   }
 
+  public getPetStatusAnchor(
+    row: number,
+    col: number
+  ): { x: number; y: number; scale: number } | null {
+    const petMesh = this.petMeshes.get(this.gridKey(row, col));
+    if (!petMesh) return null;
+
+    const bounds = this.getProjectedBounds(petMesh.rig.root);
+    if (!bounds) return null;
+
+    const width = Math.max(1, bounds.maxX - bounds.minX);
+    return {
+      x: bounds.maxX + 8,
+      y: bounds.minY + 10,
+      scale: Math.max(1, Math.min(1.22, width / 150)),
+    };
+  }
+
   public spawnPet(row: number, col: number, entity: GridEntity): void {
     const key = this.gridKey(row, col);
     const existing = this.petMeshes.get(key);
@@ -763,6 +783,8 @@ export class IsometricPetRenderer {
       animationToken: 0,
       restPose: this.captureRestPose(rig),
       stressRatio: 0,
+      auraIntensity: 0,
+      auraColor: null,
       materials,
       shadow,
     };
@@ -1044,6 +1066,19 @@ export class IsometricPetRenderer {
     else this.playAngry(row, col);
   }
 
+  public updatePetAura(
+    row: number,
+    col: number,
+    color: number | null,
+    intensity: number
+  ): void {
+    const key = this.gridKey(row, col);
+    const petMesh = this.petMeshes.get(key);
+    if (!petMesh) return;
+    petMesh.auraColor = color == null ? null : new THREE.Color(color);
+    petMesh.auraIntensity = Math.max(0, intensity);
+  }
+
   private updateSceneShaders(elapsed: number): void {
     const mood = MOOD_FACTORS[this.sceneMood];
     this.backdropMaterial.uniforms.uTime.value = elapsed;
@@ -1062,13 +1097,19 @@ export class IsometricPetRenderer {
       petMesh.materials.forEach(({ material, baseColor }) => {
         const pulse = 0.5 + 0.5 * Math.sin(elapsed * (1.4 + petMesh.stressRatio * 4));
         const tintTarget =
-          petMesh.stressRatio > 0.72
+          petMesh.auraColor
+            ? petMesh.auraColor
+            : petMesh.stressRatio > 0.72
             ? new THREE.Color(VISUAL_THEME.scene.dangerGlow)
             : new THREE.Color(VISUAL_THEME.scene.rim);
         material.color.copy(baseColor);
         material.emissive.copy(baseColor).lerp(tintTarget, 0.28 + petMesh.stressRatio * 0.34);
         material.emissiveIntensity =
-          0.08 + mood.accent * 0.06 + petMesh.stressRatio * 0.22 + pulse * 0.03;
+          0.08 +
+          mood.accent * 0.06 +
+          petMesh.stressRatio * 0.22 +
+          pulse * 0.03 +
+          petMesh.auraIntensity * 0.18;
       });
 
       const pulse = 0.5 + 0.5 * Math.sin(elapsed * (1.4 + petMesh.stressRatio * 4));

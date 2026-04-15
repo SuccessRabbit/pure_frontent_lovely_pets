@@ -4,6 +4,7 @@ import { useGameStore } from '../../../store/gameStore';
 import { RUINS_REBUILD_COST } from '@config/gameRules';
 import type { IsometricPetRenderer } from '../../renderers/IsometricPetRenderer';
 import { GridCell } from '../../entities/GridCell';
+import type { ToastMessage } from '../../systems/ToastPresenter';
 
 interface PendingActionPick {
   handIndex: number;
@@ -17,7 +18,7 @@ interface GridInteractionControllerDeps {
   isTargetUnderGridCell: (target: PIXI.Container | null | undefined) => boolean;
   isTargetIgnored: (target: PIXI.Container | null | undefined) => boolean;
   setDragEnabled: (on: boolean) => void;
-  spawnHudFloat: (text: string, color: number) => void;
+  showToast: (message: ToastMessage) => void;
   syncGridFromStore: () => void;
 }
 
@@ -27,7 +28,7 @@ export class GridInteractionController {
   private readonly isTargetUnderGridCell: (target: PIXI.Container | null | undefined) => boolean;
   private readonly isTargetIgnored: (target: PIXI.Container | null | undefined) => boolean;
   private readonly setDragEnabled: (on: boolean) => void;
-  private readonly spawnHudFloat: (text: string, color: number) => void;
+  private readonly showToast: (message: ToastMessage) => void;
   private readonly syncGridFromStore: () => void;
 
   private pendingActionPick: PendingActionPick | null = null;
@@ -38,7 +39,7 @@ export class GridInteractionController {
     this.isTargetUnderGridCell = deps.isTargetUnderGridCell;
     this.isTargetIgnored = deps.isTargetIgnored;
     this.setDragEnabled = deps.setDragEnabled;
-    this.spawnHudFloat = deps.spawnHudFloat;
+    this.showToast = deps.showToast;
     this.syncGridFromStore = deps.syncGridFromStore;
   }
 
@@ -57,7 +58,7 @@ export class GridInteractionController {
           ? '已选中第一只宠物，请选择另一只交换目标'
           : '请先拖到第一只需要交换的宠物上'
         : '请点击目标格子';
-    this.spawnHudFloat(hint, 0xfff9c4);
+    this.showToast({ text: hint, tone: 'warning', color: 0xfff9c4 });
   }
 
   public clearPendingActionPick() {
@@ -126,7 +127,7 @@ export class GridInteractionController {
     if (this.isTargetIgnored(target)) return false;
 
     this.clearPendingActionPick();
-    this.spawnHudFloat('已取消出牌', 0xbdc3c7);
+    this.showToast({ text: '已取消出牌', tone: 'info', color: 0xbdc3c7 });
     return true;
   }
 
@@ -142,9 +143,17 @@ export class GridInteractionController {
     const ok = get().rebuildCell(cell.row, cell.col);
     if (ok) {
       this.syncGridFromStore();
-      this.spawnHudFloat(`工位已重建（-${RUINS_REBUILD_COST}🥫）`, 0xabebc6);
+      this.showToast({
+        text: `工位已重建（-${RUINS_REBUILD_COST}🥫）`,
+        tone: 'success',
+        color: 0xabebc6,
+      });
     } else {
-      this.spawnHudFloat(`废墟格需空且花费 ${RUINS_REBUILD_COST}🥫`, 0xffb3b3);
+      this.showToast({
+        text: `废墟格需空且花费 ${RUINS_REBUILD_COST}🥫`,
+        tone: 'danger',
+        color: 0xffb3b3,
+      });
     }
     return true;
   }
@@ -224,13 +233,17 @@ export class GridInteractionController {
     if (pending.actionId === 'action_003') {
       if (!pending.firstCell) {
         if (!this.isEligibleActionTargetCell(pending.actionId, cell, 'first')) {
-          this.spawnHudFloat('第一格需有单位', 0xffb3b3);
+          this.showToast({ text: '第一格需有单位', tone: 'danger', color: 0xffb3b3 });
           this.clearPendingActionPick();
           return;
         }
         pending.firstCell = { row: cell.row, col: cell.col };
         this.refreshActionPickOverlays();
-        this.spawnHudFloat('请选择第二格（再点第一格可取消选中）', 0xfff9c4);
+        this.showToast({
+          text: '请选择第二格（再点第一格可取消选中）',
+          tone: 'warning',
+          color: 0xfff9c4,
+        });
         return;
       }
 
@@ -239,11 +252,11 @@ export class GridInteractionController {
       if (cell.row === r1 && cell.col === c1) {
         pending.firstCell = null;
         this.refreshActionPickOverlays();
-        this.spawnHudFloat('已取消第一格，请重新选择', 0xfff9c4);
+        this.showToast({ text: '已取消第一格，请重新选择', tone: 'warning', color: 0xfff9c4 });
         return;
       }
       if (!this.isEligibleActionTargetCell(pending.actionId, cell, 'second')) {
-        this.spawnHudFloat('交换目标无效，已取消释放', 0xffb3b3);
+        this.showToast({ text: '交换目标无效，已取消释放', tone: 'danger', color: 0xffb3b3 });
         this.clearPendingActionPick();
         return;
       }
@@ -252,14 +265,18 @@ export class GridInteractionController {
       if (success) {
         this.clearPendingActionPick();
       } else {
-        this.spawnHudFloat('无法交换（两格均需有单位且不同）', 0xffb3b3);
+        this.showToast({
+          text: '无法交换（两格均需有单位且不同）',
+          tone: 'danger',
+          color: 0xffb3b3,
+        });
         this.clearPendingActionPick();
       }
       return;
     }
 
     if (!this.isEligibleActionTargetCell(pending.actionId, cell, 'first')) {
-      this.spawnHudFloat('无效目标，已取消释放', 0xffb3b3);
+      this.showToast({ text: '无效目标，已取消释放', tone: 'danger', color: 0xffb3b3 });
       this.clearPendingActionPick();
       return;
     }
@@ -268,7 +285,7 @@ export class GridInteractionController {
     if (success) {
       this.clearPendingActionPick();
     } else {
-      this.spawnHudFloat('无效目标', 0xffb3b3);
+      this.showToast({ text: '无效目标', tone: 'danger', color: 0xffb3b3 });
       this.clearPendingActionPick();
     }
   }

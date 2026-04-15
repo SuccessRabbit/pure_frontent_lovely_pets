@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { CardSprite } from '../../entities/CardSprite';
+import type { ToastMessage } from '../../systems/ToastPresenter';
 import { VfxQueue } from '../../systems/VfxQueue';
 import { Tween, Easing } from '../../utils/Tween';
 import { burstParticlesAtGlobal, PET_BURST_COLORS } from '../../utils/cardFx';
@@ -42,7 +43,7 @@ interface HandControllerDeps {
   getStoreState: () => HandControllerStoreState;
   isDragging: () => boolean;
   onStartDrag: (card: CardSprite, index: number) => void;
-  spawnHudFloat: (text: string, color: number) => void;
+  showToast: (message: ToastMessage) => void;
   setDeckDisplayOverrideCount: (count: number | null) => void;
 }
 
@@ -55,7 +56,7 @@ export class HandController {
   private readonly getStoreState: () => HandControllerStoreState;
   private readonly isDragging: () => boolean;
   private readonly onStartDrag: (card: CardSprite, index: number) => void;
-  private readonly spawnHudFloat: (text: string, color: number) => void;
+  private readonly showToast: (message: ToastMessage) => void;
   private readonly setDeckDisplayOverrideCount: (count: number | null) => void;
 
   private handCards: CardSprite[] = [];
@@ -76,7 +77,7 @@ export class HandController {
     this.getStoreState = deps.getStoreState;
     this.isDragging = deps.isDragging;
     this.onStartDrag = deps.onStartDrag;
-    this.spawnHudFloat = deps.spawnHudFloat;
+    this.showToast = deps.showToast;
     this.setDeckDisplayOverrideCount = deps.setDeckDisplayOverrideCount;
   }
 
@@ -315,11 +316,15 @@ export class HandController {
 
   private async playSequentialDrawEventAnimation(event: DrawEvent, cards: Card[]) {
     if (event.reshuffled) {
-      this.spawnHudFloat('弃牌堆洗回牌库', 0xfff9c4);
+      this.showToast({ text: '弃牌堆洗回牌库', tone: 'warning', color: 0xfff9c4 });
       await waitMs(260);
     }
 
-    this.spawnHudFloat(`${event.sourceLabel} +${cards.length} 张`, 0xabebc6);
+    this.showToast({
+      text: `${event.sourceLabel} +${cards.length} 张`,
+      tone: 'success',
+      color: 0xabebc6,
+    });
     let deckDisplayCount = event.deckBefore;
     this.setDeckDisplayOverrideCount(deckDisplayCount);
 

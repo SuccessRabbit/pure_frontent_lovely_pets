@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { Card } from '../types/card';
+import type { StatusInstance } from '../game/status/statusTypes';
 import {
   CELL_DURABILITY_MAX,
   HEARTS_ENTITY_INCOME_MULTIPLIER,
@@ -146,6 +147,9 @@ export interface GameState {
   awaitingHandTrim: boolean;
   lastDrawEvent: DrawEvent | null;
   nextDrawEventId: number;
+  entityStatuses: Record<string, StatusInstance[]>;
+  globalStatuses: StatusInstance[];
+  nextStatusId: number;
 }
 
 // 游戏操作
@@ -236,6 +240,9 @@ const initialState: GameState = {
   awaitingHandTrim: false,
   lastDrawEvent: null,
   nextDrawEventId: 1,
+  entityStatuses: {},
+  globalStatuses: [],
+  nextStatusId: 1,
 };
 
 export function snapshotGameState(source: GameState): GameState {
@@ -264,6 +271,9 @@ export function snapshotGameState(source: GameState): GameState {
     awaitingHandTrim: source.awaitingHandTrim,
     lastDrawEvent: source.lastDrawEvent,
     nextDrawEventId: source.nextDrawEventId,
+    entityStatuses: source.entityStatuses,
+    globalStatuses: source.globalStatuses,
+    nextStatusId: source.nextStatusId,
   };
 }
 

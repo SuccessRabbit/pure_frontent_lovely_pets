@@ -3,9 +3,11 @@ import { Scene } from '../core/Scene';
 import { GridCell } from '../entities/GridCell';
 import { DragSystem } from '../systems/DragSystem';
 import { VfxQueue } from '../systems/VfxQueue';
+import { ToastPresenter, toastFromColor, type ToastMessage } from '../systems/ToastPresenter';
 import { InputManager } from '../core/InputManager';
 import { snapshotGameState, useGameStore } from '../../store/gameStore';
 import type { GridEntity } from '../../store/gameStore';
+import type { StatusInstance, StatusTheme } from '../status/statusTypes';
 import { HAND_SIZE_MAX } from '@config/gameRules';
 import { Tween, Easing } from '../utils/Tween';
 import { IsometricPetRenderer } from '../renderers/IsometricPetRenderer';
@@ -13,10 +15,10 @@ import { burstParticlesAtGlobal, PET_BURST_COLORS } from '../utils/cardFx';
 import {
   strokeDark,
   strokeDarkBold,
-  strokeOnCool,
   strokeOnWarm,
 } from '../utils/fxTextStyles';
 import { VISUAL_THEME, type SceneMood } from '../theme/visualTheme';
+import { resolveStatusVisual } from '../status/statusRegistry';
 import { CardInteractionController } from './gameScene/CardInteractionController';
 import { GameOverController } from './gameScene/GameOverController';
 import { GridInteractionController } from './gameScene/GridInteractionController';
@@ -72,6 +74,13 @@ export class GameScene extends Scene {
 
   /** 飘字锚点（屏幕中上，避免挤在角落） */
   private hudToastAnchor!: PIXI.Container;
+  private toastPresenter: ToastPresenter;
+  private globalStatusHud!: PIXI.Container;
+  private statusTooltipLayer!: PIXI.Container;
+  private statusTooltipBg!: PIXI.Graphics;
+  private statusTooltipTitle!: PIXI.Text;
+  private statusTooltipDescription!: PIXI.Text;
+  private pinnedStatusTooltipKey: string | null = null;
   private deckDisplayOverrideCount: number | null = null;
 
   /** 点格子外区域时取消选格（与 container 的 pointerdown 绑定） */
@@ -98,12 +107,23 @@ export class GameScene extends Scene {
     this.hudToastAnchor = new PIXI.Container();
     this.hudToastAnchor.position.set(960, 118);
     this.uiContainer.addChild(this.hudToastAnchor);
+    this.toastPresenter = new ToastPresenter({
+      anchor: this.hudToastAnchor,
+      fxLayer: this.fxLayer,
+    });
+    this.globalStatusHud = new PIXI.Container();
+    this.globalStatusHud.position.set(1180, 102);
+    this.uiContainer.addChild(this.globalStatusHud);
 
     this.uiController = new GameSceneUiController({
       uiContainer: this.uiContainer,
       onEndTurnAttempt: () => {
         if (this.isHandTrimUiActive()) {
-          this.spawnHudFloat(`请先将手牌整理至 ${HAND_SIZE_MAX} 张以内`, 0xfff9c4);
+          this.showToast({
+            text: `请先将手牌整理至 ${HAND_SIZE_MAX} 张以内`,
+            tone: 'warning',
+            color: 0xfff9c4,
+          });
           return;
         }
         void this.runEndTurnSequence();
@@ -137,7 +157,7 @@ export class GameScene extends Scene {
         return false;
       },
       setDragEnabled: on => this.dragSystem.setEnabled(on),
-      spawnHudFloat: (text, color) => this.spawnHudFloat(text, color),
+      showToast: message => this.showToast(message),
       syncGridFromStore: () => this.syncGridFromStore(),
     });
 
@@ -161,7 +181,7 @@ export class GameScene extends Scene {
       getGridInteractionController: () => this.gridInteractionController,
       getGridCellCenterGlobal: (row, col) => this.getGridCellCenterGlobal(row, col),
       revealPlacedEntity: (row, col) => this.revealPlacedEntity(row, col),
-      spawnHudFloat: (text, color) => this.spawnHudFloat(text, color),
+      showToast: message => this.showToast(message),
       logFlow: (message, payload) => logSceneFlow(message, payload),
     });
 
@@ -180,7 +200,7 @@ export class GameScene extends Scene {
       },
       isDragging: () => this.dragSystem.isDragging(),
       onStartDrag: (card, index) => this.cardInteractionController.startHandCardDrag(card, index),
-      spawnHudFloat: (text, color) => this.spawnHudFloat(text, color),
+      showToast: message => this.showToast(message),
       setDeckDisplayOverrideCount: count => {
         this.deckDisplayOverrideCount = count;
         this.petRenderer?.setDeckCount(count ?? useGameStore.getState().deck.length);
@@ -198,7 +218,9 @@ export class GameScene extends Scene {
       showEntityCue: (row, col, title, subtitle, color) =>
         this.showEntityCue(row, col, title, subtitle, color),
       spawnIncomeFloat: (row, col, amount) => this.spawnIncomeFloat(row, col, amount),
-      spawnHudFloat: (text, color) => this.spawnHudFloat(text, color),
+      showToast: message => this.showToast(message),
+      spawnStatusBurst: (kind, theme, title, subtitle, color, row, col, global) =>
+        this.spawnStatusBurst(kind, theme, title, subtitle, color, row, col, global),
       syncGridFromStore: () => this.syncGridFromStore(),
       sync3DStressOverlays: () => this.sync3DStressOverlays(),
       pulseStressCell: (row, col) => this.pulseStressCell(row, col),
@@ -237,6 +259,7 @@ export class GameScene extends Scene {
     this.dragSystem.setDiscardDesignRoot(null);
     this.storeUnsub?.();
     this.storeUnsub = null;
+    this.toastPresenter.clear();
     this.gridInteractionController.clearPendingActionPick();
     this.gameOverController.clear();
     this.destroyPetRenderer();
@@ -283,10 +306,13 @@ export class GameScene extends Scene {
       const entity = grid[cell.row][cell.col];
       if (!entity) {
         cell.setStressOverlay3DAnchor(null);
+        cell.setStatusOverlay3DAnchor(null);
         return;
       }
       const anchor = this.petRenderer?.getPetStressAnchor(cell.row, cell.col) ?? null;
       cell.setStressOverlay3DAnchor(anchor);
+      const statusAnchor = this.petRenderer?.getPetStatusAnchor(cell.row, cell.col) ?? null;
+      cell.setStatusOverlay3DAnchor(statusAnchor);
     });
   }
 
@@ -311,6 +337,7 @@ export class GameScene extends Scene {
   }
 
   private onContainerPointerDownWhilePending(e: PIXI.FederatedPointerEvent) {
+    this.hideStatusTooltip();
     const target = e.target as PIXI.Container;
     const { x: screenX, y: screenY } = this.inputManager.getMouse();
     this.gridInteractionController.handleContainerPointerDown(target, screenX, screenY);
@@ -490,7 +517,44 @@ export class GameScene extends Scene {
 
   private createUI() {
     this.uiController.init();
+    this.initStatusTooltipLayer();
     this.dragSystem.setActionZone(this.uiController.getActionZoneHit());
+  }
+
+  private initStatusTooltipLayer() {
+    this.statusTooltipLayer = new PIXI.Container();
+    this.statusTooltipLayer.visible = false;
+    this.statusTooltipLayer.eventMode = 'none';
+    this.statusTooltipLayer.zIndex = 2000;
+
+    this.statusTooltipBg = new PIXI.Graphics();
+    this.statusTooltipTitle = new PIXI.Text('', {
+      fontFamily: VISUAL_THEME.typography.heading,
+      fontSize: 13,
+      fill: 0xfbf6ef,
+      fontWeight: '700',
+      stroke: strokeDarkBold,
+      wordWrap: true,
+      wordWrapWidth: 220,
+      lineHeight: 18,
+    });
+    this.statusTooltipDescription = new PIXI.Text('', {
+      fontFamily: VISUAL_THEME.typography.body,
+      fontSize: 12,
+      fill: 0xfbf6ef,
+      fontWeight: '700',
+      stroke: strokeDark,
+      wordWrap: true,
+      wordWrapWidth: 220,
+      lineHeight: 18,
+    });
+    this.statusTooltipTitle.position.set(12, 10);
+    this.statusTooltipDescription.position.set(12, 34);
+
+    this.statusTooltipLayer.addChild(this.statusTooltipBg);
+    this.statusTooltipLayer.addChild(this.statusTooltipTitle);
+    this.statusTooltipLayer.addChild(this.statusTooltipDescription);
+    this.uiContainer.addChild(this.statusTooltipLayer);
   }
 
   private isHandTrimUiActive(): boolean {
@@ -588,31 +652,183 @@ export class GameScene extends Scene {
     });
   }
 
-  private spawnHudFloat(text: string, color: number) {
-    const g = this.hudToastAnchor.toGlobal(new PIXI.Point(0, 0));
-    const lp = this.fxLayer.toLocal(g);
-    const outline =
-      color === 0xfff9c4 ? strokeOnWarm : color === 0xabebc6 ? strokeOnCool : strokeDark;
-    const t = new PIXI.Text({
-      text,
-      style: {
-        fontFamily: VISUAL_THEME.typography.heading,
-        fontSize: 24,
-        fill: color,
-        fontWeight: 'bold',
-        stroke: outline,
-      },
-    });
-    t.anchor.set(0, 0.5);
-    t.position.set(lp.x, lp.y);
-    t.alpha = 0;
-    this.fxLayer.addChild(t);
+  private showToast(message: ToastMessage) {
+    this.toastPresenter.show(message);
+  }
 
-    Tween.to(t, { alpha: 1 }, 160, Easing.easeOutQuad, () => {
-      Tween.to(t, { y: t.y - 36, alpha: 0 }, 900, Easing.easeOutQuad, () => {
-        t.destroy();
+  private getStatusDescription(status: StatusInstance): string {
+    return (
+      status.description ||
+      String(status.params.descriptionPreview ?? '') ||
+      String(status.params.summary ?? '') ||
+      status.title
+    );
+  }
+
+  private showStatusTooltip(
+    globalX: number,
+    globalY: number,
+    title: string,
+    description: string,
+    pinnedKey?: string | null
+  ) {
+    if (pinnedKey !== undefined) {
+      this.pinnedStatusTooltipKey = pinnedKey;
+    }
+
+    this.statusTooltipTitle.text = title;
+    this.statusTooltipDescription.text = description;
+
+    const width = Math.max(
+      160,
+      Math.min(
+        260,
+        Math.max(this.statusTooltipTitle.width, this.statusTooltipDescription.width) + 24
+      )
+    );
+    this.statusTooltipTitle.style.wordWrapWidth = width - 24;
+    this.statusTooltipDescription.style.wordWrapWidth = width - 24;
+    this.statusTooltipDescription.position.set(
+      12,
+      this.statusTooltipTitle.y + this.statusTooltipTitle.height + 6
+    );
+    const height = Math.max(
+      58,
+      this.statusTooltipDescription.y + this.statusTooltipDescription.height + 12
+    );
+
+    this.statusTooltipBg.clear();
+    this.statusTooltipBg.beginFill(0x17131f, 0.95);
+    this.statusTooltipBg.lineStyle(2, 0xf9d27d, 0.82);
+    this.statusTooltipBg.drawRoundedRect(0, 0, width, height, 12);
+    this.statusTooltipBg.endFill();
+
+    const point = this.uiContainer.toLocal(new PIXI.Point(globalX, globalY));
+    const margin = 16;
+    const x = Math.max(margin, Math.min(DESIGN_WIDTH - width - margin, point.x + 14));
+    const y = Math.max(margin, Math.min(DESIGN_HEIGHT - height - margin, point.y - height * 0.5));
+    this.statusTooltipLayer.position.set(x, y);
+    this.statusTooltipLayer.visible = true;
+  }
+
+  private hideStatusTooltip(clearPinned = true) {
+    this.statusTooltipLayer.visible = false;
+    if (clearPinned) {
+      this.pinnedStatusTooltipKey = null;
+    }
+  }
+
+  private toggleStatusTooltip(
+    key: string,
+    globalX: number,
+    globalY: number,
+    title: string,
+    description: string
+  ) {
+    if (this.pinnedStatusTooltipKey === key && this.statusTooltipLayer.visible) {
+      this.hideStatusTooltip();
+      return;
+    }
+    this.showStatusTooltip(globalX, globalY, title, description, key);
+  }
+
+  private updateGlobalStatusHud(statuses: StatusInstance[]) {
+    this.globalStatusHud.removeChildren().forEach(child => child.destroy({ children: true }));
+    statuses.slice(0, 4).forEach((status, index) => {
+      const visual = resolveStatusVisual(status.kind, status.theme);
+      const wrap = new PIXI.Container();
+      wrap.position.set(index * 126, 0);
+      wrap.eventMode = 'static';
+      wrap.cursor = 'help';
+      wrap.hitArea = new PIXI.Rectangle(0, 0, 114, 38);
+
+      const bg = new PIXI.Graphics();
+      bg.beginFill(0x1f2434, 0.84);
+      bg.lineStyle(2, visual.color, 0.7);
+      bg.drawRoundedRect(0, 0, 114, 38, 14);
+      bg.endFill();
+      wrap.addChild(bg);
+
+      const title = new PIXI.Text(`${visual.shortLabel} ${status.title}`, {
+        fontFamily: VISUAL_THEME.typography.heading,
+        fontSize: 12,
+        fill: 0xfbf6ef,
+        fontWeight: '700',
+        stroke: strokeDark,
       });
+      title.position.set(10, 6);
+      wrap.addChild(title);
+
+      const duration = new PIXI.Text(status.duration > 0 ? `${status.duration} 回合` : '常驻', {
+        fontFamily: VISUAL_THEME.typography.body,
+        fontSize: 10,
+        fill: visual.color,
+        fontWeight: '700',
+        stroke: strokeDark,
+      });
+      duration.position.set(10, 20);
+      wrap.addChild(duration);
+
+      const description = this.getStatusDescription(status);
+      const tooltipKey = `global:${status.id}`;
+      wrap.on('pointerover', () => {
+        const point = wrap.getGlobalPosition(new PIXI.Point());
+        this.showStatusTooltip(point.x + 114, point.y + 19, status.title, description);
+      });
+      wrap.on('pointerout', () => {
+        if (this.pinnedStatusTooltipKey === tooltipKey) return;
+        this.hideStatusTooltip(false);
+      });
+      wrap.on('pointertap', (e: PIXI.FederatedPointerEvent) => {
+        e.stopPropagation();
+        const point = wrap.getGlobalPosition(new PIXI.Point());
+        this.toggleStatusTooltip(tooltipKey, point.x + 114, point.y + 19, status.title, description);
+      });
+      this.globalStatusHud.addChild(wrap);
     });
+  }
+
+  private statusThemeToParticleColors(theme: StatusTheme, color: number): number[] {
+    if (theme === 'buff') return [color, 0xfff1a8, 0xffffff];
+    if (theme === 'debuff') return [color, 0xffb0b0, 0x3b2236];
+    if (theme === 'passive') return [color, 0xa9f0d1, 0xffffff];
+    return [color, 0xb8d8ff, 0xffffff];
+  }
+
+  private spawnStatusBurst(
+    kind: string,
+    theme: StatusTheme,
+    title: string,
+    subtitle: string,
+    color: number,
+    row?: number,
+    col?: number,
+    global = false
+  ) {
+    const visual = resolveStatusVisual(kind, theme);
+    const burstColors = this.statusThemeToParticleColors(theme, color || visual.color);
+    if (global || row === undefined || col === undefined) {
+      this.showToast(toastFromColor(`${title} · ${subtitle}`, color || visual.color));
+      const g = this.hudToastAnchor.toGlobal(new PIXI.Point(140, -6));
+      burstParticlesAtGlobal(this.fxLayer, g.x, g.y, {
+        count: 18,
+        colors: burstColors,
+        spread: 54,
+        durationMin: 260,
+        durationMax: 520,
+      });
+      return;
+    }
+
+    const anchor = this.getCellAnchorGlobal(row, col, 8);
+    burstParticlesAtGlobal(this.fxLayer, anchor.x, anchor.y, {
+      count: 24,
+      colors: burstColors,
+      spread: 72,
+      durationMin: 320,
+      durationMax: 620,
+    });
+    void this.showEntityCue(row, col, title, subtitle, color || visual.color);
   }
 
   private getCellAnchorGlobal(row: number, col: number, yOffset = 26) {
@@ -748,12 +964,24 @@ export class GameScene extends Scene {
 
   /** 与 Zustand grid 对齐占位格显示（放置、移除、拆家等） */
   private syncGridFromStore() {
-    const { grid, cellDurability } = useGameStore.getState();
+    const { grid, cellDurability, entityStatuses, globalStatuses } = useGameStore.getState();
     this.gridCells.forEach(cell => {
       const entity = grid[cell.row][cell.col];
       const d = cellDurability[cell.row][cell.col] ?? 0;
       const ruins = d <= 0;
+      cell.setStatusTooltipHandlers(
+        (status, globalX, globalY) => {
+          this.showStatusTooltip(globalX, globalY, status.title, this.getStatusDescription(status));
+        },
+        () => {
+          this.hideStatusTooltip(false);
+        },
+        (status, globalX, globalY, key) => {
+          this.toggleStatusTooltip(key, globalX, globalY, status.title, this.getStatusDescription(status));
+        }
+      );
       cell.syncFromStore(entity, d);
+      cell.syncStatuses(entity ? (entityStatuses[entity.id] ?? []) : []);
 
       // 同步格子状态到 3D 渲染器
       if (this.petRenderer) {
@@ -763,8 +991,20 @@ export class GameScene extends Scene {
       // 同步 stress 到 3D 渲染器（驱动动画切换）
       if (entity && this.petRenderer) {
         this.petRenderer.updatePetStress(cell.row, cell.col, entity.stress, entity.maxStress);
+        const topStatus = (entityStatuses[entity.id] ?? [])
+          .filter(status => !status.isPassive)
+          .sort((a, b) => resolveStatusVisual(b.kind, b.theme).priority - resolveStatusVisual(a.kind, a.theme).priority)[0];
+        this.petRenderer.updatePetAura(
+          cell.row,
+          cell.col,
+          topStatus ? resolveStatusVisual(topStatus.kind, topStatus.theme).color : null,
+          topStatus ? 1 : 0
+        );
+      } else if (this.petRenderer) {
+        this.petRenderer.updatePetAura(cell.row, cell.col, null, 0);
       }
     });
+    this.updateGlobalStatusHud(globalStatuses);
     this.syncVisualMood();
   }
 
