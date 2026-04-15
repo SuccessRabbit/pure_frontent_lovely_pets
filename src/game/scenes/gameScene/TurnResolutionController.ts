@@ -30,6 +30,7 @@ interface TurnResolutionControllerDeps {
   sync3DStressOverlays: () => void;
   pulseStressCell: (row: number, col: number) => void;
   playManualDrawEvent: (event: DrawEvent) => Promise<void>;
+  prepareManualDrawEvents: (events: DrawEvent[]) => void;
 }
 
 export class TurnResolutionController {
@@ -51,6 +52,7 @@ export class TurnResolutionController {
   private readonly sync3DStressOverlays: () => void;
   private readonly pulseStressCell: (row: number, col: number) => void;
   private readonly playManualDrawEvent: (event: DrawEvent) => Promise<void>;
+  private readonly prepareManualDrawEvents: (events: DrawEvent[]) => void;
 
   constructor(deps: TurnResolutionControllerDeps) {
     this.getRoundResolving = deps.getRoundResolving;
@@ -65,6 +67,7 @@ export class TurnResolutionController {
     this.sync3DStressOverlays = deps.sync3DStressOverlays;
     this.pulseStressCell = deps.pulseStressCell;
     this.playManualDrawEvent = deps.playManualDrawEvent;
+    this.prepareManualDrawEvents = deps.prepareManualDrawEvents;
   }
 
   public async runEndTurnSequence() {
@@ -96,6 +99,13 @@ export class TurnResolutionController {
   }
 
   private async applyResolutionStep(step: ResolutionStep): Promise<void> {
+    const manualDrawEvents = step.presentation
+      .filter((event): event is Extract<PresentationEvent, { type: 'play_draw_event' }> => event.type === 'play_draw_event')
+      .map(event => event.event);
+    if (manualDrawEvents.length > 0) {
+      this.prepareManualDrawEvents(manualDrawEvents);
+    }
+
     useGameStore.setState(step.state);
     this.syncGridFromStore();
     this.sync3DStressOverlays();

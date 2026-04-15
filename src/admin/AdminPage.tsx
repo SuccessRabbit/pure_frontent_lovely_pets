@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { loadAdminDatasets, saveAdminDatasets, subscribeToAdminEvents } from './api';
 import { ModelPreviewCanvas } from './ModelPreviewCanvas';
 import type {
@@ -12,6 +12,13 @@ import type {
 
 type AdminTab = 'cards' | 'global';
 type CardViewMode = 'detail' | 'table';
+type CardSortField = 'type' | 'name' | 'id' | 'cost' | 'rarity' | 'income' | 'stress' | 'stressLimit' | 'canDiscard' | 'tags';
+type SortDirection = 'asc' | 'desc';
+
+interface CardSortState {
+  field: CardSortField;
+  direction: SortDirection;
+}
 
 interface ParamSchemaField {
   name: string;
@@ -45,6 +52,26 @@ interface CardEditorPanelProps {
   addBinding: () => void;
   updateModelProfile: (profileId: string, patch: Partial<ModelProfileRow>) => void;
   emptyState?: ReactNode;
+}
+
+interface ResourcePreviewProps {
+  label: string;
+  src: string;
+  fit?: 'contain' | 'cover';
+  scaleMode?: 'fill' | 'fit';
+}
+
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
+interface CustomSelectProps {
+  value: string;
+  options: SelectOption[];
+  disabled?: boolean;
+  compact?: boolean;
+  onChange: (value: string) => void;
 }
 
 const shellStyle: CSSProperties = {
@@ -151,17 +178,55 @@ function isEntityCard(card: CardRow) {
 }
 
 function sortCardsForComparison(cards: CardRow[]) {
+  return [...cards].sort(defaultCardCompare);
+}
+
+function sortCardsForTable(cards: CardRow[], sortState: CardSortState) {
   return [...cards].sort((a, b) => {
-    const typeDiff = a.type.localeCompare(b.type);
-    if (typeDiff !== 0) return typeDiff;
+    let diff = 0;
 
-    const aCost = Number(a.cost);
-    const bCost = Number(b.cost);
-    const normalizedACost = Number.isFinite(aCost) ? aCost : Number.MAX_SAFE_INTEGER;
-    const normalizedBCost = Number.isFinite(bCost) ? bCost : Number.MAX_SAFE_INTEGER;
-    if (normalizedACost !== normalizedBCost) return normalizedACost - normalizedBCost;
+    switch (sortState.field) {
+      case 'type':
+        diff = compareText(a.type, b.type, sortState.direction);
+        break;
+      case 'name':
+        diff = compareText(a.name, b.name, sortState.direction);
+        break;
+      case 'id':
+        diff = compareText(a.id, b.id, sortState.direction);
+        break;
+      case 'cost':
+        diff = compareOptionalNumbers(a.cost, b.cost, sortState.direction);
+        break;
+      case 'rarity':
+        diff = compareOrderedNumbers(
+          rarityRank[a.rarity] ?? Number.MAX_SAFE_INTEGER,
+          rarityRank[b.rarity] ?? Number.MAX_SAFE_INTEGER,
+          sortState.direction
+        );
+        break;
+      case 'income':
+        diff = compareOptionalNumbers(a.income, b.income, sortState.direction);
+        break;
+      case 'stress':
+        diff = compareOptionalNumbers(a.stress, b.stress, sortState.direction);
+        break;
+      case 'stressLimit':
+        diff = compareOptionalNumbers(a.stressLimit, b.stressLimit, sortState.direction);
+        break;
+      case 'canDiscard':
+        diff = compareOrderedNumbers(
+          a.canDiscard === 'true' ? 1 : 0,
+          b.canDiscard === 'true' ? 1 : 0,
+          sortState.direction
+        );
+        break;
+      case 'tags':
+        diff = compareText(a.tags || '\uffff', b.tags || '\uffff', sortState.direction);
+        break;
+    }
 
-    return a.id.localeCompare(b.id);
+    return diff !== 0 ? diff : defaultCardCompare(a, b);
   });
 }
 
@@ -193,6 +258,21 @@ function tableInputStyle(disabled = false): CSSProperties {
   };
 }
 
+function customSelectButtonStyle(disabled = false, compact = false, open = false): CSSProperties {
+  const baseStyle = compact ? tableInputStyle(disabled) : inputStyle(true);
+  return {
+    ...baseStyle,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: 12,
+    textAlign: 'left',
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    borderColor: open ? 'rgba(255,210,133,0.36)' : 'rgba(255,255,255,0.14)',
+    background: open ? 'rgba(255,210,133,0.10)' : baseStyle.background,
+  };
+}
+
 const compactNumericColumnStyle: CSSProperties = {
   minWidth: 72,
   maxWidth: 92,
@@ -216,6 +296,204 @@ const compactHeaderTextStyle: CSSProperties = {
   overflowWrap: 'anywhere',
   lineHeight: 1.3,
 };
+
+function CustomSelect({ value, options, disabled = false, compact = false, onChange }: CustomSelectProps) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+  const selectedOption = options.find(option => option.value === value) ?? options[0] ?? null;
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) {
+        setOpen(false);
+      }
+    }
+
+    window.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [open]);
+
+  useEffect(() => {
+    if (disabled) {
+      setOpen(false);
+    }
+  }, [disabled]);
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => {
+          if (!disabled) {
+            setOpen(current => !current);
+          }
+        }}
+        style={customSelectButtonStyle(disabled, compact, open)}
+      >
+        <span
+          style={{
+            flex: 1,
+            minWidth: 0,
+            whiteSpace: 'normal',
+            overflowWrap: 'anywhere',
+            opacity: selectedOption ? 1 : 0.48,
+          }}
+        >
+          {selectedOption?.label ?? '未选择'}
+        </span>
+        <span
+          style={{
+            flexShrink: 0,
+            opacity: 0.72,
+            transform: open ? 'rotate(180deg)' : 'rotate(0deg)',
+            transition: 'transform 120ms ease',
+          }}
+        >
+          ▾
+        </span>
+      </button>
+
+      {open && !disabled ? (
+        <div
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            left: 0,
+            right: 0,
+            zIndex: 40,
+            padding: 6,
+            borderRadius: 16,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: 'rgba(20,16,22,0.98)',
+            boxShadow: '0 20px 40px rgba(0,0,0,0.28)',
+            backdropFilter: 'blur(14px)',
+          }}
+        >
+          <div style={{ display: 'grid', gap: 4, maxHeight: compact ? 220 : 280, overflowY: 'auto' }}>
+            {options.map(option => {
+              const selected = option.value === value;
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  onClick={() => {
+                    onChange(option.value);
+                    setOpen(false);
+                  }}
+                  style={{
+                    width: '100%',
+                    border: '1px solid rgba(255,255,255,0.08)',
+                    borderRadius: 12,
+                    padding: compact ? '8px 10px' : '10px 12px',
+                    background: selected ? 'rgba(255,210,133,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: '#fff8ef',
+                    textAlign: 'left',
+                    cursor: 'pointer',
+                    whiteSpace: 'normal',
+                    overflowWrap: 'anywhere',
+                    fontSize: compact ? 13 : 14,
+                  }}
+                >
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+const rarityRank: Record<string, number> = {
+  common: 0,
+  rare: 1,
+  epic: 2,
+  legendary: 3,
+};
+
+const cardTypeLabels: Record<string, string> = {
+  entity_pet: '萌宠',
+  entity_worker: '员工',
+  entity_facility: '设施',
+  action_buff: '增益',
+  action_debuff: '减益',
+  action_utility: '功能',
+  status_negative: '负面',
+};
+
+const tableSortFieldLabels: Record<CardSortField, string> = {
+  type: '类型',
+  name: '名称',
+  id: 'ID',
+  cost: '费用',
+  rarity: '稀有度',
+  income: '收益',
+  stress: '压力',
+  stressLimit: '压力上限',
+  canDiscard: '可弃置',
+  tags: '标签',
+};
+
+function compareTextValue(a: string, b: string) {
+  return a.localeCompare(b, 'zh-Hans-CN');
+}
+
+function compareText(a: string, b: string, direction: SortDirection) {
+  const diff = compareTextValue(a, b);
+  return direction === 'asc' ? diff : -diff;
+}
+
+function parseOptionalNumber(value: string) {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : null;
+}
+
+function compareOptionalNumbers(a: string, b: string, direction: SortDirection) {
+  const aValue = parseOptionalNumber(a);
+  const bValue = parseOptionalNumber(b);
+
+  if (aValue == null && bValue == null) return 0;
+  if (aValue == null) return 1;
+  if (bValue == null) return -1;
+
+  return direction === 'asc' ? aValue - bValue : bValue - aValue;
+}
+
+function compareOrderedNumbers(a: number, b: number, direction: SortDirection) {
+  return direction === 'asc' ? a - b : b - a;
+}
+
+function defaultCardCompare(a: CardRow, b: CardRow) {
+  const typeDiff = compareTextValue(a.type, b.type);
+  if (typeDiff !== 0) return typeDiff;
+
+  const aCost = parseOptionalNumber(a.cost);
+  const bCost = parseOptionalNumber(b.cost);
+  const normalizedACost = aCost == null ? Number.MAX_SAFE_INTEGER : aCost;
+  const normalizedBCost = bCost == null ? Number.MAX_SAFE_INTEGER : bCost;
+  if (normalizedACost !== normalizedBCost) return normalizedACost - normalizedBCost;
+
+  return compareTextValue(a.id, b.id);
+}
+
+function formatCardTypeLabel(cardType: string) {
+  return cardTypeLabels[cardType] ?? cardType;
+}
+
+function formatCardTypeOptionLabel(cardType: string) {
+  const label = formatCardTypeLabel(cardType);
+  return label === cardType ? cardType : `${label} · ${cardType}`;
+}
+
+function formatSortFieldLabel(field: CardSortField) {
+  return tableSortFieldLabels[field];
+}
 
 function CardEditorPanel({
   selectedCard,
@@ -261,18 +539,12 @@ function CardEditorPanel({
         </label>
         <label>
           <div style={{ marginBottom: 6 }}>稀有度</div>
-          <select
+          <CustomSelect
             value={selectedCard.rarity}
             disabled={!canEdit}
-            onChange={event => updateCard({ rarity: event.target.value })}
-            style={inputStyle(true)}
-          >
-            {['common', 'rare', 'epic', 'legendary'].map(option => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            onChange={value => updateCard({ rarity: value })}
+            options={['common', 'rare', 'epic', 'legendary'].map(option => ({ value: option, label: option }))}
+          />
         </label>
         <label>
           <div style={{ marginBottom: 6 }}>费用</div>
@@ -344,53 +616,48 @@ function CardEditorPanel({
       <div style={{ display: 'grid', gap: 12 }}>
         <label>
           <div style={{ marginBottom: 6 }}>卡面图片资源</div>
-          <select
+          <CustomSelect
             value={selectedCard.cardImagePath}
             disabled={!canEdit}
-            onChange={event => updateCard({ cardImagePath: event.target.value })}
-            style={inputStyle(true)}
-          >
-            <option value="">未绑定</option>
-            {cardImageOptions.map(option => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            onChange={value => updateCard({ cardImagePath: value })}
+            options={[
+              { value: '', label: '未绑定' },
+              ...cardImageOptions.map(option => ({ value: option, label: option })),
+            ]}
+          />
         </label>
+        <ResourcePreview
+          label="卡面预览"
+          src={selectedCard.cardImagePath}
+          fit={(selectedCard.imageFitMode || 'contain') as 'contain' | 'cover'}
+          scaleMode="fit"
+        />
         <label>
           <div style={{ marginBottom: 6 }}>插画资源</div>
-          <select
+          <CustomSelect
             value={selectedCard.illustrationPath}
             disabled={!canEdit}
-            onChange={event => updateCard({ illustrationPath: event.target.value })}
-            style={inputStyle(true)}
-          >
-            <option value="">未绑定</option>
-            {illustrationOptions.map(option => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
+            onChange={value => updateCard({ illustrationPath: value })}
+            options={[
+              { value: '', label: '未绑定' },
+              ...illustrationOptions.map(option => ({ value: option, label: option })),
+            ]}
+          />
         </label>
+        <ResourcePreview label="插画预览" src={selectedCard.illustrationPath} fit="contain" scaleMode="fit" />
         {selectedCard.type === 'entity_pet' ? (
           <>
             <label>
               <div style={{ marginBottom: 6 }}>3D 模型配置</div>
-              <select
+              <CustomSelect
                 value={selectedCard.modelProfileId}
                 disabled={!canEdit}
-                onChange={event => updateCard({ modelProfileId: event.target.value })}
-                style={inputStyle(true)}
-              >
-                <option value="">未绑定</option>
-                {draft.modelProfiles.map(profile => (
-                  <option key={profile.id} value={profile.id}>
-                    {profile.name}
-                  </option>
-                ))}
-              </select>
+                onChange={value => updateCard({ modelProfileId: value })}
+                options={[
+                  { value: '', label: '未绑定' },
+                  ...draft.modelProfiles.map(profile => ({ value: profile.id, label: profile.name })),
+                ]}
+              />
             </label>
             {selectedModelProfile ? (
               <div
@@ -406,18 +673,12 @@ function CardEditorPanel({
               >
                 <label>
                   <div style={{ marginBottom: 6 }}>模型预设 source</div>
-                  <select
+                  <CustomSelect
                     value={selectedModelProfile.source}
                     disabled={!canEdit}
-                    onChange={event => updateModelProfile(selectedModelProfile.id, { source: event.target.value })}
-                    style={inputStyle(true)}
-                  >
-                    {assetOptions.modelPresetSources.map(option => (
-                      <option key={option} value={option}>
-                        {option}
-                      </option>
-                    ))}
-                  </select>
+                    onChange={value => updateModelProfile(selectedModelProfile.id, { source: value })}
+                    options={assetOptions.modelPresetSources.map(option => ({ value: option, label: option }))}
+                  />
                 </label>
                 <label>
                   <div style={{ marginBottom: 6 }}>缩放</div>
@@ -494,33 +755,27 @@ function CardEditorPanel({
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 120px 120px', gap: 10, marginBottom: 12 }}>
-                <select
+                <CustomSelect
                   value={binding.templateId}
                   disabled={!canEdit}
-                  onChange={event => updateBinding(binding.id, { templateId: event.target.value })}
-                  style={inputStyle(true)}
-                >
-                  {availableTemplates.map(option => (
-                    <option key={option.id} value={option.id}>
-                      {option.name}
-                    </option>
-                  ))}
-                </select>
+                  onChange={value => updateBinding(binding.id, { templateId: value })}
+                  options={availableTemplates.map(option => ({ value: option.id, label: option.name }))}
+                />
                 <input
                   value={binding.sortOrder}
                   disabled={!canEdit}
                   onChange={event => updateBinding(binding.id, { sortOrder: event.target.value })}
                   style={inputStyle(true)}
                 />
-                <select
+                <CustomSelect
                   value={binding.enabled}
                   disabled={!canEdit}
-                  onChange={event => updateBinding(binding.id, { enabled: event.target.value })}
-                  style={inputStyle(true)}
-                >
-                  <option value="true">启用</option>
-                  <option value="false">停用</option>
-                </select>
+                  onChange={value => updateBinding(binding.id, { enabled: value })}
+                  options={[
+                    { value: 'true', label: '启用' },
+                    { value: 'false', label: '停用' },
+                  ]}
+                />
               </div>
 
               {schema.length > 0 ? (
@@ -529,21 +784,15 @@ function CardEditorPanel({
                     <label key={field.name}>
                       <div style={{ marginBottom: 6 }}>{field.label}</div>
                       {field.type === 'select' ? (
-                        <select
+                        <CustomSelect
                           value={String(params[field.name] ?? field.defaultValue ?? '')}
                           disabled={!canEdit}
-                          onChange={event => {
-                            const nextParams = { ...params, [field.name]: event.target.value };
+                          onChange={value => {
+                            const nextParams = { ...params, [field.name]: value };
                             updateBinding(binding.id, { paramsJson: JSON.stringify(nextParams) });
                           }}
-                          style={inputStyle(true)}
-                        >
-                          {(field.options ?? []).map(option => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
+                          options={(field.options ?? []).map(option => ({ value: option, label: option }))}
+                        />
                       ) : (
                         <input
                           value={String(params[field.name] ?? field.defaultValue ?? '')}
@@ -596,6 +845,67 @@ function CardEditorPanel({
   );
 }
 
+function ResourcePreview({ label, src, fit = 'contain', scaleMode = 'fill' }: ResourcePreviewProps) {
+  return (
+    <div
+      style={{
+        borderRadius: 16,
+        overflow: 'hidden',
+        border: '1px solid rgba(255,255,255,0.08)',
+        background: 'rgba(255,255,255,0.03)',
+      }}
+    >
+      <div
+        style={{
+          padding: '10px 12px',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          fontSize: 12,
+          opacity: 0.72,
+        }}
+      >
+        {label}
+      </div>
+      <div
+        style={{
+          minHeight: 240,
+          maxHeight: 300,
+          height: 'min(400px, 42vw)',
+          display: 'grid',
+          placeItems: 'center',
+          background: 'linear-gradient(180deg, rgba(25,20,24,0.92) 0%, rgba(17,14,18,0.98) 100%)',
+        }}
+      >
+        {src ? (
+          <img
+            src={src}
+            alt={label}
+            style={{
+              width: scaleMode === 'fill' ? '100%' : 'auto',
+              height: scaleMode === 'fill' ? '100%' : 'auto',
+              maxWidth: scaleMode === 'fill' ? '100%' : '84%',
+              maxHeight: scaleMode === 'fill' ? '300px' : 'calc(300px - 64px)',
+              objectFit: fit,
+            }}
+          />
+        ) : (
+          <div style={{ fontSize: 13, opacity: 0.52 }}>未绑定资源</div>
+        )}
+      </div>
+      <div
+        style={{
+          padding: '10px 12px',
+          fontSize: 12,
+          opacity: src ? 0.64 : 0.44,
+          whiteSpace: 'normal',
+          overflowWrap: 'anywhere',
+        }}
+      >
+        {src || '请选择资源文件'}
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const [response, setResponse] = useState<AdminDatasetResponse | null>(null);
   const [draft, setDraft] = useState<RawAdminDatasets | null>(null);
@@ -604,6 +914,8 @@ export function AdminPage() {
   const [selectedCardId, setSelectedCardId] = useState<string>('');
   const [tableEditorOpen, setTableEditorOpen] = useState(false);
   const [search, setSearch] = useState('');
+  const [cardTypeFilter, setCardTypeFilter] = useState<string>('all');
+  const [tableSort, setTableSort] = useState<CardSortState>({ field: 'type', direction: 'asc' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
@@ -646,14 +958,36 @@ export function AdminPage() {
     return draft.modelProfiles.find(profile => profile.id === selectedCard.modelProfileId) ?? null;
   }, [draft, selectedCard]);
 
-  const visibleCards = useMemo(() => {
+  const cardTypeOptions = useMemo(() => {
+    if (!draft) return [];
+    return Object.keys(buildCardTypeSummary(draft.cards)).sort((a, b) => {
+      const labelDiff = compareTextValue(formatCardTypeLabel(a), formatCardTypeLabel(b));
+      return labelDiff !== 0 ? labelDiff : compareTextValue(a, b);
+    });
+  }, [draft]);
+
+  const allCardTypeSummary = useMemo(() => {
+    if (!draft) return {};
+    return buildCardTypeSummary(draft.cards);
+  }, [draft]);
+
+  const filteredCards = useMemo(() => {
     if (!draft) return [];
     const query = search.trim().toLowerCase();
-    const filtered = !query
-      ? draft.cards
-      : draft.cards.filter(card => `${card.id} ${card.name} ${card.type}`.toLowerCase().includes(query));
-    return sortCardsForComparison(filtered);
-  }, [draft, search]);
+    return draft.cards.filter(card => {
+      const matchesQuery =
+        !query || `${card.id} ${card.name} ${card.type} ${card.rarity} ${card.tags}`.toLowerCase().includes(query);
+      const matchesType = cardTypeFilter === 'all' || card.type === cardTypeFilter;
+      return matchesQuery && matchesType;
+    });
+  }, [draft, search, cardTypeFilter]);
+
+  const visibleCards = useMemo(() => {
+    if (viewMode === 'table') {
+      return sortCardsForTable(filteredCards, tableSort);
+    }
+    return sortCardsForComparison(filteredCards);
+  }, [filteredCards, tableSort, viewMode]);
 
   const currentBindings = useMemo(() => {
     if (!draft || !selectedCard) return [];
@@ -665,7 +999,13 @@ export function AdminPage() {
     return draft.skillTemplates.filter(template => templateSupportsCard(template, selectedCard.type));
   }, [draft, selectedCard]);
 
-  const cardTypeSummary = useMemo(() => buildCardTypeSummary(visibleCards), [visibleCards]);
+  const cardTypeSummary = useMemo(() => buildCardTypeSummary(filteredCards), [filteredCards]);
+
+  useEffect(() => {
+    if (tab !== 'cards') return;
+    if (visibleCards.some(card => card.id === selectedCardId)) return;
+    setSelectedCardId(visibleCards[0]?.id ?? '');
+  }, [tab, visibleCards, selectedCardId]);
 
   if (!response || !draft) {
     return (
@@ -774,7 +1114,7 @@ export function AdminPage() {
     const nextCard: CardRow = {
       id: nextId,
       name: '新卡牌',
-      type: 'action_utility',
+      type: cardTypeFilter === 'all' ? 'action_utility' : cardTypeFilter,
       cost: '1',
       rarity: 'common',
       description: '',
@@ -824,6 +1164,19 @@ export function AdminPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function clearCardFilters() {
+    setSearch('');
+    setCardTypeFilter('all');
+  }
+
+  function toggleTableSort(field: CardSortField) {
+    setTableSort(current =>
+      current.field === field
+        ? { field, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+        : { field, direction: 'asc' }
+    );
   }
 
   return (
@@ -930,12 +1283,147 @@ export function AdminPage() {
                 </button>
               ))}
             </div>
-            <input
-              value={search}
-              onChange={event => setSearch(event.target.value)}
-              placeholder="搜索卡牌 ID / 名称"
-              style={{ ...inputStyle(true), marginBottom: 14 }}
-            />
+            <div
+              style={{
+                display: 'grid',
+                gap: 12,
+                marginBottom: 14,
+                padding: 14,
+                borderRadius: 18,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div style={{ display: 'grid', gap: 8 }}>
+                <div style={{ fontWeight: 700 }}>筛选卡牌</div>
+                <input
+                  value={search}
+                  onChange={event => setSearch(event.target.value)}
+                  placeholder="搜索 ID / 名称 / 标签 / 稀有度"
+                  style={inputStyle(true)}
+                />
+                <CustomSelect
+                  value={cardTypeFilter}
+                  onChange={value => setCardTypeFilter(value)}
+                  options={[
+                    { value: 'all', label: '全部类型' },
+                    ...cardTypeOptions.map(type => ({
+                      value: type,
+                      label: formatCardTypeOptionLabel(type),
+                    })),
+                  ]}
+                />
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                <button
+                  onClick={() => setCardTypeFilter('all')}
+                  style={{
+                    borderRadius: 999,
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    background: cardTypeFilter === 'all' ? 'rgba(255,210,133,0.18)' : 'rgba(255,255,255,0.04)',
+                    color: '#fff8ef',
+                    padding: '8px 12px',
+                    fontSize: 12,
+                    cursor: 'pointer',
+                  }}
+                >
+                  全部 · {draft.cards.length}
+                </button>
+                {cardTypeOptions.map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setCardTypeFilter(type)}
+                    style={{
+                      borderRadius: 999,
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: cardTypeFilter === type ? 'rgba(255,210,133,0.18)' : 'rgba(255,255,255,0.04)',
+                      color: '#fff8ef',
+                      padding: '8px 12px',
+                      fontSize: 12,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {formatCardTypeLabel(type)} · {allCardTypeSummary[type] ?? 0}
+                  </button>
+                ))}
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' }}>
+                <div style={{ fontSize: 13, opacity: 0.76 }}>
+                  命中 {visibleCards.length} 张卡牌
+                  {cardTypeFilter !== 'all' ? `，类型 ${formatCardTypeLabel(cardTypeFilter)}` : ''}
+                </div>
+                {(search || cardTypeFilter !== 'all') ? (
+                  <button
+                    onClick={clearCardFilters}
+                    style={{
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      borderRadius: 999,
+                      background: 'transparent',
+                      color: '#fff8ef',
+                      padding: '8px 12px',
+                      cursor: 'pointer',
+                    }}
+                  >
+                    清空筛选
+                  </button>
+                ) : null}
+              </div>
+            </div>
+            {viewMode === 'table' ? (
+              <div
+                style={{
+                  display: 'grid',
+                  gap: 10,
+                  marginBottom: 14,
+                  padding: 14,
+                  borderRadius: 18,
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <div style={{ fontWeight: 700 }}>列表排序</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: 8 }}>
+                  <CustomSelect
+                    value={tableSort.field}
+                    onChange={value =>
+                      setTableSort({
+                        field: value as CardSortField,
+                        direction: tableSort.direction,
+                      })
+                    }
+                    options={Object.entries(tableSortFieldLabels).map(([field, label]) => ({
+                      value: field,
+                      label,
+                    }))}
+                  />
+                  <button
+                    onClick={() =>
+                      setTableSort(current => ({
+                        ...current,
+                        direction: current.direction === 'asc' ? 'desc' : 'asc',
+                      }))
+                    }
+                    style={{
+                      borderRadius: 12,
+                      border: '1px solid rgba(255,255,255,0.14)',
+                      background: 'rgba(255,255,255,0.04)',
+                      color: '#fff8ef',
+                      padding: '10px 12px',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {tableSort.direction === 'asc' ? '升序' : '降序'}
+                  </button>
+                </div>
+                <div style={{ fontSize: 12, opacity: 0.72 }}>
+                  当前按 {formatSortFieldLabel(tableSort.field)}
+                  {tableSort.direction === 'asc' ? '升序' : '降序'} 排列，也可以直接点击表头切换。
+                </div>
+              </div>
+            ) : null}
             {viewMode === 'detail' ? (
               <div style={{ display: 'grid', gap: 8 }}>
                 {visibleCards.map(card => (
@@ -994,6 +1482,7 @@ export function AdminPage() {
                   <div style={{ fontSize: 13, opacity: 0.76, marginBottom: 12 }}>
                     共 {visibleCards.length} 张卡牌
                     {selectedCard ? `，当前选中 ${selectedCard.name}` : ''}
+                    {cardTypeFilter !== 'all' ? `，类型 ${formatCardTypeLabel(cardTypeFilter)}` : ''}
                   </div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                     {Object.entries(cardTypeSummary).map(([type, count]) => (
@@ -1007,7 +1496,7 @@ export function AdminPage() {
                           fontSize: 12,
                         }}
                       >
-                        {type} · {count}
+                        {formatCardTypeLabel(type)} · {count}
                       </div>
                     ))}
                   </div>
@@ -1124,7 +1613,7 @@ export function AdminPage() {
                 <div>
                   <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>卡牌数值对比</div>
                   <div style={{ fontSize: 13, opacity: 0.72, lineHeight: 1.6 }}>
-                    列表按类型、费用、ID 排序。实体卡的收益、初始压力、压力上限可直接内联调整，复杂字段通过“深度编辑”处理。
+                    可按类型筛选，并按不同属性排序。实体卡的收益、初始压力、压力上限可直接内联调整，复杂字段通过“深度编辑”处理。
                   </div>
                 </div>
                 {selectedCard ? (
@@ -1167,9 +1656,20 @@ export function AdminPage() {
                 >
                   <thead>
                     <tr>
-                      {['卡牌', '类型', '费用', '稀有度', '收益', '压力', '压力上限', '可弃置', '标签', '操作'].map(label => (
+                      {[
+                        { label: '卡牌', field: 'name' as CardSortField },
+                        { label: '类型', field: 'type' as CardSortField },
+                        { label: '费用', field: 'cost' as CardSortField },
+                        { label: '稀有度', field: 'rarity' as CardSortField },
+                        { label: '收益', field: 'income' as CardSortField },
+                        { label: '压力', field: 'stress' as CardSortField },
+                        { label: '压力上限', field: 'stressLimit' as CardSortField },
+                        { label: '可弃置', field: 'canDiscard' as CardSortField },
+                        { label: '标签', field: 'tags' as CardSortField },
+                        { label: '操作', field: null },
+                      ].map(column => (
                         <th
-                          key={label}
+                          key={column.label}
                           style={{
                             position: 'sticky',
                             top: 0,
@@ -1183,20 +1683,44 @@ export function AdminPage() {
                             letterSpacing: 0.8,
                             textTransform: 'uppercase',
                             opacity: 0.74,
-                            ...(label === '费用' || label === '收益' || label === '压力'
+                            ...(column.label === '费用' || column.label === '收益' || column.label === '压力'
                               ? compactNumericColumnStyle
-                              : label === '压力上限'
+                              : column.label === '压力上限'
                                 ? compactLimitColumnStyle
-                                : label === '可弃置'
+                                : column.label === '可弃置'
                                   ? compactBooleanColumnStyle
                                   : null),
-                            ...(label === '卡牌' ? { minWidth: 220, maxWidth: 320 } : null),
-                            ...(label === '标签' ? { minWidth: 120, maxWidth: 180 } : null),
-                            ...(label === '操作' ? { minWidth: 116, maxWidth: 132, width: '1%' } : null),
+                            ...(column.label === '卡牌' ? { minWidth: 220, maxWidth: 320 } : null),
+                            ...(column.label === '标签' ? { minWidth: 120, maxWidth: 180 } : null),
+                            ...(column.label === '操作' ? { minWidth: 116, maxWidth: 132, width: '1%' } : null),
                             ...compactHeaderTextStyle,
                           }}
                         >
-                          {label}
+                          {column.field ? (
+                            <button
+                              onClick={() => toggleTableSort(column.field)}
+                              style={{
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: 6,
+                                border: 0,
+                                background: 'transparent',
+                                color: '#fff8ef',
+                                padding: 0,
+                                font: 'inherit',
+                                textTransform: 'inherit',
+                                letterSpacing: 'inherit',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <span>{column.label}</span>
+                              <span style={{ opacity: tableSort.field === column.field ? 1 : 0.45 }}>
+                                {tableSort.field === column.field ? (tableSort.direction === 'asc' ? '↑' : '↓') : '↕'}
+                              </span>
+                            </button>
+                          ) : (
+                            column.label
+                          )}
                         </th>
                       ))}
                     </tr>
@@ -1230,7 +1754,8 @@ export function AdminPage() {
                             </div>
                           </td>
                           <td style={{ padding: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', whiteSpace: 'nowrap' }}>
-                            <div style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{card.type}</div>
+                            <div style={{ fontSize: 13, whiteSpace: 'nowrap' }}>{formatCardTypeLabel(card.type)}</div>
+                            <div style={{ fontSize: 11, opacity: 0.56, marginTop: 4, whiteSpace: 'nowrap' }}>{card.type}</div>
                           </td>
                           <td
                             style={{
@@ -1247,18 +1772,16 @@ export function AdminPage() {
                             />
                           </td>
                           <td style={{ padding: 12, borderBottom: '1px solid rgba(255,255,255,0.06)', minWidth: 126 }}>
-                            <select
+                            <CustomSelect
                               value={card.rarity}
                               disabled={!response.canEdit}
-                              onChange={event => updateCardById(card.id, { rarity: event.target.value })}
-                              style={tableInputStyle(!response.canEdit)}
-                            >
-                              {['common', 'rare', 'epic', 'legendary'].map(option => (
-                                <option key={option} value={option}>
-                                  {option}
-                                </option>
-                              ))}
-                            </select>
+                              compact
+                              onChange={value => updateCardById(card.id, { rarity: value })}
+                              options={['common', 'rare', 'epic', 'legendary'].map(option => ({
+                                value: option,
+                                label: option,
+                              }))}
+                            />
                           </td>
                           <td
                             style={{
@@ -1321,15 +1844,16 @@ export function AdminPage() {
                               ...compactBooleanColumnStyle,
                             }}
                           >
-                            <select
+                            <CustomSelect
                               value={card.canDiscard}
                               disabled={!response.canEdit}
-                              onChange={event => updateCardById(card.id, { canDiscard: event.target.value })}
-                              style={tableInputStyle(!response.canEdit)}
-                            >
-                              <option value="true">可弃置</option>
-                              <option value="false">不可弃置</option>
-                            </select>
+                              compact
+                              onChange={value => updateCardById(card.id, { canDiscard: value })}
+                              options={[
+                                { value: 'true', label: '可弃置' },
+                                { value: 'false', label: '不可弃置' },
+                              ]}
+                            />
                           </td>
                           <td
                             style={{

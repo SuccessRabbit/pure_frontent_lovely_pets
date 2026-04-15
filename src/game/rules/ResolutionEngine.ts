@@ -1501,18 +1501,17 @@ function runResolveTurnSequenceCommand(state: GameState): ResolutionResult {
         uiMode: 'manual',
       });
       if (ctx.draft.gameStatus === 'playing') {
-        pushStep(ctx, ctx.draft, [
+        const presentation: PresentationEvent[] = [
           {
             type: 'show_phase_banner',
             title: `第 ${ctx.draft.turn} 回合 · 准备阶段`,
             holdMs: 520,
           },
-        ]);
+        ];
         if (drawEvent) {
-          pushStep(ctx, ctx.draft, [
-            { type: 'play_draw_event', event: drawEvent },
-          ]);
+          presentation.push({ type: 'play_draw_event', event: drawEvent });
         }
+        pushStep(ctx, ctx.draft, presentation);
       }
     }
   }

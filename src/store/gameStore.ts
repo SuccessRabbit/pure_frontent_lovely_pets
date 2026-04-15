@@ -192,7 +192,7 @@ export interface GameActions {
   /** 手里超上限或 awaitingHandTrim 时：弃一张可弃牌；不可弃则返回 false */
   discardHandCardForTrim: (cardIndex: number) => boolean;
   /** 手牌已不超过上限时结束整理并执行进入次日与抽牌 */
-  finishHandTrimAndAdvanceTurn: () => void;
+  finishHandTrimAndAdvanceTurn: (drawMeta?: DrawCardsMeta) => DrawEvent | null;
 
   // 压力系统
   addStress: (row: number, col: number, amount: number) => StressResolutionResult | null;
@@ -370,10 +370,16 @@ export const useGameStore = create<GameState & GameActions>()(
       },
 
       finishHandTrimAndAdvanceTurn: () => {
-        applyResolutionState(
-          set,
-          runGameCommand(snapshotGameState(get()), { type: 'finish_hand_trim_and_advance_turn' })
-        );
+        const result = runGameCommand(snapshotGameState(get()), {
+          type: 'finish_hand_trim_and_advance_turn',
+          drawMeta: {
+            source: 'turn_start',
+            sourceLabel: '每日抽牌',
+            uiMode: 'manual',
+          },
+        });
+        if (!applyResolutionState(set, result)) return null;
+        return result.meta.drawEvent;
       },
 
       // 添加罐头

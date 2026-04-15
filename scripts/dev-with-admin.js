@@ -1,6 +1,12 @@
 import { spawn } from 'child_process';
+import { createRequire } from 'module';
+import path from 'path';
 
 const processes = [];
+const require = createRequire(import.meta.url);
+const vitePackagePath = require.resolve('vite/package.json');
+const viteCliPath = path.join(path.dirname(vitePackagePath), 'bin', 'vite.js');
+let isShuttingDown = false;
 
 function run(name, command, args) {
   const child = spawn(command, args, {
@@ -20,9 +26,15 @@ function run(name, command, args) {
 }
 
 function shutdown(code = 0) {
+  if (isShuttingDown) {
+    return;
+  }
+
+  isShuttingDown = true;
+
   for (const child of processes) {
     if (!child.killed) {
-      child.kill('SIGTERM');
+      child.kill();
     }
   }
   process.exit(code);
@@ -33,4 +45,4 @@ process.on('SIGTERM', () => shutdown(0));
 
 run('compile-data', process.execPath, ['scripts/compile-data.js']);
 run('admin-api', process.execPath, ['scripts/admin-api.js']);
-run('vite', process.platform === 'win32' ? 'npm.cmd' : 'npm', ['run', 'dev:web']);
+run('vite', process.execPath, [viteCliPath]);

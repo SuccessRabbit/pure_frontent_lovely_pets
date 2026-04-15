@@ -28,6 +28,11 @@ interface HandLayoutSlot {
   y: number;
 }
 
+interface SyncHandCardsOptions {
+  excludeCards?: Set<Card>;
+  includeCards?: Set<Card>;
+}
+
 interface HandControllerDeps {
   handContainer: PIXI.Container;
   fxLayer: PIXI.Container;
@@ -60,6 +65,7 @@ export class HandController {
   private queuedDrawEvents: DrawEvent[] = [];
   private drawEventFlushQueued = false;
   private pendingDrawCards = new Set<Card>();
+  private pendingManualDrawCards = new Map<number, string[]>();
 
   constructor(deps: HandControllerDeps) {
     this.handContainer = deps.handContainer;
@@ -88,6 +94,13 @@ export class HandController {
     this.handledDrawEventIds.add(event.id);
     event.drawnCards.forEach(card => this.pendingDrawCards.add(card));
     await this.playDrawEventAnimation(event);
+  }
+
+  public prepareManualDrawEvents(events: DrawEvent[]) {
+    events.forEach(event => {
+      event.drawnCards.forEach(card => this.pendingDrawCards.add(card));
+      this.pendingManualDrawCards.set(event.id, event.drawnCards.map(card => this.cardPendingKey(card)));
+    });
   }
 
   public updateFromStore(state: HandControllerStoreState) {
@@ -171,11 +184,49 @@ export class HandController {
     return card;
   }
 
-  private syncHandCards(hand: Card[], opts?: { excludeCards?: Set<Card> }) {
+  private cardPendingKey(card: Card) {
+    return `${card.id}|${card.type}|${card.name}|${card.cost}`;
+  }
+
+  private consumeManualPendingCard(eventId: number, card: Card): boolean {
+    const pending = this.pendingManualDrawCards.get(eventId);
+    if (!pending) return false;
+
+    const index = pending.indexOf(this.cardPendingKey(card));
+    if (index < 0) return false;
+
+    pending.splice(index, 1);
+    if (pending.length === 0) {
+      this.pendingManualDrawCards.delete(eventId);
+    }
+    return true;
+  }
+
+  private isManualPendingCard(card: Card): boolean {
+    const key = this.cardPendingKey(card);
+    for (const pending of this.pendingManualDrawCards.values()) {
+      if (pending.includes(key)) return true;
+    }
+    return false;
+  }
+
+  private buildVisibleHand(hand: readonly Card[], opts?: SyncHandCardsOptions): Card[] {
     const exclude = opts?.excludeCards ?? new Set<Card>();
-    const layout = this.buildHandLayout(hand);
+    const include = opts?.includeCards ?? new Set<Card>();
+    return hand.filter(card => {
+      if (include.has(card)) return true;
+      if (exclude.has(card)) return false;
+      if (this.isManualPendingCard(card)) return false;
+      return true;
+    });
+  }
+
+  private syncHandCards(hand: Card[], opts?: SyncHandCardsOptions) {
+    const exclude = opts?.excludeCards ?? new Set<Card>();
+    const visibleHand = this.buildVisibleHand(hand, opts);
+    const layout = this.buildHandLayout(visibleHand);
     const layoutByCard = new Map(layout.map(slot => [slot.card, slot]));
-    const incomingKeys = new Set(hand);
+    const incomingKeys = new Set(visibleHand);
 
     this.hoveredHandCard = null;
 
@@ -189,9 +240,9 @@ export class HandController {
     });
 
     const next: CardSprite[] = [];
-    hand.forEach(cardData => {
+    visibleHand.forEach(cardData => {
       let card = oldByCard.get(cardData);
-      if (!card && !exclude.has(cardData)) {
+      if (!card && !exclude.has(cardData) && !this.isManualPendingCard(cardData)) {
         card = this.createHandCardSprite(cardData);
         this.handContainer.addChild(card);
       }
@@ -259,7 +310,10 @@ export class HandController {
     const liveHand = this.getStoreState().hand;
     const cards = event.drawnCards.filter(card => liveHand.includes(card));
     if (cards.length === 0) return;
+    await this.playSequentialDrawEventAnimation(event, cards);
+  }
 
+  private async playSequentialDrawEventAnimation(event: DrawEvent, cards: Card[]) {
     if (event.reshuffled) {
       this.spawnHudFloat('弃牌堆洗回牌库', 0xfff9c4);
       await waitMs(260);
@@ -271,34 +325,45 @@ export class HandController {
 
     for (const cardData of cards) {
       const latestHand = this.getStoreState().hand;
-      const slot = this.buildHandLayout(latestHand).find(entry => entry.card === cardData);
+      const includeCards = new Set<Card>([cardData]);
+      const visibleHand = this.buildVisibleHand(latestHand, {
+        excludeCards: this.pendingDrawCards,
+        includeCards,
+      });
+      const slot = this.buildHandLayout(visibleHand).find(entry => entry.card === cardData);
       if (!slot) continue;
+
+      this.getPetRenderer()?.pulseDeckDraw();
+      const sourceGlobal = this.getDeckDrawAnchorGlobal();
+      const sourceLocal = this.handContainer.toLocal(sourceGlobal);
 
       let card = this.handCards.find(entry => entry.cardData === cardData);
       if (!card) {
-        const sourceGlobal = this.getDeckDrawAnchorGlobal();
         card = this.createHandCardSprite(cardData);
-        card.isResolving = true;
-        const sourceLocal = this.handContainer.toLocal(sourceGlobal);
         card.position.set(sourceLocal.x, sourceLocal.y);
         card.scale.set(0.42, 0.42);
         card.alpha = 0.96;
         card.rotation = -0.24;
-        card.eventMode = 'none';
-        card.zIndex = 1600;
         card.handZIndex = slot.index;
         card.originalX = slot.x;
         card.originalY = slot.y;
         this.handContainer.addChild(card);
         this.handCards.push(card);
-        this.syncHandCards(latestHand, { excludeCards: this.pendingDrawCards });
       }
 
       card.isResolving = true;
       card.eventMode = 'none';
-      this.getPetRenderer()?.pulseDeckDraw();
-      const deckAnchor = this.getDeckDrawAnchorGlobal();
-      burstParticlesAtGlobal(this.fxLayer, deckAnchor.x, deckAnchor.y, {
+      card.zIndex = 1600 + slot.index;
+      card.handZIndex = slot.index;
+      card.originalX = slot.x;
+      card.originalY = slot.y;
+
+      this.syncHandCards(latestHand, {
+        excludeCards: this.pendingDrawCards,
+        includeCards,
+      });
+
+      burstParticlesAtGlobal(this.fxLayer, sourceGlobal.x, sourceGlobal.y, {
         count: 16,
         colors: PET_BURST_COLORS,
         spread: 48,
@@ -306,15 +371,20 @@ export class HandController {
         durationMax: 520,
       });
 
-      const targetRotation = card.handTilt;
       await Promise.all([
         new Promise<void>(resolve => {
           Tween.killTarget(card);
-          Tween.to(card, { x: slot.x, y: slot.y, rotation: targetRotation, alpha: 1 }, 460, Easing.easeOutBack, resolve);
+          Tween.to(
+            card,
+            { x: slot.x, y: slot.y, rotation: card.handTilt, alpha: 1 },
+            250,
+            Easing.easeOutBack,
+            resolve
+          );
         }),
         new Promise<void>(resolve => {
           Tween.killTarget(card.scale);
-          Tween.to(card.scale, { x: 1, y: 1 }, 460, Easing.easeOutBack, resolve);
+          Tween.to(card.scale, { x: 1, y: 1 }, 250, Easing.easeOutBack, resolve);
         }),
       ]);
 
@@ -322,10 +392,11 @@ export class HandController {
       card.isResolving = false;
       card.eventMode = 'static';
       this.pendingDrawCards.delete(cardData);
+      this.consumeManualPendingCard(event.id, cardData);
       deckDisplayCount = Math.max(event.deckAfter, deckDisplayCount - 1);
       this.setDeckDisplayOverrideCount(deckDisplayCount);
       this.syncHandCards(this.getStoreState().hand, { excludeCards: this.pendingDrawCards });
-      await waitMs(80);
+      await waitMs(40);
     }
 
     this.setDeckDisplayOverrideCount(null);

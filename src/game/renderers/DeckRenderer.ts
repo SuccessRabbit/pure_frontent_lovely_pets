@@ -92,10 +92,14 @@ export class DeckRenderer {
     Tween.killTarget(this.group.position);
     Tween.killTarget(this.group.rotation);
     Tween.killTarget(this.pulseAlpha);
-    this.baseMat.opacity = this.pulseAlpha.value;
 
     const baseY = 4;
     const baseRotZ = 0.08;
+    this.group.position.y = baseY + 2;
+    this.group.rotation.z = baseRotZ + 0.02;
+    this.pulseAlpha.value = 0.96;
+    this.baseMat.opacity = this.pulseAlpha.value;
+
     Tween.to(this.group.position, { y: baseY + 10 }, 180, Easing.easeOutCubic, () => {
       Tween.to(this.group.position, { y: baseY }, 260, Easing.easeOutBack);
     });

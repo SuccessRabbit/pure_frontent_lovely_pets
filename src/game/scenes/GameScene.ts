@@ -4,7 +4,7 @@ import { GridCell } from '../entities/GridCell';
 import { DragSystem } from '../systems/DragSystem';
 import { VfxQueue } from '../systems/VfxQueue';
 import { InputManager } from '../core/InputManager';
-import { useGameStore } from '../../store/gameStore';
+import { snapshotGameState, useGameStore } from '../../store/gameStore';
 import type { GridEntity } from '../../store/gameStore';
 import { HAND_SIZE_MAX } from '@config/gameRules';
 import { Tween, Easing } from '../utils/Tween';
@@ -23,6 +23,7 @@ import { GridInteractionController } from './gameScene/GridInteractionController
 import { HandController } from './gameScene/HandController';
 import { GameSceneUiController } from './gameScene/GameSceneUiController';
 import { TurnResolutionController } from './gameScene/TurnResolutionController';
+import { runGameCommand } from '../rules/ResolutionEngine';
 
 const PHASE_GAP_MS = 380;
 const DESIGN_WIDTH = 1920;
@@ -182,6 +183,7 @@ export class GameScene extends Scene {
       spawnHudFloat: (text, color) => this.spawnHudFloat(text, color),
       setDeckDisplayOverrideCount: count => {
         this.deckDisplayOverrideCount = count;
+        this.petRenderer?.setDeckCount(count ?? useGameStore.getState().deck.length);
       },
     });
 
@@ -201,6 +203,7 @@ export class GameScene extends Scene {
       sync3DStressOverlays: () => this.sync3DStressOverlays(),
       pulseStressCell: (row, col) => this.pulseStressCell(row, col),
       playManualDrawEvent: event => this.handController.playManualDrawEvent(event),
+      prepareManualDrawEvents: events => this.handController.prepareManualDrawEvents(events),
     });
   }
 
@@ -816,14 +819,29 @@ export class GameScene extends Scene {
     if (s.gameStatus !== 'playing') return;
     if (!s.awaitingHandTrim) return;
     if (s.hand.length > HAND_SIZE_MAX) return;
-    useGameStore.getState().finishHandTrimAndAdvanceTurn();
-    const after = useGameStore.getState();
-    if (after.gameStatus === 'playing') {
-      void this.playAfterHandTrimBanner();
+
+    const result = runGameCommand(snapshotGameState(s), {
+      type: 'finish_hand_trim_and_advance_turn',
+      drawMeta: {
+        source: 'turn_start',
+        sourceLabel: '每日抽牌',
+        uiMode: 'manual',
+      },
+    });
+    if (!result.success) return;
+
+    const drawEvent = result.meta.drawEvent;
+    if (drawEvent) {
+      this.handController.prepareManualDrawEvents([drawEvent]);
+    }
+
+    useGameStore.setState(result.nextState);
+    if (result.nextState.gameStatus === 'playing') {
+      void this.playAfterHandTrimBanner(drawEvent);
     }
   }
 
-  private async playAfterHandTrimBanner() {
+  private async playAfterHandTrimBanner(drawEvent?: ReturnType<typeof useGameStore.getState>['lastDrawEvent']) {
     if (this.roundResolving) return;
     this.roundResolving = true;
     this.setEndTurnInteractable(false);
@@ -832,6 +850,9 @@ export class GameScene extends Scene {
       const turn = useGameStore.getState().turn;
       await this.showPhaseBanner(`第 ${turn} 回合 · 准备阶段`, 520);
       await waitMs(PHASE_GAP_MS);
+      if (drawEvent) {
+        await this.handController.playManualDrawEvent(drawEvent);
+      }
     } finally {
       this.roundResolving = false;
       const playing = useGameStore.getState().gameStatus === 'playing';
