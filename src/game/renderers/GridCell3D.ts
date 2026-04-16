@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { MOOD_FACTORS, type SceneMood } from '../theme/visualTheme';
+import { PICK_LAYERS, type GridCellPickUserData } from './picking';
 
 type CellState = 'empty' | 'occupied' | 'ruins';
 type CellHoverMode = 'none' | 'placement' | 'targeting';
@@ -88,9 +89,11 @@ function createGlowMaterial(): THREE.ShaderMaterial {
 }
 
 export class GridCell3D {
+  public static readonly HIT_VOLUME_HEIGHT = 32;
   public readonly row: number;
   public readonly col: number;
   public readonly mesh: THREE.Mesh;
+  public readonly hitMesh: THREE.Mesh;
   public readonly borderMesh: THREE.LineSegments;
   public readonly glowMesh: THREE.Mesh;
 
@@ -122,7 +125,28 @@ export class GridCell3D {
     this.mesh = new THREE.Mesh(geometry, this.surfaceMaterial);
     this.mesh.position.set(centerX, -1.4, centerZ);
     this.mesh.receiveShadow = false;
-    this.mesh.userData = { gridKey: `${row}|${col}`, row, col };
+
+    const hitMaterial = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: false,
+    });
+    hitMaterial.colorWrite = false;
+    this.hitMesh = new THREE.Mesh(
+      new THREE.BoxGeometry(width, GridCell3D.HIT_VOLUME_HEIGHT, height),
+      hitMaterial
+    );
+    this.hitMesh.position.set(centerX, GridCell3D.HIT_VOLUME_HEIGHT * 0.5 - 4, centerZ);
+    this.hitMesh.frustumCulled = false;
+    this.hitMesh.renderOrder = -1000;
+    this.hitMesh.layers.set(PICK_LAYERS.GRID_CELL);
+    this.hitMesh.userData = {
+      pickKind: 'grid-cell-hit',
+      gridKey: `${row}|${col}`,
+      row,
+      col,
+    } satisfies GridCellPickUserData;
 
     const borderGeometry = new THREE.EdgesGeometry(new THREE.BoxGeometry(width, 6.2, height));
     this.borderMaterial = new THREE.LineBasicMaterial({
@@ -250,6 +274,8 @@ export class GridCell3D {
   public dispose(): void {
     this.mesh.geometry.dispose();
     this.surfaceMaterial.dispose();
+    this.hitMesh.geometry.dispose();
+    (this.hitMesh.material as THREE.Material).dispose();
     this.borderMesh.geometry.dispose();
     this.borderMaterial.dispose();
     this.glowMesh.geometry.dispose();

@@ -133,4 +133,70 @@ describe('TemplateWorkspace', () => {
 
     expect(issues.some((issue: { field: string }) => issue.field === 'operations')).toBe(true);
   });
+
+  it('does not flag passive templates that keep custom param schema', () => {
+    const draft: RawAdminDatasets = {
+      cards: [
+        {
+          id: 'pet_001',
+          name: '招财猫',
+          type: 'entity_pet',
+          cost: '2',
+          rarity: 'rare',
+          description: '',
+          tags: '',
+          income: '1',
+          stress: '0',
+          stressLimit: '4',
+          canDiscard: 'true',
+          cardImagePath: '',
+          illustrationPath: '',
+          imageFitMode: 'contain',
+          imageAnchorPreset: 'center',
+          modelProfileId: '',
+        },
+      ],
+      skillTemplates: [
+        {
+          id: 'pet_adjacent_worker_income_bonus',
+          name: '相邻牛马收益加成',
+          description: '提升相邻牛马收益/效率',
+          scope: 'entity_pet',
+          trigger: 'income_calc',
+          targetMode: 'adjacent_workers',
+          effectKind: 'passive_summary',
+          paramSchemaJson: JSON.stringify([
+            { name: 'amount', label: '加成百分比', type: 'number', defaultValue: 10 },
+          ]),
+          operationsJson: JSON.stringify([
+            {
+              kind: 'income_modifier_aura',
+              selector: 'adjacent_orthogonal',
+              filters: { entityType: 'worker' },
+              params: { percent: '$amount', statusKind: 'worker_income_boost' },
+            },
+          ]),
+          summaryTemplate: '相邻牛马效率 +{amount}%',
+          descriptionTemplate: '相邻牛马效率 +{amount}%',
+          supportsSecondTarget: 'false',
+        },
+      ],
+      cardSkills: [
+        {
+          id: 'skill_pet_001_a',
+          cardId: 'pet_001',
+          templateId: 'pet_adjacent_worker_income_bonus',
+          enabled: 'true',
+          sortOrder: '1',
+          paramsJson: JSON.stringify({ amount: 10 }),
+        },
+      ],
+      modelProfiles: [],
+      globalConfig: [],
+    };
+
+    const issues = collectTemplateValidationIssues(draft);
+
+    expect(issues).toHaveLength(0);
+  });
 });

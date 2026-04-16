@@ -6552,6 +6552,13 @@
     },
     {
       "module": "setup",
+      "key": "STARTING_DECK_CONFIG",
+      "value": [],
+      "valueType": "json",
+      "description": "自定义起始牌堆卡牌与数量；留空时回退到默认全卡各 2 张"
+    },
+    {
+      "module": "setup",
       "key": "SETUP_DRAW_COUNT",
       "value": 5,
       "valueType": "number",
@@ -6575,6 +6582,7 @@
     "HAND_SIZE_MAX": 6,
     "MELTDOWN_HP_LOSS": 10,
     "STARTING_CANS": 10,
+    "STARTING_DECK_CONFIG": [],
     "SETUP_DRAW_COUNT": 5,
     "TURN_DRAW_COUNT": 3
   },

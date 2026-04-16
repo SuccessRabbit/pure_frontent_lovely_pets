@@ -5,6 +5,7 @@ import type { PresentationEvent } from '../../rules/presentation';
 import type { ToastMessage } from '../../systems/ToastPresenter';
 
 const PHASE_GAP_MS = 380;
+const SKILL_DRAW_GAP_MS = 500;
 
 function waitMs(ms: number): Promise<void> {
   return new Promise(resolve => {
@@ -27,6 +28,9 @@ interface TurnResolutionControllerDeps {
   ) => Promise<void>;
   spawnIncomeFloat: (row: number, col: number, amount: number) => void;
   showToast: (message: ToastMessage) => void;
+  playSkillEffect: (
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ) => Promise<void>;
   spawnStatusBurst: (
     kind: string,
     theme: 'buff' | 'debuff' | 'passive' | 'utility',
@@ -59,6 +63,9 @@ export class TurnResolutionController {
   ) => Promise<void>;
   private readonly spawnIncomeFloat: (row: number, col: number, amount: number) => void;
   private readonly showToast: (message: ToastMessage) => void;
+  private readonly playSkillEffect: (
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ) => Promise<void>;
   private readonly spawnStatusBurst: (
     kind: string,
     theme: 'buff' | 'debuff' | 'passive' | 'utility',
@@ -84,6 +91,7 @@ export class TurnResolutionController {
     this.showEntityCue = deps.showEntityCue;
     this.spawnIncomeFloat = deps.spawnIncomeFloat;
     this.showToast = deps.showToast;
+    this.playSkillEffect = deps.playSkillEffect;
     this.spawnStatusBurst = deps.spawnStatusBurst;
     this.syncGridFromStore = deps.syncGridFromStore;
     this.sync3DStressOverlays = deps.sync3DStressOverlays;
@@ -107,12 +115,7 @@ export class TurnResolutionController {
     this.setEndTurnInteractable(false);
 
     try {
-      for (const step of result.steps) {
-        await this.applyResolutionStep(step);
-        if (useGameStore.getState().gameStatus !== 'playing') {
-          break;
-        }
-      }
+      await this.playSteps(result.steps);
     } finally {
       this.setRoundResolving(false);
       const playing = useGameStore.getState().gameStatus === 'playing';
@@ -120,18 +123,40 @@ export class TurnResolutionController {
     }
   }
 
-  private async applyResolutionStep(step: ResolutionStep): Promise<void> {
-    const manualDrawEvents = step.presentation
-      .filter((event): event is Extract<PresentationEvent, { type: 'play_draw_event' }> => event.type === 'play_draw_event')
-      .map(event => event.event);
+  public async playSteps(steps: ResolutionStep[]) {
+    const manualDrawEvents = this.collectUpcomingManualDrawEvents(steps);
     if (manualDrawEvents.length > 0) {
       this.prepareManualDrawEvents(manualDrawEvents);
     }
+    for (const step of steps) {
+      await this.applyResolutionStep(step);
+      if (useGameStore.getState().gameStatus !== 'playing') {
+        break;
+      }
+    }
+  }
 
+  private async applyResolutionStep(step: ResolutionStep): Promise<void> {
     useGameStore.setState(step.state);
     this.syncGridFromStore();
     this.sync3DStressOverlays();
     await this.playPresentationEvents(step.presentation);
+  }
+
+  private collectUpcomingManualDrawEvents(steps: ResolutionStep[]): DrawEvent[] {
+    const seen = new Set<number>();
+    const events: DrawEvent[] = [];
+
+    steps.forEach(step => {
+      step.presentation.forEach(event => {
+        if (event.type !== 'play_draw_event') return;
+        if (seen.has(event.event.id)) return;
+        seen.add(event.event.id);
+        events.push(event.event);
+      });
+    });
+
+    return events;
   }
 
   private async playPresentationEvents(events: PresentationEvent[]): Promise<void> {
@@ -170,6 +195,14 @@ export class TurnResolutionController {
 
     if (event.type === 'play_draw_event') {
       await this.playManualDrawEvent(event.event);
+      if (event.event.source === 'skill') {
+        await waitMs(SKILL_DRAW_GAP_MS);
+      }
+      return;
+    }
+
+    if (event.type === 'play_skill_effect') {
+      await this.playSkillEffect(event);
       return;
     }
 

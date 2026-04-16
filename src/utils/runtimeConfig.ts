@@ -58,7 +58,14 @@ interface RuntimeConfigShape {
   skillTemplates: Array<Record<string, unknown>>;
   cardSkills: Array<Record<string, unknown>>;
   modelProfiles: ModelProfile[];
-  globalConfigMap: Record<string, number | string | boolean>;
+  globalConfigEntries?: Array<{
+    module: string;
+    key: string;
+    value: number | string | boolean | Record<string, unknown> | unknown[];
+    valueType: string;
+    description: string;
+  }>;
+  globalConfigMap: Record<string, number | string | boolean | Record<string, unknown> | unknown[]>;
   assetOptions?: {
     allAssets: string[];
     cardImages: string[];

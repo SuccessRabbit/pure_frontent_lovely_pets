@@ -8,5 +8,6 @@ export const HEARTS_ENTITY_INCOME_MULTIPLIER = 2.5;
 export const HAND_SIZE_MAX = 6;
 export const MELTDOWN_HP_LOSS = 10;
 export const STARTING_CANS = 10;
+export const STARTING_DECK_CONFIG = [];
 export const SETUP_DRAW_COUNT = 5;
 export const TURN_DRAW_COUNT = 3;

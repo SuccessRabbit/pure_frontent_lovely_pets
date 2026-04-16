@@ -123,4 +123,7 @@ export interface TemplateValidationIssue {
   templateId: string;
   field: string;
   message: string;
+  severity: 'error' | 'warning';
+  blocking: boolean;
+  bindingId?: string;
 }

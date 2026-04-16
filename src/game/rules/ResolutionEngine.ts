@@ -105,6 +105,10 @@ interface IncomeCalculation {
   modifiers: IncomeModifier[];
 }
 
+interface SkillCueState {
+  shown: boolean;
+}
+
 interface ResolutionMeta {
   drawEvent: DrawEvent | null;
   stressResult: StressResolutionResult | null;
@@ -358,6 +362,39 @@ function resolveSkillOperation(skill: RuntimeSkillBinding, operation: Record<str
   };
 }
 
+function resolveSkillVisual(
+  input: SkillExecutionInput,
+  fallbackTheme: StatusTheme = 'passive'
+): ReturnType<typeof resolveStatusVisual> {
+  const kind = input.skill?.templateId ?? input.card?.id ?? 'skill';
+  return resolveStatusVisual(kind, fallbackTheme);
+}
+
+function emitSkillCueIfNeeded(
+  ctx: ResolutionContext,
+  input: SkillExecutionInput,
+  cueState?: SkillCueState
+): void {
+  if (!cueState || cueState.shown || !input.source || !input.skill) return;
+  cueState.shown = true;
+  const visual = resolveSkillVisual(input, input.trigger === 'income_calc' ? 'buff' : 'passive');
+  pushStep(ctx, ctx.draft, [
+    {
+      type: 'show_entity_cue',
+      row: input.source.row,
+      col: input.source.col,
+      title: input.source.entity.name,
+      subtitle: input.skill.templateName || input.skill.summary || '技能发动',
+      color: visual.color,
+    },
+  ]);
+}
+
+function pushSkillEffectStep(ctx: ResolutionContext, ...events: PresentationEvent[]): void {
+  if (events.length === 0) return;
+  pushStep(ctx, ctx.draft, events);
+}
+
 function entityMatchesFilters(entity: GridEntity, filters: Record<string, unknown>): boolean {
   const entityType = filters.entityType;
   if (typeof entityType === 'string' && entity.type !== entityType) return false;
@@ -535,12 +572,13 @@ function executeSkillOperation(
   ctx: ResolutionContext,
   input: SkillExecutionInput,
   operation: SkillOperation,
-  options?: { incomeCalculation?: IncomeCalculation }
+  options?: { incomeCalculation?: IncomeCalculation; cueState?: SkillCueState }
 ): boolean {
   const state = ctx.draft;
   const params = operation.params ?? {};
   const filters = operation.filters ?? {};
   const selector = operation.selector ?? 'self';
+  const cueState = options?.cueState;
 
   if (!operation.kind) return true;
 
@@ -548,17 +586,26 @@ function executeSkillOperation(
     const targets = collectTargetsForSelector(state, input, selector, filters);
     if (targets.length === 0) return false;
     const value = Math.max(0, Number(params.value ?? 0));
+    emitSkillCueIfNeeded(ctx, input, cueState);
     targets.forEach(target => {
       state.grid[target.row][target.col] = { ...target.entity, stress: Math.min(value, target.entity.maxStress) };
       emitSkillTriggeredEvent(ctx, input, operation.kind, target);
-      emitStatusBurst(ctx, {
-        kind: 'stress_relief',
-        theme: 'buff',
-        title: '安抚减压',
-        subtitle: value > 0 ? `压力设为 ${value}` : '压力归零',
-        row: target.row,
-        col: target.col,
-      });
+      pushSkillEffectStep(
+        ctx,
+        {
+          type: 'play_skill_effect',
+          effect: 'ring',
+          color: value > 0 ? resolveStatusVisual('stress_pressure', 'debuff').color : resolveStatusVisual('stress_relief', 'buff').color,
+          targetRow: target.row,
+          targetCol: target.col,
+          positive: value <= target.entity.stress,
+        },
+        {
+          type: 'pulse_stress_cell',
+          row: target.row,
+          col: target.col,
+        }
+      );
     });
     return true;
   }
@@ -572,6 +619,7 @@ function executeSkillOperation(
     else if (entityType === 'worker') state.workerIncomeMultiplierThisTurn *= multiplier;
     else return false;
 
+    emitSkillCueIfNeeded(ctx, input, cueState);
     addGlobalStatus(ctx, {
       kind,
       scope: 'global',
@@ -610,6 +658,7 @@ function executeSkillOperation(
         : (actionsConfig as unknown as Card[]).find(item => item.id === queuedId) ?? null;
     const next = queuedId === 'action_resentment' ? resentmentCard() : queuedRaw ? normalizeCard(queuedRaw) : null;
     if (!next) return false;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     state.pendingCardsNextTurnDiscard = [...state.pendingCardsNextTurnDiscard, next];
     const visual = resolveStatusVisual('queued_resentment', 'debuff');
     addGlobalStatus(ctx, {
@@ -658,6 +707,7 @@ function executeSkillOperation(
     const second = state.grid[input.targetRow2][input.targetCol2];
     if (!first || !second) return false;
     if (input.targetRow === input.targetRow2 && input.targetCol === input.targetCol2) return false;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     state.grid[input.targetRow][input.targetCol] = { ...second, position: { row: input.targetRow, col: input.targetCol } };
     state.grid[input.targetRow2][input.targetCol2] = { ...first, position: { row: input.targetRow2, col: input.targetCol2 } };
     emitSkillTriggeredEvent(ctx, input, operation.kind, {
@@ -681,6 +731,15 @@ function executeSkillOperation(
       toCol: input.targetCol,
       entityId: second.id,
     });
+    pushSkillEffectStep(ctx, {
+      type: 'play_skill_effect',
+      effect: 'swap',
+      color: resolveSkillVisual(input, 'utility').color,
+      sourceRow: input.targetRow,
+      sourceCol: input.targetCol,
+      targetRow: input.targetRow2,
+      targetCol: input.targetCol2,
+    });
     return true;
   }
 
@@ -688,9 +747,31 @@ function executeSkillOperation(
     const amount = Number(params.amount ?? 0);
     const reason = String(params.reason ?? 'skill') as StressSource;
     const targets = collectTargetsForSelector(state, input, selector, filters);
+    if (targets.length === 0) return true;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     targets.forEach(target => {
       adjustEntityStress(ctx, target.row, target.col, amount, reason);
       emitSkillTriggeredEvent(ctx, input, operation.kind, target);
+      pushSkillEffectStep(
+        ctx,
+        {
+          type: 'play_skill_effect',
+          effect: 'ring',
+          color:
+            amount < 0
+              ? resolveStatusVisual('stress_relief', 'buff').color
+              : resolveStatusVisual('stress_pressure', 'debuff').color,
+          targetRow: target.row,
+          targetCol: target.col,
+          amount,
+          positive: amount < 0,
+        },
+        {
+          type: 'pulse_stress_cell',
+          row: target.row,
+          col: target.col,
+        }
+      );
     });
     return true;
   }
@@ -699,10 +780,18 @@ function executeSkillOperation(
     const targets = collectTargetsForSelector(state, input, selector, filters);
     if (targets.length === 0) return false;
     const reason = String(params.reason ?? 'action') as 'action' | 'meltdown' | 'movement' | 'replacement';
+    emitSkillCueIfNeeded(ctx, input, cueState);
     targets.forEach(target => {
       removeEntityStatuses(ctx, target.entity.id, 'entity_removed');
       state.grid[target.row][target.col] = null;
       emitSkillTriggeredEvent(ctx, input, operation.kind, target);
+      pushSkillEffectStep(ctx, {
+        type: 'play_skill_effect',
+        effect: 'collapse',
+        color: resolveSkillVisual(input, 'utility').color,
+        targetRow: target.row,
+        targetCol: target.col,
+      });
       addEvent(ctx, {
         type: 'entity_removed',
         row: target.row,
@@ -720,19 +809,46 @@ function executeSkillOperation(
     if (!anchor) return false;
     const amount = Number(params.amount ?? 0);
     const reason = String(params.reason ?? 'skill_adjacent') as StressSource;
+    let applied = false;
     getAdjacentOrthogonalCells(anchor.row, anchor.col).forEach(cell => {
       const entity = getEntityAt(state, cell.row, cell.col);
       if (!entity || !entityMatchesFilters(entity, filters)) return;
+      if (!applied) {
+        emitSkillCueIfNeeded(ctx, input, cueState);
+        applied = true;
+      }
       adjustEntityStress(ctx, cell.row, cell.col, amount, reason);
       emitSkillTriggeredEvent(ctx, input, operation.kind, { entity, row: cell.row, col: cell.col });
+      pushSkillEffectStep(
+        ctx,
+        {
+          type: 'play_skill_effect',
+          effect: 'link',
+          color:
+            amount < 0
+              ? resolveStatusVisual('stress_relief', 'buff').color
+              : resolveStatusVisual('stress_pressure', 'debuff').color,
+          sourceRow: anchor.row,
+          sourceCol: anchor.col,
+          targetRow: cell.row,
+          targetCol: cell.col,
+          amount,
+          positive: amount < 0,
+        },
+        {
+          type: 'pulse_stress_cell',
+          row: cell.row,
+          col: cell.col,
+        }
+      );
     });
-    return true;
+    return applied;
   }
 
   if (operation.kind === 'draw_cards') {
     const count = Math.max(0, Number(params.count ?? 0));
     const sourceEntity = input.source?.entity;
-    drawCardsInState(ctx, count, {
+    const drawEvent = drawCardsInState(ctx, count, {
       source: input.card ? 'action' : 'skill',
       sourceLabel: input.card?.name ?? sourceEntity?.name ?? '技能抽牌',
       sourceCardId: input.card?.id ?? sourceEntity?.cardId,
@@ -741,13 +857,27 @@ function executeSkillOperation(
       sourceCol: input.source?.col,
       uiMode: input.card ? 'store_event' : 'manual',
     });
+    if (!drawEvent) return false;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     emitSkillTriggeredEvent(ctx, input, operation.kind);
+    if (!input.card && input.source) {
+      pushSkillEffectStep(ctx, {
+        type: 'play_skill_effect',
+        effect: 'ring',
+        color: resolveStatusVisual('draw_engine', 'buff').color,
+        sourceRow: input.source.row,
+        sourceCol: input.source.col,
+        positive: true,
+      });
+      pushSkillEffectStep(ctx, { type: 'play_draw_event', event: drawEvent });
+    }
     return true;
   }
 
   if (operation.kind === 'return_entity_to_hand') {
     const targets = collectTargetsForSelector(state, input, selector, filters);
     if (targets.length === 0) return false;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     targets.forEach(target => {
       const cardTemplate = getEntityCardTemplate(target.entity.cardId);
       if (!cardTemplate) return;
@@ -755,6 +885,14 @@ function executeSkillOperation(
       state.grid[target.row][target.col] = null;
       state.hand = [...state.hand, cardTemplate];
       emitSkillTriggeredEvent(ctx, input, operation.kind, target);
+      pushSkillEffectStep(ctx, {
+        type: 'play_skill_effect',
+        effect: 'collapse',
+        color: resolveSkillVisual(input, 'utility').color,
+        targetRow: target.row,
+        targetCol: target.col,
+        positive: true,
+      });
       addEvent(ctx, {
         type: 'entity_removed',
         row: target.row,
@@ -772,6 +910,8 @@ function executeSkillOperation(
     const percent = Number(params.percent ?? 0);
     const statusKind = typeof params.statusKind === 'string' ? params.statusKind : undefined;
     const targets = collectTargetsForSelector(state, input, selector, filters);
+    if (targets.length === 0) return true;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     targets.forEach(target => {
       options.incomeCalculation?.modifiers.push({
         targetEntityId: target.entity.id,
@@ -792,6 +932,20 @@ function executeSkillOperation(
         targetCol: target.col,
         percent,
       });
+      pushSkillEffectStep(ctx, {
+        type: 'play_skill_effect',
+        effect: 'link',
+        color:
+          statusKind != null
+            ? resolveStatusVisual(statusKind, percent >= 0 ? 'buff' : 'debuff').color
+            : resolveSkillVisual(input, percent >= 0 ? 'buff' : 'debuff').color,
+        sourceRow: input.source!.row,
+        sourceCol: input.source!.col,
+        targetRow: target.row,
+        targetCol: target.col,
+        amount: percent,
+        positive: percent >= 0,
+      });
     });
     return true;
   }
@@ -799,6 +953,7 @@ function executeSkillOperation(
   if (operation.kind === 'modify_interest_rule') {
     if (!options?.incomeCalculation || !input.source) return false;
     const threshold = Math.max(1, Number(params.threshold ?? 10));
+    emitSkillCueIfNeeded(ctx, input, cueState);
     options.incomeCalculation.interestThreshold = Math.min(options.incomeCalculation.interestThreshold, threshold);
     emitSkillTriggeredEvent(ctx, input, operation.kind, input.source);
     addEvent(ctx, {
@@ -807,30 +962,60 @@ function executeSkillOperation(
       sourceEntityId: input.source.entity.id,
       threshold,
     });
+    pushSkillEffectStep(ctx, {
+      type: 'play_skill_effect',
+      effect: 'ring',
+      color: resolveSkillVisual(input, 'buff').color,
+      sourceRow: input.source.row,
+      sourceCol: input.source.col,
+      positive: true,
+    });
     return true;
   }
 
   if (operation.kind === 'modify_meltdown_radius') {
     if (!input.meltdown || !input.source) return false;
     if (input.source.row !== input.meltdown.row || input.source.col !== input.meltdown.col) return true;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     input.meltdown.radius = Math.max(input.meltdown.radius, Number(params.radius ?? 1));
     emitSkillTriggeredEvent(ctx, input, operation.kind, input.source);
+    pushSkillEffectStep(ctx, {
+      type: 'play_skill_effect',
+      effect: 'ring',
+      color: resolveSkillVisual(input, 'passive').color,
+      sourceRow: input.source.row,
+      sourceCol: input.source.col,
+    });
     return true;
   }
 
   if (operation.kind === 'prevent_meltdown') {
     if (!input.meltdown || !input.source) return false;
     if (input.source.row !== input.meltdown.row || input.source.col !== input.meltdown.col) return true;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     input.meltdown.prevented = true;
     emitSkillTriggeredEvent(ctx, input, operation.kind, input.source);
-    emitStatusBurst(ctx, {
-      kind: input.skill?.templateId ?? 'prevent_meltdown',
-      theme: 'passive',
-      title: input.source.entity.name,
-      subtitle: '本次拆家被免疫',
-      row: input.source.row,
-      col: input.source.col,
-    });
+    pushSkillEffectStep(
+      ctx,
+      {
+        type: 'play_skill_effect',
+        effect: 'shield',
+        color: resolveSkillVisual(input, 'passive').color,
+        sourceRow: input.source.row,
+        sourceCol: input.source.col,
+        positive: true,
+      },
+      {
+        type: 'status_burst',
+        statusKind: input.skill?.templateId ?? 'prevent_meltdown',
+        theme: 'passive',
+        title: input.source.entity.name,
+        subtitle: '本次拆家被免疫',
+        row: input.source.row,
+        col: input.source.col,
+        color: resolveSkillVisual(input, 'passive').color,
+      }
+    );
     return true;
   }
 
@@ -838,14 +1023,24 @@ function executeSkillOperation(
     if (!input.stress || !input.source) return false;
     if (input.stress.source !== 'skill_adjacent') return true;
     if (input.source.row !== input.stress.row || input.source.col !== input.stress.col) return true;
+    emitSkillCueIfNeeded(ctx, input, cueState);
     input.stress.prevented = true;
     emitSkillTriggeredEvent(ctx, input, operation.kind, input.source);
+    pushSkillEffectStep(ctx, {
+      type: 'play_skill_effect',
+      effect: 'shield',
+      color: resolveSkillVisual(input, 'passive').color,
+      sourceRow: input.source.row,
+      sourceCol: input.source.col,
+      positive: true,
+    });
     return true;
   }
 
   if (operation.kind === 'on_meltdown_gain_cans') {
     if (!input.source || !input.meltdown) return false;
     const amount = Math.max(0, Number(params.amount ?? 0));
+    emitSkillCueIfNeeded(ctx, input, cueState);
     addCans(state, amount);
     emitSkillTriggeredEvent(ctx, input, operation.kind, input.source);
     addEvent(ctx, {
@@ -854,14 +1049,24 @@ function executeSkillOperation(
       sourceEntityId: input.source.entity.id,
       amount,
     });
-    emitStatusBurst(ctx, {
-      kind: 'worker_gain_cans_on_meltdown',
-      theme: 'buff',
-      title: input.source.entity.name,
-      subtitle: `废墟捡回 ${amount} 罐头`,
-      row: input.source.row,
-      col: input.source.col,
-    });
+    pushSkillEffectStep(
+      ctx,
+      {
+        type: 'play_skill_effect',
+        effect: 'ring',
+        color: resolveStatusVisual('worker_gain_cans_on_meltdown', 'buff').color,
+        sourceRow: input.source.row,
+        sourceCol: input.source.col,
+        amount,
+        positive: true,
+      },
+      {
+        type: 'spawn_income_float',
+        row: input.source.row,
+        col: input.source.col,
+        amount,
+      }
+    );
     return true;
   }
 
@@ -876,9 +1081,13 @@ function executeSkill(
   if (!input.skill) return false;
   const operations = input.skill.operations ?? [];
   if (operations.length === 0) return false;
+  const cueState: SkillCueState = { shown: false };
   for (const rawOperation of operations) {
     const operation = resolveSkillOperation(input.skill, rawOperation);
-    const ok = executeSkillOperation(ctx, input, operation, options);
+    const ok = executeSkillOperation(ctx, input, operation, {
+      incomeCalculation: options?.incomeCalculation,
+      cueState,
+    });
     if (!ok) return false;
   }
   return true;
@@ -1255,6 +1464,7 @@ function drawCardsInState(
 
   state.nextDrawEventId = event.id + 1;
   if ((meta?.uiMode ?? 'store_event') === 'manual') {
+    state.lastDrawEvent = null;
     ctx.meta.drawEvent = event;
   } else {
     state.lastDrawEvent = event;
@@ -1281,7 +1491,8 @@ function maybeEndGameByVictoryWindow(state: GameState, ctx: ResolutionContext): 
 
 function advanceTurnAfterTrim(
   ctx: ResolutionContext,
-  drawMeta?: DrawCardsMeta
+  drawMeta?: DrawCardsMeta,
+  options?: { includePreparationBanner?: boolean }
 ): DrawEvent | null {
   const state = ctx.draft;
   if (state.gameStatus !== 'playing') return null;
@@ -1326,13 +1537,27 @@ function advanceTurnAfterTrim(
   maybeEndGameByVictoryWindow(state, ctx);
   if (state.gameStatus !== 'playing') return null;
 
+  if (options?.includePreparationBanner) {
+    pushStep(ctx, state, [
+      {
+        type: 'show_phase_banner',
+        title: `第 ${state.turn} 回合 · 准备阶段`,
+        holdMs: 520,
+      },
+    ]);
+  }
+
   executeEntityTrigger(ctx, 'turn_start');
 
-  return drawCardsInState(ctx, TURN_DRAW_COUNT, {
+  const drawEvent = drawCardsInState(ctx, TURN_DRAW_COUNT, {
     source: 'turn_start',
     sourceLabel: '每日抽牌',
     uiMode: drawMeta?.uiMode ?? 'store_event',
   });
+  if (drawEvent && (drawMeta?.uiMode ?? 'store_event') === 'manual') {
+    pushStep(ctx, state, [{ type: 'play_draw_event', event: drawEvent }]);
+  }
+  return drawEvent;
 }
 
 function triggerMeltdownInState(
@@ -1770,7 +1995,7 @@ function runFinishHandTrimCommand(
   if (state.gameStatus !== 'playing') return createFailure(state, 'game_not_playing');
   if (state.hand.length > HAND_SIZE_MAX) return createFailure(state, 'hand_above_limit');
   const ctx = makeContext(state);
-  advanceTurnAfterTrim(ctx, drawMeta);
+  advanceTurnAfterTrim(ctx, drawMeta, { includePreparationBanner: true });
   return {
     success: true,
     nextState: ctx.draft,
@@ -2302,24 +2527,15 @@ function runResolveTurnSequenceCommand(state: GameState): ResolutionResult {
         },
       ]);
     } else {
-      const drawEvent = advanceTurnAfterTrim(ctx, {
-        source: 'turn_start',
-        sourceLabel: '每日抽牌',
-        uiMode: 'manual',
-      });
-      if (ctx.draft.gameStatus === 'playing') {
-        const presentation: PresentationEvent[] = [
-          {
-            type: 'show_phase_banner',
-            title: `第 ${ctx.draft.turn} 回合 · 准备阶段`,
-            holdMs: 520,
-          },
-        ];
-        if (drawEvent) {
-          presentation.push({ type: 'play_draw_event', event: drawEvent });
-        }
-        pushStep(ctx, ctx.draft, presentation);
-      }
+      advanceTurnAfterTrim(
+        ctx,
+        {
+          source: 'turn_start',
+          sourceLabel: '每日抽牌',
+          uiMode: 'manual',
+        },
+        { includePreparationBanner: true }
+      );
     }
   }
 

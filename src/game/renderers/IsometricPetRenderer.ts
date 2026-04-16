@@ -2,6 +2,12 @@ import * as THREE from 'three';
 import { createLowPolyPet, type PetRig } from '../factories/LowPolyPetFactory';
 import { GridCell3D } from './GridCell3D';
 import { DeckRenderer } from './DeckRenderer';
+import {
+  PICK_LAYERS,
+  readGridCellPickUserData,
+  readPetPickUserData,
+  type PetPickUserData,
+} from './picking';
 import { Tween, Easing } from '../utils/Tween';
 import type { GridEntity } from '../../store/gameStore';
 import {
@@ -57,8 +63,6 @@ interface PetMesh {
   auraColor: THREE.Color | null;
   materials: PetMaterialState[];
   shadow: THREE.Mesh;
-  debugBounds: THREE.Box3;
-  debugBoundsHelper: THREE.Box3Helper;
 }
 
 interface ProjectedBounds {
@@ -66,6 +70,13 @@ interface ProjectedBounds {
   maxX: number;
   minY: number;
   maxY: number;
+}
+
+export interface PetHoverHit {
+  row: number;
+  col: number;
+  entityId: string;
+  cardId: string;
 }
 
 function createBackdropMaterial(): THREE.ShaderMaterial {
@@ -190,7 +201,6 @@ export class IsometricPetRenderer {
 
   private qualityLevel: QualityLevel = 'high';
   private sceneMood: SceneMood = 'idle';
-  private petBoundsDebugVisible = true;
 
   private readonly GRID_START_X = 400;
   private readonly GRID_START_Y = 200;
@@ -494,42 +504,15 @@ export class IsometricPetRenderer {
     return shadow;
   }
 
-  private createPetDebugBoundsHelper(): { box: THREE.Box3; helper: THREE.Box3Helper } {
-    const box = new THREE.Box3();
-    const helper = new THREE.Box3Helper(box, 0x00e5ff);
-    helper.visible = this.petBoundsDebugVisible;
-    helper.renderOrder = 3000;
-    const material = helper.material as THREE.LineBasicMaterial;
-    material.depthTest = false;
-    material.depthWrite = false;
-    material.transparent = true;
-    material.opacity = 0.9;
-    this.scene.add(helper);
-    return { box, helper };
-  }
+  private raycastFirst(screenX: number, screenY: number, layer: number) {
+    const ndc = this.screenToNdc(screenX, screenY);
+    if (!ndc) return null;
 
-  private updatePetDebugBounds(petMesh: PetMesh): void {
-    if (!this.petBoundsDebugVisible) {
-      petMesh.debugBoundsHelper.visible = false;
-      return;
-    }
-
-    petMesh.rig.root.updateMatrixWorld(true);
-    petMesh.debugBounds.setFromObject(petMesh.rig.root);
-    const isVisible = !petMesh.debugBounds.isEmpty();
-    petMesh.debugBoundsHelper.visible = isVisible;
-    if (!isVisible) return;
-
-    const material = petMesh.debugBoundsHelper.material as THREE.LineBasicMaterial;
-    material.color.setHex(petMesh.stressRatio >= 0.5 ? 0xff4f6d : 0x00e5ff);
-    petMesh.debugBoundsHelper.updateMatrixWorld(true);
-  }
-
-  public setPetBoundsDebugVisible(visible: boolean): void {
-    this.petBoundsDebugVisible = visible;
-    this.petMeshes.forEach(petMesh => {
-      petMesh.debugBoundsHelper.visible = visible;
-    });
+    this.camera.updateMatrixWorld(true);
+    this.raycaster.layers.set(layer);
+    this.raycaster.setFromCamera(ndc, this.camera);
+    const intersects = this.raycaster.intersectObjects(this.scene.children, true);
+    return intersects[0] ?? null;
   }
 
   private getMotionProfile(cardId: string): PetMotionProfile {
@@ -680,6 +663,7 @@ export class IsometricPetRenderer {
         );
         cell3d.setSceneMood(this.sceneMood);
         this.scene.add(cell3d.mesh);
+        this.scene.add(cell3d.hitMesh);
         this.scene.add(cell3d.borderMesh);
         this.scene.add(cell3d.glowMesh);
         this.gridCellMeshes.set(`${row}|${col}`, cell3d);
@@ -713,21 +697,21 @@ export class IsometricPetRenderer {
   }
 
   public screenToGridCell(screenX: number, screenY: number): { row: number; col: number } | null {
-    const ndc = this.screenToNdc(screenX, screenY);
-    if (!ndc) return null;
+    const hit = this.raycastFirst(screenX, screenY, PICK_LAYERS.GRID_CELL);
+    const pick = hit ? readGridCellPickUserData(hit.object.userData) : null;
+    return pick ? { row: pick.row, col: pick.col } : null;
+  }
 
-    this.camera.updateMatrixWorld(true);
-    this.raycaster.setFromCamera(ndc, this.camera);
-    const meshes: THREE.Mesh[] = [];
-    this.gridCellMeshes.forEach(cell => meshes.push(cell.mesh));
-
-    const intersects = this.raycaster.intersectObjects(meshes, false);
-    if (intersects.length > 0) {
-      const hit = intersects[0].object;
-      const { row, col } = hit.userData as { row: number; col: number };
-      return { row, col };
-    }
-    return null;
+  public screenToPet(screenX: number, screenY: number): PetHoverHit | null {
+    const hit = this.raycastFirst(screenX, screenY, PICK_LAYERS.PET_VISUAL);
+    const pick = hit ? readPetPickUserData(hit.object.userData) : null;
+    if (!pick) return null;
+    return {
+      row: pick.row,
+      col: pick.col,
+      entityId: pick.entityId,
+      cardId: pick.cardId,
+    };
   }
 
   public syncCellState(row: number, col: number, state: 'empty' | 'occupied' | 'ruins'): void {
@@ -809,6 +793,34 @@ export class IsometricPetRenderer {
     };
   }
 
+  public getPetPreviewAnchor(
+    row: number,
+    col: number,
+    previewWidth: number,
+    previewHeight: number,
+    gap = 26
+  ): { x: number; y: number } | null {
+    const petMesh = this.petMeshes.get(this.gridKey(row, col));
+    if (!petMesh) return null;
+
+    const bounds = this.getProjectedBounds(petMesh.rig.root);
+    if (!bounds) return null;
+
+    const margin = 18;
+    const defaultX = bounds.maxX + gap + previewWidth * 0.5;
+    const fallbackX = bounds.minX - gap - previewWidth * 0.5;
+    const x =
+      defaultX + previewWidth * 0.5 <= IsometricPetRenderer.DESIGN_WIDTH - margin
+        ? defaultX
+        : fallbackX;
+    const y = bounds.minY + Math.min((bounds.maxY - bounds.minY) * 0.42, previewHeight * 0.5 + 18);
+
+    return {
+      x: Math.max(margin + previewWidth * 0.5, Math.min(IsometricPetRenderer.DESIGN_WIDTH - margin - previewWidth * 0.5, x)),
+      y: Math.max(margin + previewHeight * 0.5, Math.min(IsometricPetRenderer.DESIGN_HEIGHT - margin - previewHeight * 0.5, y)),
+    };
+  }
+
   public spawnPet(row: number, col: number, entity: GridEntity): void {
     const key = this.gridKey(row, col);
     const existing = this.petMeshes.get(key);
@@ -830,14 +842,26 @@ export class IsometricPetRenderer {
       this.computeGroundedY(root, worldPos.x, worldPos.z) + (modelProfile?.offsetY ?? 0),
       worldPos.z + (modelProfile?.offsetZ ?? 0)
     );
+    const pickData = {
+      pickKind: 'pet-visual',
+      gridKey: key,
+      row,
+      col,
+      entityId: entity.id,
+      cardId: entity.cardId,
+    } satisfies PetPickUserData;
     root.traverse(obj => {
       obj.renderOrder = 20 + row * 100 + col;
+      obj.layers.enable(PICK_LAYERS.PET_VISUAL);
+      obj.userData = {
+        ...obj.userData,
+        ...pickData,
+      };
     });
 
     const shadow = this.createShadow(worldPos, modelProfile?.shadowSize ?? 1);
     const materials = this.enhancePetMaterials(root);
     this.scene.add(root);
-    const debugBounds = this.createPetDebugBoundsHelper();
 
     const petMesh: PetMesh = {
       rig,
@@ -851,11 +875,8 @@ export class IsometricPetRenderer {
       auraColor: null,
       materials,
       shadow,
-      debugBounds: debugBounds.box,
-      debugBoundsHelper: debugBounds.helper,
     };
     this.petMeshes.set(key, petMesh);
-    this.updatePetDebugBounds(petMesh);
     this.playIdle(row, col);
     this.updatePetStress(row, col, entity.stress, entity.maxStress);
   }
@@ -868,12 +889,9 @@ export class IsometricPetRenderer {
     this.stopAnimations(petMesh);
     this.scene.remove(petMesh.rig.root);
     this.scene.remove(petMesh.shadow);
-    this.scene.remove(petMesh.debugBoundsHelper);
 
     petMesh.shadow.geometry.dispose();
     (petMesh.shadow.material as THREE.Material).dispose();
-    petMesh.debugBoundsHelper.geometry.dispose();
-    (petMesh.debugBoundsHelper.material as THREE.Material).dispose();
 
     petMesh.rig.root.traverse(child => {
       if (!(child instanceof THREE.Mesh)) return;
@@ -1196,7 +1214,6 @@ export class IsometricPetRenderer {
     this.updateSceneShaders(elapsed);
     this.gridCellMeshes.forEach(cell => cell.update(elapsed));
     this.updatePetMaterials(elapsed);
-    this.petMeshes.forEach(petMesh => this.updatePetDebugBounds(petMesh));
     this.renderer.render(this.scene, this.camera);
   }
 

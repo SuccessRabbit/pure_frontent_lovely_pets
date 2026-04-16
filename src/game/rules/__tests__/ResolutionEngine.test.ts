@@ -182,4 +182,111 @@ describe('ResolutionEngine', () => {
     expect(result.events).toContainEqual(expect.objectContaining({ type: 'turn_started', turn: 2 }));
     expect(result.steps.length).toBeGreaterThan(0);
   });
+
+  it('plays turn-start pet draw separately before the daily draw', () => {
+    const pet = entityFromCard('pet_006', 0, 0);
+    const deck = [
+      runtimeCard('action_007'),
+      runtimeCard('action_001'),
+      runtimeCard('worker_001'),
+      runtimeCard('pet_001'),
+      runtimeCard('action_003'),
+    ];
+    const state = withEntities(
+      createEmptyGameState({
+        phase: 'preparation',
+        hand: [],
+        deck,
+      }),
+      [pet]
+    );
+
+    const result = runGameCommand(state, { type: 'resolve_turn_sequence' });
+    const flattened = result.steps.flatMap(step => step.presentation);
+    const bannerIndex = flattened.findIndex(
+      event => event.type === 'show_phase_banner' && event.title === '第 2 回合 · 准备阶段'
+    );
+    const skillCueIndex = flattened.findIndex(
+      event => event.type === 'show_entity_cue' && event.row === 0 && event.col === 0 && event.subtitle === '回合开始抽牌'
+    );
+    const skillDrawIndex = flattened.findIndex(
+      event => event.type === 'play_draw_event' && event.event.source === 'skill'
+    );
+    const dailyDrawIndex = flattened.findIndex(
+      event => event.type === 'play_draw_event' && event.event.source === 'turn_start'
+    );
+
+    expect(result.success).toBe(true);
+    expect(bannerIndex).toBeGreaterThan(-1);
+    expect(skillCueIndex).toBeGreaterThan(bannerIndex);
+    expect(skillDrawIndex).toBeGreaterThan(skillCueIndex);
+    expect(dailyDrawIndex).toBeGreaterThan(skillDrawIndex);
+  });
+
+  it('keeps skill draw separate from daily draw after hand trim advancement', () => {
+    const pet = entityFromCard('pet_012', 0, 0);
+    const deck = [
+      runtimeCard('action_007'),
+      runtimeCard('action_001'),
+      runtimeCard('worker_001'),
+      runtimeCard('pet_001'),
+      runtimeCard('action_003'),
+      runtimeCard('worker_002'),
+    ];
+    const state = withEntities(
+      createEmptyGameState({
+        turn: 3,
+        phase: 'end',
+        hand: [],
+        deck,
+        awaitingHandTrim: true,
+      }),
+      [pet]
+    );
+
+    const result = runGameCommand(state, {
+      type: 'finish_hand_trim_and_advance_turn',
+      drawMeta: {
+        source: 'turn_start',
+        sourceLabel: '每日抽牌',
+        uiMode: 'manual',
+      },
+    });
+    const drawEvents = result.steps
+      .flatMap(step => step.presentation)
+      .filter((event): event is Extract<(typeof result.steps)[number]['presentation'][number], { type: 'play_draw_event' }> =>
+        event.type === 'play_draw_event'
+      );
+
+    expect(result.success).toBe(true);
+    expect(drawEvents.map(event => event.event.source)).toEqual(['skill', 'turn_start']);
+    expect(result.nextState.lastDrawEvent).toBeNull();
+  });
+
+  it('creates adjacent skill presentation steps for passive pressure skills', () => {
+    const source = entityFromCard('pet_004', 1, 1);
+    const target = entityFromCard('pet_001', 1, 2);
+    const state = withEntities(
+      createEmptyGameState({
+        phase: 'preparation',
+        hand: [],
+        deck: [runtimeCard('action_001'), runtimeCard('action_003'), runtimeCard('worker_001')],
+      }),
+      [source, target]
+    );
+
+    const result = runGameCommand(state, { type: 'resolve_turn_sequence' });
+    const flattened = result.steps.flatMap(step => step.presentation);
+
+    expect(flattened).toContainEqual(
+      expect.objectContaining({
+        type: 'play_skill_effect',
+        effect: 'link',
+        sourceRow: 1,
+        sourceCol: 1,
+        targetRow: 1,
+        targetCol: 2,
+      })
+    );
+  });
 });

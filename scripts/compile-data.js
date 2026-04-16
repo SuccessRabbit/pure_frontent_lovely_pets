@@ -228,6 +228,7 @@ function parseGlobalConfigRow(row) {
   let value = raw;
   if (row.valueType === 'number') value = parseNumber(raw);
   if (row.valueType === 'boolean') value = parseBoolean(raw, false);
+  if (row.valueType === 'json') value = parseJsonCell(raw, []);
   return {
     module: row.module.trim(),
     key: row.key.trim(),
@@ -385,7 +386,7 @@ function writeGameRulesTs(globalConfig) {
 
   for (const entry of globalConfig) {
     const valueLiteral =
-      typeof entry.value === 'string' ? JSON.stringify(entry.value) : String(entry.value);
+      typeof entry.value === 'string' ? JSON.stringify(entry.value) : JSON.stringify(entry.value);
     lines.push(`export const ${entry.key} = ${valueLiteral};`);
   }
 

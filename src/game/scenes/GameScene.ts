@@ -1,5 +1,6 @@
 import * as PIXI from 'pixi.js';
 import { Scene } from '../core/Scene';
+import { CardSprite } from '../entities/CardSprite';
 import { GridCell } from '../entities/GridCell';
 import { DragSystem } from '../systems/DragSystem';
 import { VfxQueue } from '../systems/VfxQueue';
@@ -26,10 +27,14 @@ import { HandController } from './gameScene/HandController';
 import { GameSceneUiController } from './gameScene/GameSceneUiController';
 import { TurnResolutionController } from './gameScene/TurnResolutionController';
 import { runGameCommand } from '../rules/ResolutionEngine';
+import type { PresentationEvent } from '../rules/presentation';
+import { getEntityCardTemplate } from '../../utils/cardCatalog';
 
-const PHASE_GAP_MS = 380;
 const DESIGN_WIDTH = 1920;
 const DESIGN_HEIGHT = 1080;
+const PET_HOVER_PREVIEW_SCALE = 0.75;
+const PET_HOVER_PREVIEW_WIDTH = 200 * PET_HOVER_PREVIEW_SCALE;
+const PET_HOVER_PREVIEW_HEIGHT = 280 * PET_HOVER_PREVIEW_SCALE;
 const DEBUG_SCENE_FLOW = true;
 
 function logSceneFlow(message: string, payload?: unknown) {
@@ -77,6 +82,9 @@ export class GameScene extends Scene {
   private toastPresenter: ToastPresenter;
   private globalStatusHud!: PIXI.Container;
   private entityStatusHud!: PIXI.Container;
+  private petHoverPreviewLayer: PIXI.Container;
+  private petHoverPreviewCard: CardSprite | null = null;
+  private petHoverPreviewKey: string | null = null;
   private statusTooltipLayer!: PIXI.Container;
   private statusTooltipBg!: PIXI.Graphics;
   private statusTooltipTitle!: PIXI.Text;
@@ -119,6 +127,9 @@ export class GameScene extends Scene {
     this.entityStatusHud.eventMode = 'static';
     this.entityStatusHud.sortableChildren = true;
     this.uiContainer.addChild(this.entityStatusHud);
+    this.petHoverPreviewLayer = new PIXI.Container();
+    this.petHoverPreviewLayer.eventMode = 'none';
+    this.uiContainer.addChild(this.petHoverPreviewLayer);
 
     this.uiController = new GameSceneUiController({
       uiContainer: this.uiContainer,
@@ -224,6 +235,7 @@ export class GameScene extends Scene {
         this.showEntityCue(row, col, title, subtitle, color),
       spawnIncomeFloat: (row, col, amount) => this.spawnIncomeFloat(row, col, amount),
       showToast: message => this.showToast(message),
+      playSkillEffect: event => this.playSkillEffect(event),
       spawnStatusBurst: (kind, theme, title, subtitle, color, row, col, global) =>
         this.spawnStatusBurst(kind, theme, title, subtitle, color, row, col, global),
       syncGridFromStore: () => this.syncGridFromStore(),
@@ -267,6 +279,7 @@ export class GameScene extends Scene {
     this.toastPresenter.clear();
     this.gridInteractionController.clearPendingActionPick();
     this.gameOverController.clear();
+    this.clearPetHoverPreview();
     this.destroyPetRenderer();
   }
 
@@ -295,6 +308,7 @@ export class GameScene extends Scene {
           ? 'action-target'
           : 'none',
     });
+    this.updatePetHoverPreview(mouse.x, mouse.y);
 
     // 3D 宠物渲染（不再使用 2D 颤抖）
     this.petRenderer?.render();
@@ -319,6 +333,69 @@ export class GameScene extends Scene {
       const statusAnchor = this.petRenderer?.getPetStatusAnchor(cell.row, cell.col) ?? null;
       cell.setStatusOverlay3DAnchor(statusAnchor);
     });
+  }
+
+  private updatePetHoverPreview(screenX: number, screenY: number) {
+    const state = useGameStore.getState();
+    if (
+      !this.petRenderer ||
+      state.gameStatus !== 'playing' ||
+      this.roundResolving ||
+      this.dragSystem.isDragging()
+    ) {
+      this.clearPetHoverPreview();
+      return;
+    }
+
+    const hoveredCell = this.petRenderer.screenToGridCell(screenX, screenY);
+    if (!hoveredCell) {
+      this.clearPetHoverPreview();
+      return;
+    }
+
+    const entity = state.grid[hoveredCell.row]?.[hoveredCell.col] ?? null;
+    if (!entity || entity.type !== 'pet') {
+      this.clearPetHoverPreview();
+      return;
+    }
+
+    const card = getEntityCardTemplate(entity.cardId);
+    const anchor = this.petRenderer.getPetPreviewAnchor(
+      hoveredCell.row,
+      hoveredCell.col,
+      PET_HOVER_PREVIEW_WIDTH,
+      PET_HOVER_PREVIEW_HEIGHT
+    );
+    if (!card || !anchor) {
+      this.clearPetHoverPreview();
+      return;
+    }
+
+    const nextKey = `${entity.id}|${entity.cardId}`;
+    if (this.petHoverPreviewKey !== nextKey) {
+      this.clearPetHoverPreview();
+      const preview = new CardSprite(card);
+      preview.eventMode = 'none';
+      preview.cursor = 'default';
+      preview.rotation = 0;
+      preview.scale.set(PET_HOVER_PREVIEW_SCALE);
+      preview.alpha = 0.96;
+      preview.zIndex = 1200;
+      this.petHoverPreviewLayer.addChild(preview);
+      this.petHoverPreviewCard = preview;
+      this.petHoverPreviewKey = nextKey;
+    }
+
+    if (this.petHoverPreviewCard) {
+      this.petHoverPreviewCard.position.set(anchor.x, anchor.y);
+    }
+  }
+
+  private clearPetHoverPreview() {
+    this.petHoverPreviewKey = null;
+    if (!this.petHoverPreviewCard) return;
+    this.petHoverPreviewCard.destroy({ children: true });
+    this.petHoverPreviewCard = null;
   }
 
   /** 设计分辨率全屏命中，便于点在「空白处」也能收到 pointerdown */
@@ -944,6 +1021,248 @@ export class GameScene extends Scene {
     void this.showEntityCue(row, col, title, subtitle, color || visual.color);
   }
 
+  private async playSkillEffect(
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ): Promise<void> {
+    if (event.effect === 'link') {
+      await this.playSkillLinkEffect(event);
+      return;
+    }
+    if (event.effect === 'shield') {
+      await this.playSkillShieldEffect(event);
+      return;
+    }
+    if (event.effect === 'swap') {
+      await this.playSkillSwapEffect(event);
+      return;
+    }
+    if (event.effect === 'collapse') {
+      await this.playSkillCollapseEffect(event);
+      return;
+    }
+    await this.playSkillRingEffect(event);
+  }
+
+  private async playSkillLinkEffect(
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ): Promise<void> {
+    if (
+      event.sourceRow === undefined ||
+      event.sourceCol === undefined ||
+      event.targetRow === undefined ||
+      event.targetCol === undefined
+    ) {
+      return;
+    }
+    const from = this.getCellAnchorGlobal(event.sourceRow, event.sourceCol, 10);
+    const to = this.getCellAnchorGlobal(event.targetRow, event.targetCol, 12);
+    const fromLocal = this.fxLayer.toLocal(from);
+    const toLocal = this.fxLayer.toLocal(to);
+
+    const beam = new PIXI.Graphics();
+    beam.alpha = 0;
+    this.fxLayer.addChild(beam);
+
+    const tip = new PIXI.Graphics();
+    tip.beginFill(event.color, 0.92);
+    tip.drawCircle(0, 0, 8);
+    tip.endFill();
+    tip.position.set(fromLocal.x, fromLocal.y);
+    tip.alpha = 0;
+    this.fxLayer.addChild(tip);
+
+    beam.clear();
+    beam.lineStyle(4, event.color, 0.85);
+    beam.moveTo(fromLocal.x, fromLocal.y);
+    beam.lineTo(toLocal.x, toLocal.y);
+
+    burstParticlesAtGlobal(this.fxLayer, from.x, from.y, {
+      count: 10,
+      colors: [event.color, 0xffffff, event.positive ? 0xabebc6 : 0xffb0b0],
+      spread: 30,
+      durationMin: 180,
+      durationMax: 320,
+    });
+
+    await Promise.all([
+      new Promise<void>(resolve => {
+        Tween.to(beam, { alpha: 1 }, 120, Easing.easeOutQuad, resolve);
+      }),
+      new Promise<void>(resolve => {
+        Tween.to(tip, { alpha: 1, x: toLocal.x, y: toLocal.y }, 220, Easing.easeOutCubic, resolve);
+      }),
+    ]);
+
+    burstParticlesAtGlobal(this.fxLayer, to.x, to.y, {
+      count: 20,
+      colors: [event.color, 0xffffff, event.positive ? 0xabebc6 : 0xffb0b0],
+      spread: 54,
+      durationMin: 220,
+      durationMax: 420,
+    });
+
+    await Promise.all([
+      new Promise<void>(resolve => {
+        Tween.to(beam, { alpha: 0 }, 180, Easing.easeInQuad, resolve);
+      }),
+      new Promise<void>(resolve => {
+        Tween.to(tip, { alpha: 0 }, 180, Easing.easeInQuad, resolve);
+      }),
+    ]);
+
+    beam.destroy();
+    tip.destroy();
+  }
+
+  private async playSkillRingEffect(
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ): Promise<void> {
+    const row = event.targetRow ?? event.sourceRow;
+    const col = event.targetCol ?? event.sourceCol;
+    if (row === undefined || col === undefined) return;
+    const global = this.getCellAnchorGlobal(row, col, 12);
+    const local = this.fxLayer.toLocal(global);
+
+    const ring = new PIXI.Graphics();
+    ring.position.set(local.x, local.y);
+    ring.alpha = 0.92;
+    this.fxLayer.addChild(ring);
+
+    ring.lineStyle(4, event.color, 0.92);
+    ring.drawCircle(0, 0, 22);
+    burstParticlesAtGlobal(this.fxLayer, global.x, global.y, {
+      count: 18,
+      colors: [event.color, 0xffffff, event.positive ? 0xabebc6 : 0xffb0b0],
+      spread: 44,
+      durationMin: 220,
+      durationMax: 420,
+    });
+
+    await Promise.all([
+      new Promise<void>(resolve => {
+        Tween.to(ring.scale, { x: 1.7, y: 1.7 }, 240, Easing.easeOutCubic, resolve);
+      }),
+      new Promise<void>(resolve => {
+        Tween.to(ring, { alpha: 0 }, 240, Easing.easeInQuad, resolve);
+      }),
+    ]);
+
+    ring.destroy();
+  }
+
+  private async playSkillShieldEffect(
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ): Promise<void> {
+    const row = event.sourceRow ?? event.targetRow;
+    const col = event.sourceCol ?? event.targetCol;
+    if (row === undefined || col === undefined) return;
+    const global = this.getCellAnchorGlobal(row, col, 14);
+    const local = this.fxLayer.toLocal(global);
+
+    const shield = new PIXI.Graphics();
+    shield.position.set(local.x, local.y);
+    shield.alpha = 0;
+    this.fxLayer.addChild(shield);
+
+    shield.lineStyle(4, event.color, 0.95);
+    shield.beginFill(0xffffff, 0.08);
+    shield.drawRoundedRect(-20, -26, 40, 52, 16);
+    shield.endFill();
+
+    burstParticlesAtGlobal(this.fxLayer, global.x, global.y, {
+      count: 16,
+      colors: [event.color, 0xffffff, 0xa9f0d1],
+      spread: 40,
+      durationMin: 220,
+      durationMax: 380,
+    });
+
+    await Promise.all([
+      new Promise<void>(resolve => {
+        Tween.to(shield, { alpha: 1 }, 130, Easing.easeOutQuad, resolve);
+      }),
+      new Promise<void>(resolve => {
+        Tween.to(shield.scale, { x: 1.24, y: 1.24 }, 220, Easing.easeOutBack, resolve);
+      }),
+    ]);
+    await new Promise<void>(resolve => {
+      Tween.to(shield, { alpha: 0 }, 200, Easing.easeInQuad, resolve);
+    });
+    shield.destroy();
+  }
+
+  private async playSkillSwapEffect(
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ): Promise<void> {
+    if (
+      event.sourceRow === undefined ||
+      event.sourceCol === undefined ||
+      event.targetRow === undefined ||
+      event.targetCol === undefined
+    ) {
+      return;
+    }
+    const first = this.getCellAnchorGlobal(event.sourceRow, event.sourceCol, 12);
+    const second = this.getCellAnchorGlobal(event.targetRow, event.targetCol, 12);
+    burstParticlesAtGlobal(this.fxLayer, first.x, first.y, {
+      count: 20,
+      colors: [event.color, 0xffffff, 0xb8d8ff],
+      spread: 52,
+      durationMin: 220,
+      durationMax: 420,
+    });
+    burstParticlesAtGlobal(this.fxLayer, second.x, second.y, {
+      count: 20,
+      colors: [event.color, 0xffffff, 0xb8d8ff],
+      spread: 52,
+      durationMin: 220,
+      durationMax: 420,
+    });
+    await this.playSkillLinkEffect({
+      ...event,
+      type: 'play_skill_effect',
+      effect: 'link',
+      targetRow: event.targetRow,
+      targetCol: event.targetCol,
+    });
+  }
+
+  private async playSkillCollapseEffect(
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ): Promise<void> {
+    const row = event.targetRow ?? event.sourceRow;
+    const col = event.targetCol ?? event.sourceCol;
+    if (row === undefined || col === undefined) return;
+    const global = this.getCellAnchorGlobal(row, col, 12);
+    const local = this.fxLayer.toLocal(global);
+
+    const flash = new PIXI.Graphics();
+    flash.position.set(local.x, local.y);
+    flash.alpha = 0.9;
+    this.fxLayer.addChild(flash);
+    flash.beginFill(event.color, 0.24);
+    flash.drawCircle(0, 0, 28);
+    flash.endFill();
+
+    burstParticlesAtGlobal(this.fxLayer, global.x, global.y, {
+      count: 26,
+      colors: [event.color, 0xffffff, 0x3b2236],
+      spread: 64,
+      durationMin: 220,
+      durationMax: 440,
+    });
+
+    await Promise.all([
+      new Promise<void>(resolve => {
+        Tween.to(flash.scale, { x: 0.35, y: 0.35 }, 220, Easing.easeInCubic, resolve);
+      }),
+      new Promise<void>(resolve => {
+        Tween.to(flash, { alpha: 0 }, 220, Easing.easeInQuad, resolve);
+      }),
+    ]);
+    flash.destroy();
+  }
+
   private getCellAnchorGlobal(row: number, col: number, yOffset = 26) {
     const cell = this.gridCells.find(c => c.row === row && c.col === col);
     if (!cell) return this.container.toGlobal(new PIXI.Point(960, 540));
@@ -1183,34 +1502,13 @@ export class GameScene extends Scene {
       },
     });
     if (!result.success) return;
-
-    const drawEvent = result.meta.drawEvent;
-    if (drawEvent) {
-      this.handController.prepareManualDrawEvents([drawEvent]);
-    }
-
-    useGameStore.setState(result.nextState);
-    if (result.nextState.gameStatus === 'playing') {
-      void this.playAfterHandTrimBanner(drawEvent);
-    }
-  }
-
-  private async playAfterHandTrimBanner(drawEvent?: ReturnType<typeof useGameStore.getState>['lastDrawEvent']) {
     if (this.roundResolving) return;
     this.roundResolving = true;
     this.setEndTurnInteractable(false);
-    try {
-      if (useGameStore.getState().gameStatus !== 'playing') return;
-      const turn = useGameStore.getState().turn;
-      await this.showPhaseBanner(`第 ${turn} 回合 · 准备阶段`, 520);
-      await waitMs(PHASE_GAP_MS);
-      if (drawEvent) {
-        await this.handController.playManualDrawEvent(drawEvent);
-      }
-    } finally {
+    void this.turnResolutionController.playSteps(result.steps).finally(() => {
       this.roundResolving = false;
       const playing = useGameStore.getState().gameStatus === 'playing';
       this.setEndTurnInteractable(playing);
-    }
+    });
   }
 }

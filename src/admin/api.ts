@@ -64,13 +64,28 @@ function toRawReadonlyDatasets(): RawAdminDatasets {
       thumbnailPath: profile.thumbnailPath ?? '',
       notes: profile.notes ?? '',
     })),
-    globalConfig: Object.entries(runtime.globalConfigMap).map(([key, value]) => ({
-      module: 'runtime',
-      key,
-      value: String(value),
-      valueType: typeof value === 'number' ? 'number' : typeof value === 'boolean' ? 'boolean' : 'string',
-      description: '只读运行时配置',
-    })),
+    globalConfig: runtime.globalConfigEntries
+      ? runtime.globalConfigEntries.map(entry => ({
+          module: entry.module,
+          key: entry.key,
+          value: typeof entry.value === 'string' ? entry.value : JSON.stringify(entry.value),
+          valueType: entry.valueType,
+          description: entry.description,
+        }))
+      : Object.entries(runtime.globalConfigMap).map(([key, value]) => ({
+          module: 'runtime',
+          key,
+          value: typeof value === 'string' ? value : JSON.stringify(value),
+          valueType:
+            typeof value === 'number'
+              ? 'number'
+              : typeof value === 'boolean'
+                ? 'boolean'
+                : Array.isArray(value) || typeof value === 'object'
+                  ? 'json'
+                  : 'string',
+          description: '只读运行时配置',
+        })),
   };
 }
 

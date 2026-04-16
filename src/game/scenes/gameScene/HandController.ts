@@ -66,7 +66,7 @@ export class HandController {
   private queuedDrawEvents: DrawEvent[] = [];
   private drawEventFlushQueued = false;
   private pendingDrawCards = new Set<Card>();
-  private pendingManualDrawCards = new Map<number, string[]>();
+  private pendingManualDrawCards = new Map<number, Set<Card>>();
 
   constructor(deps: HandControllerDeps) {
     this.handContainer = deps.handContainer;
@@ -100,14 +100,18 @@ export class HandController {
   public prepareManualDrawEvents(events: DrawEvent[]) {
     events.forEach(event => {
       event.drawnCards.forEach(card => this.pendingDrawCards.add(card));
-      this.pendingManualDrawCards.set(event.id, event.drawnCards.map(card => this.cardPendingKey(card)));
+      this.pendingManualDrawCards.set(event.id, new Set(event.drawnCards));
     });
   }
 
   public updateFromStore(state: HandControllerStoreState) {
     const hand = state.hand;
+    const autoQueueAllowed =
+      !!state.lastDrawEvent &&
+      !this.pendingManualDrawCards.has(state.lastDrawEvent.id) &&
+      !this.handledDrawEventIds.has(state.lastDrawEvent.id);
     const drawEventJustQueued =
-      !!state.lastDrawEvent && !this.handledDrawEventIds.has(state.lastDrawEvent.id);
+      !!state.lastDrawEvent && autoQueueAllowed;
     if (drawEventJustQueued && state.lastDrawEvent) {
       this.queueDrawEvent(state.lastDrawEvent);
     } else {
@@ -185,28 +189,19 @@ export class HandController {
     return card;
   }
 
-  private cardPendingKey(card: Card) {
-    return `${card.id}|${card.type}|${card.name}|${card.cost}`;
-  }
-
   private consumeManualPendingCard(eventId: number, card: Card): boolean {
     const pending = this.pendingManualDrawCards.get(eventId);
     if (!pending) return false;
-
-    const index = pending.indexOf(this.cardPendingKey(card));
-    if (index < 0) return false;
-
-    pending.splice(index, 1);
-    if (pending.length === 0) {
+    if (!pending.delete(card)) return false;
+    if (pending.size === 0) {
       this.pendingManualDrawCards.delete(eventId);
     }
     return true;
   }
 
   private isManualPendingCard(card: Card): boolean {
-    const key = this.cardPendingKey(card);
     for (const pending of this.pendingManualDrawCards.values()) {
-      if (pending.includes(key)) return true;
+      if (pending.has(card)) return true;
     }
     return false;
   }
@@ -242,9 +237,15 @@ export class HandController {
 
     const next: CardSprite[] = [];
     visibleHand.forEach(cardData => {
+      const slot = layoutByCard.get(cardData);
       let card = oldByCard.get(cardData);
       if (!card && !exclude.has(cardData) && !this.isManualPendingCard(cardData)) {
         card = this.createHandCardSprite(cardData);
+        if (slot) {
+          card.position.set(slot.x, slot.y);
+          card.originalX = slot.x;
+          card.originalY = slot.y;
+        }
         this.handContainer.addChild(card);
       }
       if (!card) return;

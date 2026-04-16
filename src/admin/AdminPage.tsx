@@ -1,12 +1,29 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react';
 import { loadAdminDatasets, saveAdminDatasets, subscribeToAdminEvents } from './api';
 import { ModelPreviewCanvas } from './ModelPreviewCanvas';
 import { AdminSelect } from './AdminSelect';
 import { TemplateWorkspace, collectTemplateValidationIssues } from './TemplateWorkspace';
+import {
+  STARTING_DECK_CONFIG_KEY,
+  buildDeckSummary,
+  ensureStartingDeckConfigEntry,
+  parseDeckConfigValue,
+  serializeDeckConfigValue,
+} from './globalConfigUtils';
+import {
+  buildBindingFieldDefinitions,
+  buildFieldOptions,
+  formatCardTypeLabel,
+  parseJsonSafe,
+  readOperationsSummary,
+  renderTemplateSummary,
+  scopeIncludesCardType,
+} from './templateSchema';
 import type {
   AdminDatasetResponse,
   CardRow,
   CardSkillRow,
+  GlobalConfigRow,
   ModelProfileRow,
   RawAdminDatasets,
   SkillTemplateRow,
@@ -21,14 +38,6 @@ type SortDirection = 'asc' | 'desc';
 interface CardSortState {
   field: CardSortField;
   direction: SortDirection;
-}
-
-interface ParamSchemaField {
-  name: string;
-  label: string;
-  type: 'number' | 'text' | 'select';
-  defaultValue?: number | string;
-  options?: string[];
 }
 
 interface AssetOptions {
@@ -64,6 +73,12 @@ interface ResourcePreviewProps {
   scaleMode?: 'fill' | 'fit';
 }
 
+interface GlobalConfigEditorProps {
+  draft: RawAdminDatasets;
+  canEdit: boolean;
+  updateGlobalConfigEntry: (key: string, patch: Partial<GlobalConfigRow>) => void;
+}
+
 const shellStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
@@ -79,12 +94,17 @@ const panelStyle: CSSProperties = {
   overflow: 'auto',
 };
 
-function parseJsonSafe<T>(value: string, fallback: T): T {
-  try {
-    return value ? (JSON.parse(value) as T) : fallback;
-  } catch {
-    return fallback;
-  }
+const RIGHT_PANEL_MIN_WIDTH = 320;
+const RIGHT_PANEL_MAX_WIDTH = 640;
+const RIGHT_PANEL_DEFAULT_WIDTH = 420;
+const RIGHT_PANEL_COLLAPSED_WIDTH = 0;
+const RIGHT_PANEL_HANDLE_WIDTH = 28;
+const RIGHT_PANEL_STORAGE_KEY = 'lovely-pets.admin.right-panel-width';
+const RIGHT_PANEL_COLLAPSED_STORAGE_KEY = 'lovely-pets.admin.right-panel-collapsed';
+const RIGHT_PANEL_AUTO_COLLAPSE_BREAKPOINT = 1480;
+
+function clampRightPanelWidth(width: number) {
+  return Math.min(RIGHT_PANEL_MAX_WIDTH, Math.max(RIGHT_PANEL_MIN_WIDTH, width));
 }
 
 function cloneDatasets(raw: RawAdminDatasets): RawAdminDatasets {
@@ -98,29 +118,7 @@ function cloneDatasets(raw: RawAdminDatasets): RawAdminDatasets {
 }
 
 function templateSupportsCard(template: SkillTemplateRow, cardType: string) {
-  const scopes = template.scope.split('|').filter(Boolean);
-  if (scopes.length === 0) return true;
-  return scopes.includes(cardType);
-}
-
-function renderBindingSummary(template: SkillTemplateRow | undefined, binding: CardSkillRow) {
-  if (!template) return '未匹配到技能模板';
-  const params = parseJsonSafe<Record<string, unknown>>(binding.paramsJson, {});
-  const summary = template.summaryTemplate || template.descriptionTemplate || template.name;
-  return summary.replace(/\{(\w+)\}/g, (_match, key) => String(params[key] ?? ''));
-}
-
-function readParamSchema(template: SkillTemplateRow | undefined): ParamSchemaField[] {
-  if (!template) return [];
-  return parseJsonSafe<ParamSchemaField[]>(template.paramSchemaJson, []);
-}
-
-function readOperationsSummary(template: SkillTemplateRow | undefined) {
-  if (!template) return [];
-  const operations = parseJsonSafe<Array<Record<string, unknown>>>(template.operationsJson, []);
-  return operations
-    .map(operation => String(operation.kind ?? '').trim())
-    .filter(Boolean);
+  return scopeIncludesCardType(template.scope, cardType);
 }
 
 function cardSkillBindings(raw: RawAdminDatasets, cardId: string) {
@@ -164,6 +162,17 @@ function inputStyle(block = false): CSSProperties {
     color: '#fff8ef',
     padding: '10px 12px',
     boxSizing: 'border-box' as const,
+  };
+}
+
+function softButtonStyle(disabled = false): CSSProperties {
+  return {
+    borderRadius: 12,
+    border: '1px solid rgba(255,255,255,0.12)',
+    background: disabled ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.04)',
+    color: '#fff8ef',
+    padding: '10px 12px',
+    cursor: disabled ? 'not-allowed' : 'pointer',
   };
 }
 
@@ -287,16 +296,6 @@ const rarityRank: Record<string, number> = {
   legendary: 3,
 };
 
-const cardTypeLabels: Record<string, string> = {
-  entity_pet: '萌宠',
-  entity_worker: '员工',
-  entity_facility: '设施',
-  action_buff: '增益',
-  action_debuff: '减益',
-  action_utility: '功能',
-  status_negative: '负面',
-};
-
 function isStageEntityCardType(type: string | null | undefined): boolean {
   return type === 'entity_pet' || type === 'entity_worker';
 }
@@ -354,10 +353,6 @@ function defaultCardCompare(a: CardRow, b: CardRow) {
   if (normalizedACost !== normalizedBCost) return normalizedACost - normalizedBCost;
 
   return compareTextValue(a.id, b.id);
-}
-
-function formatCardTypeLabel(cardType: string) {
-  return cardTypeLabels[cardType] ?? cardType;
 }
 
 function formatCardTypeOptionLabel(cardType: string) {
@@ -591,8 +586,12 @@ function CardEditorPanel({
       <div style={{ display: 'grid', gap: 12 }}>
         {currentBindings.map(binding => {
           const template = draft.skillTemplates.find(item => item.id === binding.templateId);
-          const schema = readParamSchema(template);
+          const fieldDefinitions = buildBindingFieldDefinitions(template);
           const params = parseJsonSafe<Record<string, string | number>>(binding.paramsJson, {});
+          const missingRequiredCount = fieldDefinitions.filter(field => {
+            const value = params[field.name] ?? field.defaultValue;
+            return field.required && (value == null || value === '');
+          }).length;
 
           return (
             <div
@@ -613,8 +612,11 @@ function CardEditorPanel({
                   </div>
                   {readOperationsSummary(template).length > 0 ? (
                     <div style={{ fontSize: 12, opacity: 0.56, marginTop: 4 }}>
-                      ops: {readOperationsSummary(template).join(' -> ')}
+                      运行链: {readOperationsSummary(template).join(' -> ')}
                     </div>
+                  ) : null}
+                  {missingRequiredCount > 0 ? (
+                    <div style={{ fontSize: 12, color: '#ffcece', marginTop: 6 }}>还有 {missingRequiredCount} 个必填参数未完成</div>
                   ) : null}
                 </div>
                 <button
@@ -637,8 +639,20 @@ function CardEditorPanel({
                 <AdminSelect
                   value={binding.templateId}
                   disabled={!canEdit}
-                  onChange={value => updateBinding(binding.id, { templateId: value })}
-                  options={availableTemplates.map(option => ({ value: option.id, label: option.name }))}
+                  onChange={value => {
+                    const nextTemplate = draft.skillTemplates.find(item => item.id === value);
+                    const defaults = Object.fromEntries(
+                      buildBindingFieldDefinitions(nextTemplate).map(field => [field.name, field.defaultValue ?? ''])
+                    );
+                    updateBinding(binding.id, {
+                      templateId: value,
+                      paramsJson: JSON.stringify(defaults),
+                    });
+                  }}
+                  options={availableTemplates.map(option => ({
+                    value: option.id,
+                    label: `${option.name} · ${option.trigger} / ${option.targetMode}`,
+                  }))}
                 />
                 <input
                   value={binding.sortOrder}
@@ -657,35 +671,72 @@ function CardEditorPanel({
                 />
               </div>
 
-              {schema.length > 0 ? (
+              <div
+                style={{
+                  borderRadius: 12,
+                  padding: 12,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                  marginBottom: 12,
+                }}
+              >
+                <div style={{ fontSize: 12, opacity: 0.66, marginBottom: 6 }}>目标选择说明</div>
+                <div style={{ fontSize: 13 }}>
+                  {template?.supportsSecondTarget === 'true'
+                    ? '该技能在游戏内需要依次选择两个目标。'
+                    : template?.targetMode === 'none'
+                      ? '该技能打出后直接生效，不需要手动选目标。'
+                      : `该技能在游戏内需要选择：${template?.targetMode ?? '未知目标模式'}`}
+                </div>
+              </div>
+
+              {fieldDefinitions.length > 0 ? (
                 <div style={{ display: 'grid', gap: 10 }}>
-                  {schema.map(field => (
+                  {fieldDefinitions.map(field => {
+                    const options = buildFieldOptions(field, draft, selectedCard);
+                    const currentValue = params[field.name] ?? field.defaultValue ?? '';
+                    const helperText = field.description
+                      ? `${field.description}${field.min != null || field.max != null ? ` 范围 ${field.min ?? '-∞'} ~ ${field.max ?? '∞'}` : ''}`
+                      : field.min != null || field.max != null
+                        ? `范围 ${field.min ?? '-∞'} ~ ${field.max ?? '∞'}`
+                        : '';
+                    return (
                     <label key={field.name}>
-                      <div style={{ marginBottom: 6 }}>{field.label}</div>
-                      {field.type === 'select' ? (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 6 }}>
+                        <div>{field.label}</div>
+                        {field.required ? <div style={{ fontSize: 12, opacity: 0.66 }}>必填</div> : null}
+                      </div>
+                      {helperText ? <div style={{ fontSize: 12, opacity: 0.62, marginBottom: 6 }}>{helperText}</div> : null}
+                      {field.type === 'select' || options.length > 0 ? (
                         <AdminSelect
-                          value={String(params[field.name] ?? field.defaultValue ?? '')}
+                          value={String(currentValue)}
                           disabled={!canEdit}
                           onChange={value => {
                             const nextParams = { ...params, [field.name]: value };
                             updateBinding(binding.id, { paramsJson: JSON.stringify(nextParams) });
                           }}
-                          options={(field.options ?? []).map(option => ({ value: option, label: option }))}
+                          options={options}
                         />
                       ) : (
                         <input
-                          value={String(params[field.name] ?? field.defaultValue ?? '')}
+                          type={field.type === 'number' ? 'number' : 'text'}
+                          min={field.type === 'number' ? field.min : undefined}
+                          max={field.type === 'number' ? field.max : undefined}
+                          step={field.type === 'number' ? field.step ?? 1 : undefined}
+                          value={String(currentValue)}
                           disabled={!canEdit}
                           onChange={event => {
                             const value = field.type === 'number' ? Number(event.target.value) : event.target.value;
                             const nextParams = { ...params, [field.name]: value };
                             updateBinding(binding.id, { paramsJson: JSON.stringify(nextParams) });
                           }}
+                          placeholder={field.placeholder}
                           style={inputStyle(true)}
                         />
                       )}
                     </label>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : null}
 
@@ -698,8 +749,23 @@ function CardEditorPanel({
                   border: '1px solid rgba(255,226,175,0.12)',
                 }}
               >
-                <div style={{ fontSize: 12, opacity: 0.66, marginBottom: 4 }}>规则摘要</div>
-                <div>{renderBindingSummary(template, binding)}</div>
+                <div style={{ fontSize: 12, opacity: 0.66, marginBottom: 4 }}>玩家可见摘要</div>
+                <div>{renderTemplateSummary(template, params)}</div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: 12,
+                  borderRadius: 12,
+                  padding: 12,
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid rgba(255,255,255,0.08)',
+                }}
+              >
+                <div style={{ fontSize: 12, opacity: 0.66, marginBottom: 4 }}>运行时说明</div>
+                <div style={{ fontSize: 13, opacity: 0.82 }}>
+                  触发 {template?.trigger ?? '-'}，目标 {template?.targetMode ?? '-'}，效果 {template?.effectKind ?? '-'}
+                </div>
               </div>
             </div>
           );
@@ -785,6 +851,372 @@ function ResourcePreview({ label, src, fit = 'contain', scaleMode = 'fill' }: Re
   );
 }
 
+function deckCardPreviewStyle(active = false): CSSProperties {
+  return {
+    borderRadius: 18,
+    padding: 14,
+    background: active ? 'rgba(255,210,133,0.08)' : 'rgba(255,255,255,0.04)',
+    border: `1px solid ${active ? 'rgba(255,210,133,0.22)' : 'rgba(255,255,255,0.08)'}`,
+  };
+}
+
+function GlobalConfigEditor({ draft, canEdit, updateGlobalConfigEntry }: GlobalConfigEditorProps) {
+  const [selectedDeckCardId, setSelectedDeckCardId] = useState('');
+  const globalConfigEntries = draft.globalConfig;
+  const startingDeckEntry = globalConfigEntries.find(entry => entry.key === STARTING_DECK_CONFIG_KEY) ?? null;
+  const genericEntries = globalConfigEntries.filter(entry => entry.key !== STARTING_DECK_CONFIG_KEY);
+  const startingDeckItems = parseDeckConfigValue(startingDeckEntry?.value ?? '[]');
+  const cardsById = useMemo(() => new Map(draft.cards.map(card => [card.id, card])), [draft.cards]);
+  const deckSummary = useMemo(() => buildDeckSummary(startingDeckItems, draft.cards), [draft.cards, startingDeckItems]);
+  const cardOptions = useMemo(
+    () =>
+      [...draft.cards]
+        .sort((a, b) => a.name.localeCompare(b.name, 'zh-Hans-CN'))
+        .map(card => ({
+          value: card.id,
+          label: `${card.name} · ${formatCardTypeLabel(card.type)} · ${card.id}`,
+        })),
+    [draft.cards]
+  );
+
+  useEffect(() => {
+    if (!selectedDeckCardId && cardOptions[0]) {
+      setSelectedDeckCardId(cardOptions[0].value);
+    }
+  }, [cardOptions, selectedDeckCardId]);
+
+  const selectedDeckCard = selectedDeckCardId ? cardsById.get(selectedDeckCardId) ?? null : null;
+
+  function commitDeckItems(
+    updater: (current: Array<{ cardId: string; count: number }>) => Array<{ cardId: string; count: number }>
+  ) {
+    if (!startingDeckEntry) return;
+    const next = updater(startingDeckItems);
+    updateGlobalConfigEntry(startingDeckEntry.key, {
+      value: serializeDeckConfigValue(next),
+      valueType: 'json',
+    });
+  }
+
+  function addDeckCard() {
+    if (!selectedDeckCardId) return;
+    commitDeckItems(current => {
+      const existing = current.find(item => item.cardId === selectedDeckCardId);
+      if (existing) {
+        return current.map(item =>
+          item.cardId === selectedDeckCardId ? { ...item, count: item.count + 1 } : item
+        );
+      }
+      return [...current, { cardId: selectedDeckCardId, count: 1 }];
+    });
+  }
+
+  return (
+    <div style={{ display: 'grid', gap: 22 }}>
+      {sectionTitle('Global Config')}
+      <div
+        style={{
+          borderRadius: 20,
+          padding: 18,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>全局参数配置</div>
+        <div style={{ fontSize: 13, opacity: 0.74, lineHeight: 1.6 }}>
+          通用规则参数和牌堆配置都在这里编辑。牌堆配置会直接影响开局初始化，不再需要手动改代码。
+        </div>
+      </div>
+
+      <div style={{ display: 'grid', gap: 12 }}>
+        {genericEntries.map(entry => (
+          <div
+            key={entry.key}
+            style={{
+              borderRadius: 18,
+              padding: 16,
+              background: 'rgba(255,255,255,0.04)',
+              border: '1px solid rgba(255,255,255,0.08)',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+              <div>
+                <div style={{ fontWeight: 700 }}>{entry.key}</div>
+                <div style={{ fontSize: 12, opacity: 0.62 }}>{entry.module}</div>
+              </div>
+              <div style={{ fontSize: 12, opacity: 0.68 }}>{entry.valueType}</div>
+            </div>
+            <div style={{ fontSize: 13, opacity: 0.72, marginBottom: 10 }}>{entry.description}</div>
+            {entry.valueType === 'boolean' ? (
+              <AdminSelect
+                value={entry.value}
+                disabled={!canEdit}
+                onChange={value => updateGlobalConfigEntry(entry.key, { value })}
+                options={[
+                  { value: 'true', label: '开启' },
+                  { value: 'false', label: '关闭' },
+                ]}
+              />
+            ) : entry.valueType === 'number' ? (
+              <input
+                type="number"
+                disabled={!canEdit}
+                value={entry.value}
+                onChange={event => updateGlobalConfigEntry(entry.key, { value: event.target.value })}
+                style={inputStyle(true)}
+              />
+            ) : (
+              <input
+                disabled={!canEdit}
+                value={entry.value}
+                onChange={event => updateGlobalConfigEntry(entry.key, { value: event.target.value })}
+                style={inputStyle(true)}
+              />
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div
+        style={{
+          borderRadius: 20,
+          padding: 18,
+          background: 'rgba(255,255,255,0.04)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', marginBottom: 12 }}>
+          <div>
+            <div style={{ fontSize: 20, fontWeight: 700 }}>起始牌堆配置</div>
+            <div style={{ fontSize: 13, opacity: 0.72, marginTop: 6 }}>
+              通过卡牌预览和数量设置自定义开始牌堆。若牌堆为空，则运行时回退为“全卡各 2 张”。
+            </div>
+          </div>
+          <div style={{ display: 'grid', gap: 6, textAlign: 'right' }}>
+            <div style={{ fontSize: 12, opacity: 0.64 }}>总张数</div>
+            <div style={{ fontSize: 24, fontWeight: 800 }}>{deckSummary.totalCards}</div>
+          </div>
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) 300px', gap: 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={{ ...deckCardPreviewStyle(), display: 'grid', gap: 12 }}>
+              <div style={{ fontWeight: 700 }}>添加卡牌到牌堆</div>
+              <AdminSelect
+                value={selectedDeckCardId}
+                disabled={!canEdit || cardOptions.length === 0}
+                onChange={setSelectedDeckCardId}
+                options={cardOptions}
+              />
+              {selectedDeckCard ? (
+                <div style={{ ...deckCardPreviewStyle(true), display: 'grid', gridTemplateColumns: '112px minmax(0, 1fr)', gap: 14 }}>
+                  <div
+                    style={{
+                      borderRadius: 14,
+                      overflow: 'hidden',
+                      aspectRatio: '3 / 4',
+                      background: 'rgba(255,255,255,0.04)',
+                      display: 'grid',
+                      placeItems: 'center',
+                    }}
+                  >
+                    {selectedDeckCard.cardImagePath ? (
+                      <img
+                        src={selectedDeckCard.cardImagePath}
+                        alt={selectedDeckCard.name}
+                        style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 12, opacity: 0.56 }}>无卡面</div>
+                    )}
+                  </div>
+                  <div style={{ display: 'grid', gap: 8, alignContent: 'start' }}>
+                    <div>
+                      <div style={{ fontSize: 12, opacity: 0.6 }}>{formatCardTypeLabel(selectedDeckCard.type)}</div>
+                      <div style={{ fontSize: 20, fontWeight: 700 }}>{selectedDeckCard.name}</div>
+                      <div style={{ fontSize: 12, opacity: 0.64 }}>{selectedDeckCard.id}</div>
+                    </div>
+                    <div style={{ fontSize: 13, opacity: 0.76 }}>{cardSummaryLabel(selectedDeckCard)}</div>
+                    <button
+                      type="button"
+                      onClick={addDeckCard}
+                      disabled={!canEdit}
+                      style={{
+                        borderRadius: 12,
+                        border: '1px solid rgba(255,210,133,0.22)',
+                        background: 'rgba(255,210,133,0.12)',
+                        color: '#fff8ef',
+                        padding: '10px 12px',
+                        cursor: canEdit ? 'pointer' : 'not-allowed',
+                        fontWeight: 700,
+                      }}
+                    >
+                      添加这张卡
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            <div style={{ display: 'grid', gap: 12 }}>
+              {startingDeckItems.map(item => {
+                const card = cardsById.get(item.cardId) ?? null;
+                return (
+                  <div key={item.cardId} style={{ ...deckCardPreviewStyle(), display: 'grid', gridTemplateColumns: '92px minmax(0, 1fr) auto', gap: 14, alignItems: 'center' }}>
+                    <div
+                      style={{
+                        borderRadius: 12,
+                        overflow: 'hidden',
+                        aspectRatio: '3 / 4',
+                        background: 'rgba(255,255,255,0.04)',
+                        display: 'grid',
+                        placeItems: 'center',
+                      }}
+                    >
+                      {card?.cardImagePath ? (
+                        <img
+                          src={card.cardImagePath}
+                          alt={card.name}
+                          style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+                        />
+                      ) : (
+                        <div style={{ fontSize: 12, opacity: 0.56 }}>{card ? '无卡面' : '缺失卡牌'}</div>
+                      )}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 700 }}>{card?.name ?? item.cardId}</div>
+                      <div style={{ fontSize: 12, opacity: 0.64, marginTop: 4 }}>
+                        {card ? `${formatCardTypeLabel(card.type)} · ${card.id}` : `缺失引用 · ${item.cardId}`}
+                      </div>
+                      {card?.description ? (
+                        <div style={{ fontSize: 12, opacity: 0.68, marginTop: 8, lineHeight: 1.5 }}>{card.description}</div>
+                      ) : null}
+                    </div>
+                    <div style={{ display: 'grid', gap: 8, justifyItems: 'end' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <button
+                          type="button"
+                          disabled={!canEdit}
+                          onClick={() =>
+                            commitDeckItems(current =>
+                              current
+                                .map(currentItem =>
+                                  currentItem.cardId === item.cardId
+                                    ? { ...currentItem, count: Math.max(1, currentItem.count - 1) }
+                                    : currentItem
+                                )
+                            )
+                          }
+                          style={softButtonStyle(!canEdit)}
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min={1}
+                          disabled={!canEdit}
+                          value={item.count}
+                          onChange={event => {
+                            const nextCount = Number(event.target.value);
+                            commitDeckItems(current =>
+                              current.map(currentItem =>
+                                currentItem.cardId === item.cardId
+                                  ? { ...currentItem, count: Number.isFinite(nextCount) ? Math.max(1, Math.floor(nextCount)) : 1 }
+                                  : currentItem
+                              )
+                            );
+                          }}
+                          style={{ ...inputStyle(), width: 88, textAlign: 'center' }}
+                        />
+                        <button
+                          type="button"
+                          disabled={!canEdit}
+                          onClick={() =>
+                            commitDeckItems(current =>
+                              current.map(currentItem =>
+                                currentItem.cardId === item.cardId
+                                  ? { ...currentItem, count: currentItem.count + 1 }
+                                  : currentItem
+                              )
+                            )
+                          }
+                          style={softButtonStyle(!canEdit)}
+                        >
+                          +
+                        </button>
+                      </div>
+                      <button
+                        type="button"
+                        disabled={!canEdit}
+                        onClick={() => commitDeckItems(current => current.filter(currentItem => currentItem.cardId !== item.cardId))}
+                        style={{
+                          borderRadius: 999,
+                          border: '1px solid rgba(255,130,130,0.16)',
+                          background: 'rgba(255,130,130,0.12)',
+                          color: '#ffdede',
+                          padding: '8px 12px',
+                          cursor: canEdit ? 'pointer' : 'not-allowed',
+                        }}
+                      >
+                        移除
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+              {startingDeckItems.length === 0 ? (
+                <div style={{ opacity: 0.72, padding: '8px 2px' }}>当前未配置自定义牌堆，运行时会自动使用默认全卡各 2 张。</div>
+              ) : null}
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gap: 12 }}>
+            <div style={deckCardPreviewStyle()}>
+              <div style={{ fontWeight: 700, marginBottom: 10 }}>牌堆概览</div>
+              <div style={{ display: 'grid', gap: 8, fontSize: 13 }}>
+                <div>唯一卡牌数 {deckSummary.uniqueCards}</div>
+                <div>总张数 {deckSummary.totalCards}</div>
+                <div style={{ color: deckSummary.missingCards > 0 ? '#ffcece' : '#d3f9c6' }}>
+                  {deckSummary.missingCards > 0 ? `存在 ${deckSummary.missingCards} 张失效引用` : '卡牌引用有效'}
+                </div>
+              </div>
+            </div>
+
+            <div style={deckCardPreviewStyle()}>
+              <div style={{ fontWeight: 700, marginBottom: 10 }}>按类型统计</div>
+              <div style={{ display: 'grid', gap: 8 }}>
+                {Object.entries(deckSummary.byType).map(([type, count]) => (
+                  <div
+                    key={type}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 12,
+                      fontSize: 13,
+                    }}
+                  >
+                    <span>{formatCardTypeLabel(type)}</span>
+                    <span>{count}</span>
+                  </div>
+                ))}
+                {Object.keys(deckSummary.byType).length === 0 ? <div style={{ opacity: 0.64 }}>暂无统计</div> : null}
+              </div>
+            </div>
+
+            {startingDeckEntry ? (
+              <div style={deckCardPreviewStyle()}>
+                <div style={{ fontWeight: 700, marginBottom: 10 }}>原始配置</div>
+                <div style={{ fontSize: 12, opacity: 0.68, marginBottom: 6 }}>{startingDeckEntry.description}</div>
+                <pre style={{ margin: 0, whiteSpace: 'pre-wrap', fontSize: 12, opacity: 0.84 }}>{startingDeckEntry.value}</pre>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdminPage() {
   const [response, setResponse] = useState<AdminDatasetResponse | null>(null);
   const [draft, setDraft] = useState<RawAdminDatasets | null>(null);
@@ -800,7 +1232,32 @@ export function AdminPage() {
   const [error, setError] = useState('');
   const [info, setInfo] = useState('');
   const [templateIssues, setTemplateIssues] = useState<TemplateValidationIssue[]>([]);
+  const [rightPanelCollapsed, setRightPanelCollapsed] = useState(false);
+  const [rightPanelWidth, setRightPanelWidth] = useState(RIGHT_PANEL_DEFAULT_WIDTH);
+  const [rightPanelDragging, setRightPanelDragging] = useState(false);
   const canEdit = response?.canEdit ?? false;
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedWidth = window.localStorage.getItem(RIGHT_PANEL_STORAGE_KEY);
+    const savedCollapsed = window.localStorage.getItem(RIGHT_PANEL_COLLAPSED_STORAGE_KEY);
+
+    if (savedWidth) {
+      const numericWidth = Number(savedWidth);
+      if (Number.isFinite(numericWidth)) {
+        setRightPanelWidth(clampRightPanelWidth(numericWidth));
+      }
+    }
+
+    if (savedCollapsed === 'true' || savedCollapsed === 'false') {
+      setRightPanelCollapsed(savedCollapsed === 'true');
+      return;
+    }
+
+    if (window.innerWidth < RIGHT_PANEL_AUTO_COLLAPSE_BREAKPOINT) {
+      setRightPanelCollapsed(true);
+    }
+  }, []);
 
   useEffect(() => {
     void (async () => {
@@ -823,6 +1280,46 @@ export function AdminPage() {
       setTableEditorOpen(false);
     }
   }, [tab, viewMode]);
+
+  useEffect(() => {
+    setDraft(current => {
+      if (!current) return current;
+      const nextGlobalConfig = ensureStartingDeckConfigEntry(current.globalConfig);
+      if (nextGlobalConfig === current.globalConfig) return current;
+      return { ...current, globalConfig: nextGlobalConfig };
+    });
+  }, [draft?.globalConfig.length]);
+
+  useEffect(() => {
+    if (!rightPanelDragging) return undefined;
+
+    function handlePointerMove(event: PointerEvent) {
+      const nextWidth = clampRightPanelWidth(window.innerWidth - event.clientX);
+      setRightPanelWidth(nextWidth);
+    }
+
+    function handlePointerUp() {
+      setRightPanelDragging(false);
+    }
+
+    window.addEventListener('pointermove', handlePointerMove);
+    window.addEventListener('pointerup', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+    };
+  }, [rightPanelDragging]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(RIGHT_PANEL_STORAGE_KEY, String(rightPanelWidth));
+  }, [rightPanelWidth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem(RIGHT_PANEL_COLLAPSED_STORAGE_KEY, String(rightPanelCollapsed));
+  }, [rightPanelCollapsed]);
 
   const selectedCard = useMemo(
     () => draft?.cards.find(card => card.id === selectedCardId) ?? null,
@@ -912,16 +1409,30 @@ export function AdminPage() {
     thumbnails: [],
     modelPresetSources: [],
   };
-  const activeShellStyle: CSSProperties =
-    tab === 'cards' && viewMode === 'table'
-      ? { ...shellStyle, gridTemplateColumns: '320px minmax(760px, 1fr) 420px' }
-      : shellStyle;
+  const leftPanelWidth = tab === 'cards' && viewMode === 'table' ? 320 : 280;
+  const mainPanelMinWidth = tab === 'cards' && viewMode === 'table' ? 760 : 420;
+  const activeRightPanelWidth = rightPanelCollapsed ? RIGHT_PANEL_COLLAPSED_WIDTH : rightPanelWidth;
+  const activeShellStyle: CSSProperties = {
+    ...shellStyle,
+    gridTemplateColumns: `${leftPanelWidth}px minmax(${mainPanelMinWidth}px, 1fr) ${RIGHT_PANEL_HANDLE_WIDTH}px ${activeRightPanelWidth}px`,
+    transition: rightPanelDragging ? undefined : 'grid-template-columns 180ms ease',
+  };
   const cardImageOptions = selectedCard
     ? filterAssetOptions(assetOptions.cardImages, selectedCard.type)
     : assetOptions.cardImages;
   const illustrationOptions = selectedCard
     ? filterAssetOptions(assetOptions.illustrations, selectedCard.type)
     : assetOptions.illustrations;
+
+  function toggleRightPanel() {
+    setRightPanelCollapsed(current => !current);
+  }
+
+  function handleRightPanelResizeStart(event: ReactPointerEvent<HTMLDivElement>) {
+    if (rightPanelCollapsed) return;
+    event.preventDefault();
+    setRightPanelDragging(true);
+  }
 
   function updateCardById(cardId: string, patch: Partial<CardRow>) {
     setDraft(current => {
@@ -976,6 +1487,18 @@ export function AdminPage() {
         ...current,
         modelProfiles: current.modelProfiles.map(profile =>
           profile.id === profileId ? { ...profile, ...patch } : profile
+        ),
+      };
+    });
+  }
+
+  function updateGlobalConfigEntry(key: string, patch: Partial<GlobalConfigRow>) {
+    setDraft(current => {
+      if (!current) return current;
+      return {
+        ...current,
+        globalConfig: current.globalConfig.map(entry =>
+          entry.key === key ? { ...entry, ...patch } : entry
         ),
       };
     });
@@ -1043,11 +1566,12 @@ export function AdminPage() {
     if (!canEdit || !draft) return;
     const issues = collectTemplateValidationIssues(draft);
     setTemplateIssues(issues);
-    if (issues.length > 0) {
-      setError(`模板工作台存在 ${issues.length} 条前端校验问题，请先修复后再保存。`);
+    const blockingIssues = issues.filter(issue => issue.blocking);
+    if (blockingIssues.length > 0) {
+      setError(`模板工作台存在 ${blockingIssues.length} 条阻断问题，请先修复后再保存。`);
       setInfo('');
-      if (issues[0]?.templateId) {
-        setSelectedTemplateId(issues[0].templateId);
+      if (blockingIssues[0]?.templateId) {
+        setSelectedTemplateId(blockingIssues[0].templateId);
         setTab('templates');
       }
       return;
@@ -1060,7 +1584,12 @@ export function AdminPage() {
       setResponse(next);
       setDraft(cloneDatasets(next.raw));
       setTemplateIssues(collectTemplateValidationIssues(next.raw));
-      setInfo('CSV 已保存并重新编译，游戏页会在本地热更新时刷新。');
+      const warningCount = issues.filter(issue => !issue.blocking).length;
+      setInfo(
+        warningCount > 0
+          ? `CSV 已保存并重新编译，仍有 ${warningCount} 条警告可继续处理。`
+          : 'CSV 已保存并重新编译，游戏页会在本地热更新时刷新。'
+      );
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : String(saveError));
     } finally {
@@ -1464,34 +1993,33 @@ export function AdminPage() {
           </div>
         ) : (
           <div style={{ display: 'grid', gap: 10 }}>
-            {draft.globalConfig.map((entry, index) => (
-              <div
-                key={entry.key}
-                style={{
-                  borderRadius: 14,
-                  padding: 12,
-                  background: 'rgba(255,255,255,0.04)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                }}
-              >
-                <div style={{ fontWeight: 700 }}>{entry.key}</div>
-                <div style={{ fontSize: 12, opacity: 0.64, marginBottom: 8 }}>{entry.description}</div>
-                <input
-                  disabled={!response.canEdit}
-                  value={entry.value}
-                  onChange={event => {
-                    const value = event.target.value;
-                    setDraft(current => {
-                      if (!current) return current;
-                      const next = [...current.globalConfig];
-                      next[index] = { ...next[index], value };
-                      return { ...current, globalConfig: next };
-                    });
-                  }}
-                  style={inputStyle(true)}
-                />
+            <div
+              style={{
+                borderRadius: 14,
+                padding: 12,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>全局配置说明</div>
+              <div style={{ fontSize: 13, opacity: 0.74, lineHeight: 1.6 }}>
+                全局参数与起始牌堆编辑已移动到中间主区域，左侧这里只保留概览。
               </div>
-            ))}
+            </div>
+            <div
+              style={{
+                borderRadius: 14,
+                padding: 12,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 6 }}>当前状态</div>
+              <div style={{ fontSize: 13, opacity: 0.74 }}>配置项总数 {draft.globalConfig.length}</div>
+              <div style={{ fontSize: 13, opacity: 0.74 }}>
+                牌堆条目数 {parseDeckConfigValue(draft.globalConfig.find(entry => entry.key === STARTING_DECK_CONFIG_KEY)?.value ?? '[]').length}
+              </div>
+            </div>
           </div>
         )}
       </aside>
@@ -1863,12 +2391,76 @@ export function AdminPage() {
               }}
             />
           </div>
+        ) : tab === 'global' ? (
+          <div style={{ minHeight: '100%' }}>
+            <GlobalConfigEditor
+              draft={draft}
+              canEdit={response.canEdit}
+              updateGlobalConfigEntry={updateGlobalConfigEntry}
+            />
+          </div>
         ) : (
           <div style={{ display: 'grid', placeItems: 'center', minHeight: '100%' }}>选择左侧卡牌开始编辑</div>
         )}
       </main>
 
-      <aside style={{ padding: 24, overflow: 'auto' }}>
+      <div
+        onPointerDown={handleRightPanelResizeStart}
+        style={{
+          position: 'relative',
+          borderRight: rightPanelCollapsed ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.05)',
+          borderLeft: '1px solid rgba(255,255,255,0.05)',
+          background: rightPanelDragging ? 'rgba(255,210,133,0.14)' : 'rgba(255,255,255,0.02)',
+          cursor: rightPanelCollapsed ? 'default' : 'col-resize',
+          userSelect: 'none',
+        }}
+      >
+        <button
+          type="button"
+          onClick={toggleRightPanel}
+          title={rightPanelCollapsed ? '展开右侧信息列' : '折叠右侧信息列'}
+          style={{
+            position: 'absolute',
+            top: 18,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            width: 18,
+            height: 64,
+            borderRadius: 999,
+            border: '1px solid rgba(255,255,255,0.12)',
+            background: rightPanelCollapsed ? 'rgba(255,210,133,0.18)' : 'rgba(255,255,255,0.05)',
+            color: '#fff8ef',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 700,
+          }}
+        >
+          {rightPanelCollapsed ? '‹' : '›'}
+        </button>
+        {!rightPanelCollapsed ? (
+          <div
+            style={{
+              position: 'absolute',
+              inset: '96px 50% 24px auto',
+              width: 2,
+              borderRadius: 999,
+              background: rightPanelDragging ? 'rgba(255,210,133,0.9)' : 'rgba(255,255,255,0.14)',
+              transform: 'translateX(50%)',
+            }}
+          />
+        ) : null}
+      </div>
+
+      <aside
+        style={{
+          padding: rightPanelCollapsed ? 0 : 24,
+          overflow: rightPanelCollapsed ? 'hidden' : 'auto',
+          opacity: rightPanelCollapsed ? 0 : 1,
+          pointerEvents: rightPanelCollapsed ? 'none' : 'auto',
+          minWidth: 0,
+          transition: rightPanelDragging ? undefined : 'opacity 140ms ease, padding 140ms ease',
+        }}
+      >
         {tab === 'templates' ? (
           <div style={{ display: 'grid', gap: 18 }}>
             <div
@@ -1890,6 +2482,38 @@ export function AdminPage() {
                   {templateIssues.length > 0 ? `前端校验问题 ${templateIssues.length} 条` : '前端结构校验通过'}
                 </div>
               </div>
+            </div>
+          </div>
+        ) : tab === 'global' ? (
+          <div style={{ display: 'grid', gap: 18 }}>
+            <div
+              style={{
+                borderRadius: 20,
+                padding: 18,
+                background: 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+              }}
+            >
+              {sectionTitle('Global Summary')}
+              {(() => {
+                const deckItems = parseDeckConfigValue(
+                  draft.globalConfig.find(entry => entry.key === STARTING_DECK_CONFIG_KEY)?.value ?? '[]'
+                );
+                const summary = buildDeckSummary(deckItems, draft.cards);
+                return (
+                  <div style={{ marginTop: 12, display: 'grid', gap: 10 }}>
+                    <div style={{ fontSize: 14, lineHeight: 1.6 }}>
+                      通用规则参数与起始牌堆都已搬到中间主编辑区，右侧只展示配置概览。
+                    </div>
+                    <div style={{ fontSize: 13, opacity: 0.72 }}>全局配置项 {draft.globalConfig.length}</div>
+                    <div style={{ fontSize: 13, opacity: 0.72 }}>起始牌堆条目 {deckItems.length}</div>
+                    <div style={{ fontSize: 13, opacity: 0.72 }}>起始牌堆总张数 {summary.totalCards}</div>
+                    <div style={{ fontSize: 13, opacity: summary.missingCards > 0 ? 1 : 0.72, color: summary.missingCards > 0 ? '#ffcece' : '#d3f9c6' }}>
+                      {summary.missingCards > 0 ? `存在 ${summary.missingCards} 条失效卡牌引用` : '牌堆引用有效'}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
         ) : (
@@ -1983,9 +2607,10 @@ export function AdminPage() {
                     <div style={{ marginTop: 12, display: 'grid', gap: 8 }}>
                       {currentBindings.map(binding => {
                         const template = draft.skillTemplates.find(item => item.id === binding.templateId);
+                        const params = parseJsonSafe<Record<string, unknown>>(binding.paramsJson, {});
                         return (
                           <div key={binding.id} style={{ fontSize: 13, opacity: 0.8 }}>
-                            {renderBindingSummary(template, binding)}
+                            {renderTemplateSummary(template, params)}
                           </div>
                         );
                       })}
@@ -2032,6 +2657,7 @@ export function AdminPage() {
               <div style={{ marginTop: 12, display: 'grid', gap: 12 }}>
                 {currentBindings.map(binding => {
                   const template = draft.skillTemplates.find(item => item.id === binding.templateId);
+                  const params = parseJsonSafe<Record<string, unknown>>(binding.paramsJson, {});
                   return (
                     <div
                       key={binding.id}
@@ -2052,7 +2678,7 @@ export function AdminPage() {
                           执行链 {readOperationsSummary(template).join(' -> ')}
                         </div>
                       ) : null}
-                      <div>{renderBindingSummary(template, binding)}</div>
+                      <div>{renderTemplateSummary(template, params)}</div>
                     </div>
                   );
                 })}
