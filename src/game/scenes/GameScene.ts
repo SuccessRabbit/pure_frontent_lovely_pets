@@ -85,6 +85,8 @@ export class GameScene extends Scene {
   private petHoverPreviewLayer: PIXI.Container;
   private petHoverPreviewCard: CardSprite | null = null;
   private petHoverPreviewKey: string | null = null;
+  private petHoverPreviewBlockedCell: { row: number; col: number } | null = null;
+  private wasDraggingLastFrame = false;
   private statusTooltipLayer!: PIXI.Container;
   private statusTooltipBg!: PIXI.Graphics;
   private statusTooltipTitle!: PIXI.Text;
@@ -298,6 +300,11 @@ export class GameScene extends Scene {
     );
 
     const mouse = this.inputManager.getMouse();
+    const isDraggingNow = this.dragSystem.isDragging();
+    if (this.wasDraggingLastFrame && !isDraggingNow) {
+      this.petHoverPreviewBlockedCell = this.petRenderer?.screenToGridCell(mouse.x, mouse.y) ?? null;
+      this.clearPetHoverPreview();
+    }
     this.gridInteractionController.sync3DGridHints({
       screenX: mouse.x,
       screenY: mouse.y,
@@ -309,6 +316,7 @@ export class GameScene extends Scene {
           : 'none',
     });
     this.updatePetHoverPreview(mouse.x, mouse.y);
+    this.wasDraggingLastFrame = isDraggingNow;
 
     // 3D 宠物渲染（不再使用 2D 颤抖）
     this.petRenderer?.render();
@@ -349,8 +357,20 @@ export class GameScene extends Scene {
 
     const hoveredCell = this.petRenderer.screenToGridCell(screenX, screenY);
     if (!hoveredCell) {
+      this.petHoverPreviewBlockedCell = null;
       this.clearPetHoverPreview();
       return;
+    }
+
+    if (this.petHoverPreviewBlockedCell) {
+      const blocked =
+        this.petHoverPreviewBlockedCell.row === hoveredCell.row &&
+        this.petHoverPreviewBlockedCell.col === hoveredCell.col;
+      if (blocked) {
+        this.clearPetHoverPreview();
+        return;
+      }
+      this.petHoverPreviewBlockedCell = null;
     }
 
     const entity = state.grid[hoveredCell.row]?.[hoveredCell.col] ?? null;

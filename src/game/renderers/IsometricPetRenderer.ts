@@ -4,7 +4,6 @@ import { GridCell3D } from './GridCell3D';
 import { DeckRenderer } from './DeckRenderer';
 import {
   PICK_LAYERS,
-  readGridCellPickUserData,
   readPetPickUserData,
   type PetPickUserData,
 } from './picking';
@@ -697,9 +696,24 @@ export class IsometricPetRenderer {
   }
 
   public screenToGridCell(screenX: number, screenY: number): { row: number; col: number } | null {
-    const hit = this.raycastFirst(screenX, screenY, PICK_LAYERS.GRID_CELL);
-    const pick = hit ? readGridCellPickUserData(hit.object.userData) : null;
-    return pick ? { row: pick.row, col: pick.col } : null;
+    const world = this.screenToWorld3D(screenX, screenY);
+    if (!world) return null;
+
+    const strideX = this.CELL_WIDTH + this.CELL_PADDING;
+    const strideZ = this.CELL_HEIGHT + this.CELL_PADDING;
+    const localX = world.x - this.GRID_START_X;
+    const localZ = world.z - this.GRID_START_Y;
+    if (localX < 0 || localZ < 0) return null;
+
+    const col = Math.floor(localX / strideX);
+    const row = Math.floor(localZ / strideZ);
+    if (row < 0 || row >= 3 || col < 0 || col >= 6) return null;
+
+    const offsetX = localX - col * strideX;
+    const offsetZ = localZ - row * strideZ;
+    if (offsetX > this.CELL_WIDTH || offsetZ > this.CELL_HEIGHT) return null;
+
+    return { row, col };
   }
 
   public screenToPet(screenX: number, screenY: number): PetHoverHit | null {
