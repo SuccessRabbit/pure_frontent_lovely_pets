@@ -3,6 +3,7 @@ import type { StatusTheme } from '../status/statusTypes';
 import type { ToastTone } from './toast';
 
 export type SkillEffectKind = 'link' | 'ring' | 'shield' | 'swap' | 'collapse';
+export type SkillTargetReaction = 'buff' | 'debuff' | 'impact';
 
 export type PresentationEvent =
   | { type: 'show_phase_banner'; title: string; holdMs: number }
@@ -29,6 +30,7 @@ export type PresentationEvent =
       targetCol2?: number;
       amount?: number;
       positive?: boolean;
+      targetReaction?: SkillTargetReaction;
     }
   | { type: 'pulse_stress_cell'; row: number; col: number }
   | {

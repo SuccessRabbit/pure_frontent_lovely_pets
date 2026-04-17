@@ -395,6 +395,10 @@ function pushSkillEffectStep(ctx: ResolutionContext, ...events: PresentationEven
   pushStep(ctx, ctx.draft, events);
 }
 
+function resolveStressReaction(amount: number): 'buff' | 'debuff' {
+  return amount < 0 ? 'buff' : 'debuff';
+}
+
 function entityMatchesFilters(entity: GridEntity, filters: Record<string, unknown>): boolean {
   const entityType = filters.entityType;
   if (typeof entityType === 'string' && entity.type !== entityType) return false;
@@ -599,6 +603,7 @@ function executeSkillOperation(
           targetRow: target.row,
           targetCol: target.col,
           positive: value <= target.entity.stress,
+          targetReaction: value <= target.entity.stress ? 'buff' : 'debuff',
         },
         {
           type: 'pulse_stress_cell',
@@ -765,6 +770,7 @@ function executeSkillOperation(
           targetCol: target.col,
           amount,
           positive: amount < 0,
+          targetReaction: resolveStressReaction(amount),
         },
         {
           type: 'pulse_stress_cell',
@@ -791,6 +797,7 @@ function executeSkillOperation(
         color: resolveSkillVisual(input, 'utility').color,
         targetRow: target.row,
         targetCol: target.col,
+        targetReaction: 'impact',
       });
       addEvent(ctx, {
         type: 'entity_removed',
@@ -834,6 +841,7 @@ function executeSkillOperation(
           targetCol: cell.col,
           amount,
           positive: amount < 0,
+          targetReaction: resolveStressReaction(amount),
         },
         {
           type: 'pulse_stress_cell',
@@ -892,6 +900,7 @@ function executeSkillOperation(
         targetRow: target.row,
         targetCol: target.col,
         positive: true,
+        targetReaction: 'impact',
       });
       addEvent(ctx, {
         type: 'entity_removed',
@@ -945,6 +954,7 @@ function executeSkillOperation(
         targetCol: target.col,
         amount: percent,
         positive: percent >= 0,
+        targetReaction: percent >= 0 ? 'buff' : 'debuff',
       });
     });
     return true;

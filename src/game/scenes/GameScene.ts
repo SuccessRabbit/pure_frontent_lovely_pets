@@ -27,7 +27,7 @@ import { HandController } from './gameScene/HandController';
 import { GameSceneUiController } from './gameScene/GameSceneUiController';
 import { TurnResolutionController } from './gameScene/TurnResolutionController';
 import { runGameCommand } from '../rules/ResolutionEngine';
-import type { PresentationEvent } from '../rules/presentation';
+import type { PresentationEvent, SkillTargetReaction } from '../rules/presentation';
 import { getEntityCardTemplate } from '../../utils/cardCatalog';
 
 const DESIGN_WIDTH = 1920;
@@ -1063,6 +1063,81 @@ export class GameScene extends Scene {
     await this.playSkillRingEffect(event);
   }
 
+  private async playSkillTargetReaction(
+    event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
+  ): Promise<void> {
+    if (!event.targetReaction) return;
+    if (event.targetRow === undefined || event.targetCol === undefined) return;
+
+    const global = this.getCellAnchorGlobal(event.targetRow, event.targetCol, 12);
+    const local = this.fxLayer.toLocal(global);
+    const reaction = new PIXI.Graphics();
+    reaction.position.set(local.x, local.y);
+    reaction.alpha = 0.88;
+    this.fxLayer.addChild(reaction);
+
+    const style = this.resolveTargetReactionStyle(event.targetReaction, event.color);
+    reaction.lineStyle(3, style.ringColor, 0.92);
+    if (event.targetReaction === 'impact') {
+      reaction.drawPolygon([-18, -6, -5, -5, 0, -18, 5, -5, 18, -6, 8, 3, 12, 18, 0, 9, -12, 18, -8, 3]);
+    } else {
+      reaction.drawCircle(0, 0, 18);
+    }
+
+    burstParticlesAtGlobal(this.fxLayer, global.x, global.y, {
+      count: style.particleCount,
+      colors: style.colors,
+      spread: style.spread,
+      durationMin: 160,
+      durationMax: 320,
+    });
+
+    await Promise.all([
+      new Promise<void>(resolve => {
+        Tween.to(
+          reaction.scale,
+          event.targetReaction === 'impact' ? { x: 0.6, y: 0.6 } : { x: 1.28, y: 1.28 },
+          180,
+          event.targetReaction === 'impact' ? Easing.easeInCubic : Easing.easeOutCubic,
+          resolve
+        );
+      }),
+      new Promise<void>(resolve => {
+        Tween.to(reaction, { alpha: 0 }, 180, Easing.easeInQuad, resolve);
+      }),
+    ]);
+
+    reaction.destroy();
+  }
+
+  private resolveTargetReactionStyle(
+    reaction: SkillTargetReaction,
+    color: number
+  ): { ringColor: number; colors: number[]; spread: number; particleCount: number } {
+    if (reaction === 'buff') {
+      return {
+        ringColor: color,
+        colors: [color, 0xabebc6, 0xfff1a8, 0xffffff],
+        spread: 36,
+        particleCount: 16,
+      };
+    }
+    if (reaction === 'debuff') {
+      return {
+        ringColor: color,
+        colors: [color, 0xffb0b0, 0x3b2236, 0xffffff],
+        spread: 34,
+        particleCount: 16,
+      };
+    }
+    return {
+      ringColor: color,
+      colors: [color, 0xffffff, 0x3b2236],
+      spread: 42,
+      particleCount: 18,
+    };
+  }
+
   private async playSkillLinkEffect(
     event: Extract<PresentationEvent, { type: 'play_skill_effect' }>
   ): Promise<void> {
@@ -1130,6 +1205,8 @@ export class GameScene extends Scene {
       }),
     ]);
 
+    await this.playSkillTargetReaction(event);
+
     beam.destroy();
     tip.destroy();
   }
@@ -1166,6 +1243,8 @@ export class GameScene extends Scene {
         Tween.to(ring, { alpha: 0 }, 240, Easing.easeInQuad, resolve);
       }),
     ]);
+
+    await this.playSkillTargetReaction(event);
 
     ring.destroy();
   }
@@ -1280,6 +1359,9 @@ export class GameScene extends Scene {
         Tween.to(flash, { alpha: 0 }, 220, Easing.easeInQuad, resolve);
       }),
     ]);
+
+    await this.playSkillTargetReaction(event);
+
     flash.destroy();
   }
 

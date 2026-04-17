@@ -286,6 +286,95 @@ describe('ResolutionEngine', () => {
         sourceCol: 1,
         targetRow: 1,
         targetCol: 2,
+        targetReaction: 'debuff',
+      })
+    );
+  });
+
+  it('creates target reaction for adjacent income auras', () => {
+    const source = entityFromCard('pet_001', 1, 1);
+    const target = entityFromCard('worker_001', 1, 2);
+    const state = withEntities(
+      createEmptyGameState({
+        phase: 'preparation',
+        hand: [],
+        deck: [runtimeCard('action_001')],
+      }),
+      [source, target]
+    );
+
+    const result = runGameCommand(state, { type: 'resolve_turn_sequence' });
+    const flattened = result.steps.flatMap(step => step.presentation);
+
+    expect(flattened).toContainEqual(
+      expect.objectContaining({
+        type: 'play_skill_effect',
+        effect: 'link',
+        sourceRow: 1,
+        sourceCol: 1,
+        targetRow: 1,
+        targetCol: 2,
+        targetReaction: 'buff',
+      })
+    );
+  });
+
+  it('marks single-target stress reset with a target reaction', () => {
+    const target = entityFromCard('pet_001', 1, 2, { stress: 2, maxStress: 3 });
+    const state = withEntities(
+      createEmptyGameState({
+        cans: 5,
+        hand: [runtimeCard('action_001')],
+      }),
+      [target]
+    );
+
+    const result = runGameCommand(state, {
+      type: 'play_card',
+      cardIndex: 0,
+      targetRow: 1,
+      targetCol: 2,
+    });
+    const flattened = result.steps.flatMap(step => step.presentation);
+
+    expect(result.success).toBe(true);
+    expect(flattened).toContainEqual(
+      expect.objectContaining({
+        type: 'play_skill_effect',
+        effect: 'ring',
+        targetRow: 1,
+        targetCol: 2,
+        targetReaction: 'buff',
+      })
+    );
+  });
+
+  it('marks returned pets with an impact target reaction', () => {
+    const target = entityFromCard('pet_001', 0, 1);
+    const state = withEntities(
+      createEmptyGameState({
+        cans: 5,
+        hand: [runtimeCard('action_008')],
+      }),
+      [target]
+    );
+
+    const result = runGameCommand(state, {
+      type: 'play_card',
+      cardIndex: 0,
+      targetRow: 0,
+      targetCol: 1,
+    });
+    const flattened = result.steps.flatMap(step => step.presentation);
+
+    expect(result.success).toBe(true);
+    expect(flattened).toContainEqual(
+      expect.objectContaining({
+        type: 'play_skill_effect',
+        effect: 'collapse',
+        targetRow: 0,
+        targetCol: 1,
+        targetReaction: 'impact',
       })
     );
   });
